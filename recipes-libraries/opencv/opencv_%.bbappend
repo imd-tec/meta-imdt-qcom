@@ -1,0 +1,3 @@
+EXTRA_OECMAKE:append = " -DWITH_QT=OFF -DWITH_GTK=ON -DWITH_GUI=ON"
+
+PACKAGECONFIG:append:pn-opencv = " gtk"

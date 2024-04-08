@@ -1,0 +1,15 @@
+diff --git a/cmake/functions.cmake b/cmake/functions.cmake
+index fa265ca..de71945 100644
+--- a/cmake/functions.cmake
++++ b/cmake/functions.cmake
+@@ -136,7 +136,9 @@ macro(google_initialize_cartographer_project)
+     if(NOT EXISTS ${FILES_LIST_PATH})
+       execute_process(COMMAND ${DETECT_CHANGES_CMD})
+     endif()
+-    include(${FILES_LIST_PATH})
++    if (EXISTS ${FILES_LIST_PATH})
++      include(${FILES_LIST_PATH})
++    endif()
+   endif()
+ endmacro()
+ 
