@@ -1,4 +1,4 @@
-# meta-imdt-qcom-dev
+# meta-imdt-qcom
 
-This meta layer contains Yocto recipes for the Qualcomm HDK.
+Meta layer containing Yocto recipes for the IMDT's Qualcomm SBCs.
 
