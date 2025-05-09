@@ -1,0 +1,811 @@
+From 31b85cb2e4e9e4ecc7b5f44ae2ca1acec4d31d1e Mon Sep 17 00:00:00 2001
+From: Mustafa Ali <quic_mustali@quicinc.com>
+Date: Tue, 30 May 2023 10:00:55 +0300
+Subject: [PATCH 2/2] Revert "Allow Cord to store chunked checksums"
+
+This reverts commit ff5644bb34333d2ad7f1abf421d57bda155398e7.
+---
+ absl/crc/internal/crc_cord_state.cc           | 130 --------------
+ absl/crc/internal/crc_cord_state.h            | 159 ------------------
+ absl/crc/internal/crc_cord_state_test.cc      | 124 --------------
+ absl/strings/BUILD.bazel                      |   4 -
+ absl/strings/CMakeLists.txt                   |   4 -
+ absl/strings/cord.cc                          |  29 +---
+ absl/strings/cord.h                           |   5 -
+ absl/strings/internal/cord_rep_crc.cc         |   7 +-
+ absl/strings/internal/cord_rep_crc.h          |   7 +-
+ absl/strings/internal/cord_rep_crc_test.cc    |  34 ++--
+ .../internal/cordz_info_statistics_test.cc    |   4 +-
+ 11 files changed, 26 insertions(+), 481 deletions(-)
+ delete mode 100644 absl/crc/internal/crc_cord_state.cc
+ delete mode 100644 absl/crc/internal/crc_cord_state.h
+ delete mode 100644 absl/crc/internal/crc_cord_state_test.cc
+
+diff --git a/absl/crc/internal/crc_cord_state.cc b/absl/crc/internal/crc_cord_state.cc
+deleted file mode 100644
+index d0be0dd..0000000
+--- a/absl/crc/internal/crc_cord_state.cc
++++ /dev/null
+@@ -1,130 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/internal/crc_cord_state.h"
+-
+-#include <cassert>
+-
+-#include "absl/base/config.h"
+-#include "absl/numeric/bits.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-CrcCordState::RefcountedRep* CrcCordState::RefSharedEmptyRep() {
+-  static CrcCordState::RefcountedRep* empty = new CrcCordState::RefcountedRep;
+-
+-  assert(empty->count.load(std::memory_order_relaxed) >= 1);
+-  assert(empty->rep.removed_prefix.length == 0);
+-  assert(empty->rep.prefix_crc.empty());
+-
+-  Ref(empty);
+-  return empty;
+-}
+-
+-CrcCordState::CrcCordState() : refcounted_rep_(new RefcountedRep) {}
+-
+-CrcCordState::CrcCordState(const CrcCordState& other)
+-    : refcounted_rep_(other.refcounted_rep_) {
+-  Ref(refcounted_rep_);
+-}
+-
+-CrcCordState::CrcCordState(CrcCordState&& other)
+-    : refcounted_rep_(other.refcounted_rep_) {
+-  // Make `other` valid for use after move.
+-  other.refcounted_rep_ = RefSharedEmptyRep();
+-}
+-
+-CrcCordState& CrcCordState::operator=(const CrcCordState& other) {
+-  if (this != &other) {
+-    Unref(refcounted_rep_);
+-    refcounted_rep_ = other.refcounted_rep_;
+-    Ref(refcounted_rep_);
+-  }
+-  return *this;
+-}
+-
+-CrcCordState& CrcCordState::operator=(CrcCordState&& other) {
+-  if (this != &other) {
+-    Unref(refcounted_rep_);
+-    refcounted_rep_ = other.refcounted_rep_;
+-    // Make `other` valid for use after move.
+-    other.refcounted_rep_ = RefSharedEmptyRep();
+-  }
+-  return *this;
+-}
+-
+-CrcCordState::~CrcCordState() {
+-  Unref(refcounted_rep_);
+-}
+-
+-crc32c_t CrcCordState::Checksum() const {
+-  if (rep().prefix_crc.empty()) {
+-    return absl::crc32c_t{0};
+-  }
+-  if (IsNormalized()) {
+-    return rep().prefix_crc.back().crc;
+-  }
+-  return absl::RemoveCrc32cPrefix(
+-      rep().removed_prefix.crc, rep().prefix_crc.back().crc,
+-      rep().prefix_crc.back().length - rep().removed_prefix.length);
+-}
+-
+-CrcCordState::PrefixCrc CrcCordState::NormalizedPrefixCrcAtNthChunk(
+-    size_t n) const {
+-  assert(n < NumChunks());
+-  if (IsNormalized()) {
+-    return rep().prefix_crc[n];
+-  }
+-  size_t length = rep().prefix_crc[n].length - rep().removed_prefix.length;
+-  return PrefixCrc(length,
+-                   absl::RemoveCrc32cPrefix(rep().removed_prefix.crc,
+-                                            rep().prefix_crc[n].crc, length));
+-}
+-
+-void CrcCordState::Normalize() {
+-  if (IsNormalized() || rep().prefix_crc.empty()) {
+-    return;
+-  }
+-
+-  Rep* r = mutable_rep();
+-  for (auto& prefix_crc : r->prefix_crc) {
+-    size_t remaining = prefix_crc.length - r->removed_prefix.length;
+-    prefix_crc.crc = absl::RemoveCrc32cPrefix(r->removed_prefix.crc,
+-                                              prefix_crc.crc, remaining);
+-    prefix_crc.length = remaining;
+-  }
+-  r->removed_prefix = PrefixCrc();
+-}
+-
+-void CrcCordState::Poison() {
+-  Rep* rep = mutable_rep();
+-  if (NumChunks() > 0) {
+-    for (auto& prefix_crc : rep->prefix_crc) {
+-      // This is basically CRC32::Scramble().
+-      uint32_t crc = static_cast<uint32_t>(prefix_crc.crc);
+-      crc += 0x2e76e41b;
+-      crc = absl::rotr(crc, 17);
+-      prefix_crc.crc = crc32c_t{crc};
+-    }
+-  } else {
+-    // Add a fake corrupt chunk.
+-    rep->prefix_crc.push_back(PrefixCrc(0, crc32c_t{1}));
+-  }
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/internal/crc_cord_state.h b/absl/crc/internal/crc_cord_state.h
+deleted file mode 100644
+index d305424..0000000
+--- a/absl/crc/internal/crc_cord_state.h
++++ /dev/null
+@@ -1,159 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC_CORD_STATE_H_
+-#define ABSL_CRC_INTERNAL_CRC_CORD_STATE_H_
+-
+-#include <atomic>
+-#include <cstddef>
+-#include <deque>
+-
+-#include "absl/base/config.h"
+-#include "absl/crc/crc32c.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-// CrcCordState is a copy-on-write class that holds the chunked CRC32C data
+-// that allows CrcCord to perform efficient substring operations. CrcCordState
+-// is used as a member variable in CrcCord. When a CrcCord is converted to a
+-// Cord, the CrcCordState is shallow-copied into the root node of the Cord. If
+-// the converted Cord is modified outside of CrcCord, the CrcCordState is
+-// discarded from the Cord. If the Cord is converted back to a CrcCord, and the
+-// Cord is still carrying the CrcCordState in its root node, the CrcCord can
+-// re-use the CrcCordState, making the construction of the CrcCord cheap.
+-//
+-// CrcCordState does not try to encapsulate the CRC32C state (CrcCord requires
+-// knowledge of how CrcCordState represents the CRC32C state). It does
+-// encapsulate the copy-on-write nature of the state.
+-class CrcCordState {
+- public:
+-  // Constructors.
+-  CrcCordState();
+-  CrcCordState(const CrcCordState&);
+-  CrcCordState(CrcCordState&&);
+-
+-  // Destructor. Atomically unreferences the data.
+-  ~CrcCordState();
+-
+-  // Copy and move operators.
+-  CrcCordState& operator=(const CrcCordState&);
+-  CrcCordState& operator=(CrcCordState&&);
+-
+-  // A (length, crc) pair.
+-  struct PrefixCrc {
+-    PrefixCrc() = default;
+-    PrefixCrc(size_t length_arg, absl::crc32c_t crc_arg)
+-        : length(length_arg), crc(crc_arg) {}
+-
+-    size_t length = 0;
+-
+-    // TODO(absl-team): Memory stomping often zeros out memory. If this struct
+-    // gets overwritten, we could end up with {0, 0}, which is the correct CRC
+-    // for a string of length 0. Consider storing a scrambled value and
+-    // unscrambling it before verifying it.
+-    absl::crc32c_t crc = absl::crc32c_t{0};
+-  };
+-
+-  // The representation of the chunked CRC32C data.
+-  struct Rep {
+-    // `removed_prefix` is the crc and length of any prefix that has been
+-    // removed from the Cord (for example, by calling
+-    // `CrcCord::RemovePrefix()`). To get the checkum of any prefix of the cord,
+-    // this value must be subtracted from `prefix_crc`. See `Checksum()` for an
+-    // example.
+-    //
+-    // CrcCordState is said to be "normalized" if removed_prefix.length == 0.
+-    PrefixCrc removed_prefix;
+-
+-    // A deque of (length, crc) pairs, representing length and crc of a prefix
+-    // of the Cord, before removed_prefix has been subtracted. The lengths of
+-    // the prefixes are stored in increasing order. If the Cord is not empty,
+-    // the last value in deque is the contains the CRC32C of the entire Cord
+-    // when removed_prefix is subtracted from it.
+-    std::deque<PrefixCrc> prefix_crc;
+-  };
+-
+-  // Returns a reference to the representation of the chunked CRC32C data.
+-  const Rep& rep() const { return refcounted_rep_->rep; }
+-
+-  // Returns a mutable reference to the representation of the chunked CRC32C
+-  // data. Calling this function will copy the data if another instance also
+-  // holds a reference to the data, so it is important to call rep() instead if
+-  // the data may not be mutated.
+-  Rep* mutable_rep() {
+-    if (refcounted_rep_->count.load(std::memory_order_acquire) != 1) {
+-      RefcountedRep* copy = new RefcountedRep;
+-      copy->rep = refcounted_rep_->rep;
+-      Unref(refcounted_rep_);
+-      refcounted_rep_ = copy;
+-    }
+-    return &refcounted_rep_->rep;
+-  }
+-
+-  // Returns the CRC32C of the entire Cord.
+-  absl::crc32c_t Checksum() const;
+-
+-  // Returns true if the chunked CRC32C cached is normalized.
+-  bool IsNormalized() const { return rep().removed_prefix.length == 0; }
+-
+-  // Normalizes the chunked CRC32C checksum cache by substracting any removed
+-  // prefix from the chunks.
+-  void Normalize();
+-
+-  // Returns the number of cached chunks.
+-  size_t NumChunks() const { return rep().prefix_crc.size(); }
+-
+-  // Helper that returns the (length, crc) of the `n`-th cached chunked.
+-  PrefixCrc NormalizedPrefixCrcAtNthChunk(size_t n) const;
+-
+-  // Poisons all chunks to so that Checksum() will likely be incorrect with high
+-  // probability.
+-  void Poison();
+-
+- private:
+-  struct RefcountedRep {
+-    std::atomic<int32_t> count{1};
+-    Rep rep;
+-  };
+-
+-  // Adds a reference to the shared global empty `RefcountedRep`, and returns a
+-  // pointer to the `RefcountedRep`. This is an optimization to avoid unneeded
+-  // allocations when the allocation is unlikely to ever be used. The returned
+-  // pointer can be `Unref()`ed when it is no longer needed.  Since the returned
+-  // instance will always have a reference counter greater than 1, attempts to
+-  // modify it (by calling `mutable_rep()`) will create a new unshared copy.
+-  static RefcountedRep* RefSharedEmptyRep();
+-
+-  static void Ref(RefcountedRep* r) {
+-    assert(r != nullptr);
+-    r->count.fetch_add(1, std::memory_order_relaxed);
+-  }
+-
+-  static void Unref(RefcountedRep* r) {
+-    assert(r != nullptr);
+-    if (r->count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+-      delete r;
+-    }
+-  }
+-
+-  RefcountedRep* refcounted_rep_;
+-};
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC_CORD_STATE_H_
+diff --git a/absl/crc/internal/crc_cord_state_test.cc b/absl/crc/internal/crc_cord_state_test.cc
+deleted file mode 100644
+index e2c8e3c..0000000
+--- a/absl/crc/internal/crc_cord_state_test.cc
++++ /dev/null
+@@ -1,124 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/internal/crc_cord_state.h"
+-
+-#include <algorithm>
+-#include <cstdint>
+-#include <string>
+-#include <utility>
+-
+-#include "gtest/gtest.h"
+-#include "absl/crc/crc32c.h"
+-
+-namespace {
+-
+-TEST(CrcCordState, Default) {
+-  absl::crc_internal::CrcCordState state;
+-  EXPECT_TRUE(state.IsNormalized());
+-  EXPECT_EQ(state.Checksum(), absl::crc32c_t{0});
+-  state.Normalize();
+-  EXPECT_EQ(state.Checksum(), absl::crc32c_t{0});
+-}
+-
+-TEST(CrcCordState, Normalize) {
+-  absl::crc_internal::CrcCordState state;
+-  auto* rep = state.mutable_rep();
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(1000, absl::crc32c_t{1000}));
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(2000, absl::crc32c_t{2000}));
+-  rep->removed_prefix =
+-      absl::crc_internal::CrcCordState::PrefixCrc(500, absl::crc32c_t{500});
+-
+-  // The removed_prefix means state is not normalized.
+-  EXPECT_FALSE(state.IsNormalized());
+-
+-  absl::crc32c_t crc = state.Checksum();
+-  state.Normalize();
+-  EXPECT_TRUE(state.IsNormalized());
+-
+-  // The checksum should not change as a result of calling Normalize().
+-  EXPECT_EQ(state.Checksum(), crc);
+-  EXPECT_EQ(rep->removed_prefix.length, 0);
+-}
+-
+-TEST(CrcCordState, Copy) {
+-  absl::crc_internal::CrcCordState state;
+-  auto* rep = state.mutable_rep();
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(1000, absl::crc32c_t{1000}));
+-
+-  absl::crc_internal::CrcCordState copy = state;
+-
+-  EXPECT_EQ(state.Checksum(), absl::crc32c_t{1000});
+-  EXPECT_EQ(copy.Checksum(), absl::crc32c_t{1000});
+-}
+-
+-TEST(CrcCordState, UnsharedSelfCopy) {
+-  absl::crc_internal::CrcCordState state;
+-  auto* rep = state.mutable_rep();
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(1000, absl::crc32c_t{1000}));
+-
+-  const absl::crc_internal::CrcCordState& ref = state;
+-  state = ref;
+-
+-  EXPECT_EQ(state.Checksum(), absl::crc32c_t{1000});
+-}
+-
+-TEST(CrcCordState, Move) {
+-  absl::crc_internal::CrcCordState state;
+-  auto* rep = state.mutable_rep();
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(1000, absl::crc32c_t{1000}));
+-
+-  absl::crc_internal::CrcCordState moved = std::move(state);
+-  EXPECT_EQ(moved.Checksum(), absl::crc32c_t{1000});
+-}
+-
+-TEST(CrcCordState, UnsharedSelfMove) {
+-  absl::crc_internal::CrcCordState state;
+-  auto* rep = state.mutable_rep();
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(1000, absl::crc32c_t{1000}));
+-
+-  absl::crc_internal::CrcCordState& ref = state;
+-  state = std::move(ref);
+-
+-  EXPECT_EQ(state.Checksum(), absl::crc32c_t{1000});
+-}
+-
+-TEST(CrcCordState, PoisonDefault) {
+-  absl::crc_internal::CrcCordState state;
+-  state.Poison();
+-  EXPECT_NE(state.Checksum(), absl::crc32c_t{0});
+-}
+-
+-TEST(CrcCordState, PoisonData) {
+-  absl::crc_internal::CrcCordState state;
+-  auto* rep = state.mutable_rep();
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(1000, absl::crc32c_t{1000}));
+-  rep->prefix_crc.push_back(
+-      absl::crc_internal::CrcCordState::PrefixCrc(2000, absl::crc32c_t{2000}));
+-  rep->removed_prefix =
+-      absl::crc_internal::CrcCordState::PrefixCrc(500, absl::crc32c_t{500});
+-
+-  absl::crc32c_t crc = state.Checksum();
+-  state.Poison();
+-  EXPECT_NE(state.Checksum(), crc);
+-}
+-
+-}  // namespace
+diff --git a/absl/strings/BUILD.bazel b/absl/strings/BUILD.bazel
+index 53c5771..cfad8c9 100644
+--- a/absl/strings/BUILD.bazel
++++ b/absl/strings/BUILD.bazel
+@@ -325,7 +325,6 @@ cc_library(
+         "//absl/container:container_memory",
+         "//absl/container:inlined_vector",
+         "//absl/container:layout",
+-        "//absl/crc:crc_cord_state",
+         "//absl/functional:function_ref",
+         "//absl/meta:type_traits",
+         "//absl/types:span",
+@@ -407,7 +406,6 @@ cc_test(
+         ":cord_internal",
+         ":cord_rep_test_util",
+         "//absl/base:config",
+-        "//absl/crc:crc_cord_state",
+         "@com_google_googletest//:gtest_main",
+     ],
+ )
+@@ -466,7 +464,6 @@ cc_library(
+         "//absl/base:raw_logging_internal",
+         "//absl/container:fixed_array",
+         "//absl/container:inlined_vector",
+-        "//absl/crc:crc_cord_state",
+         "//absl/functional:function_ref",
+         "//absl/meta:type_traits",
+         "//absl/numeric:bits",
+@@ -663,7 +660,6 @@ cc_test(
+         ":cordz_update_scope",
+         ":cordz_update_tracker",
+         "//absl/base:config",
+-        "//absl/crc:crc_cord_state",
+         "//absl/synchronization",
+         "//absl/synchronization:thread_pool",
+         "@com_google_googletest//:gtest_main",
+diff --git a/absl/strings/CMakeLists.txt b/absl/strings/CMakeLists.txt
+index a0f7cc5..548ec23 100644
+--- a/absl/strings/CMakeLists.txt
++++ b/absl/strings/CMakeLists.txt
+@@ -606,7 +606,6 @@ absl_cc_library(
+     absl::config
+     absl::container_memory
+     absl::core_headers
+-    absl::crc_cord_state
+     absl::endian
+     absl::inlined_vector
+     absl::layout
+@@ -785,7 +784,6 @@ absl_cc_test(
+     absl::cordz_statistics
+     absl::cordz_update_scope
+     absl::cordz_update_tracker
+-    absl::crc_cord_state
+     absl::thread_pool
+     GTest::gmock_main
+ )
+@@ -885,7 +883,6 @@ absl_cc_library(
+     absl::cordz_update_scope
+     absl::cordz_update_tracker
+     absl::core_headers
+-    absl::crc_cord_state
+     absl::endian
+     absl::fixed_array
+     absl::function_ref
+@@ -1058,7 +1055,6 @@ absl_cc_test(
+     absl::config
+     absl::cord_internal
+     absl::cord_rep_test_util
+-    absl::crc_cord_state
+     GTest::gmock_main
+ )
+ 
+diff --git a/absl/strings/cord.cc b/absl/strings/cord.cc
+index 1d33dd8..8a8ca2d 100644
+--- a/absl/strings/cord.cc
++++ b/absl/strings/cord.cc
+@@ -35,7 +35,6 @@
+ #include "absl/base/port.h"
+ #include "absl/container/fixed_array.h"
+ #include "absl/container/inlined_vector.h"
+-#include "absl/crc/internal/crc_cord_state.h"
+ #include "absl/strings/cord_buffer.h"
+ #include "absl/strings/escaping.h"
+ #include "absl/strings/internal/cord_data_edge.h"
+@@ -853,44 +852,28 @@ inline absl::string_view Cord::InlineRep::FindFlatStartPiece() const {
+   return absl::string_view(node->external()->base + offset, length);
+ }
+ 
+-void Cord::SetCrcCordState(crc_internal::CrcCordState state) {
++void Cord::SetExpectedChecksum(uint32_t crc) {
+   auto constexpr method = CordzUpdateTracker::kSetExpectedChecksum;
+   if (empty()) {
+     contents_.MaybeRemoveEmptyCrcNode();
+-    CordRep* rep = CordRepCrc::New(nullptr, std::move(state));
++    CordRep* rep = CordRepCrc::New(nullptr, crc);
+     contents_.EmplaceTree(rep, method);
+   } else if (!contents_.is_tree()) {
+     CordRep* rep = contents_.MakeFlatWithExtraCapacity(0);
+-    rep = CordRepCrc::New(rep, std::move(state));
++    rep = CordRepCrc::New(rep, crc);
+     contents_.EmplaceTree(rep, method);
+   } else {
+     const CordzUpdateScope scope(contents_.data_.cordz_info(), method);
+-    CordRep* rep = CordRepCrc::New(contents_.data_.as_tree(), std::move(state));
++    CordRep* rep = CordRepCrc::New(contents_.data_.as_tree(), crc);
+     contents_.SetTree(rep, scope);
+   }
+ }
+ 
+-void Cord::SetExpectedChecksum(uint32_t crc) {
+-  // Construct a CrcCordState with a single chunk.
+-  crc_internal::CrcCordState state;
+-  state.mutable_rep()->prefix_crc.push_back(
+-      crc_internal::CrcCordState::PrefixCrc(size(), absl::crc32c_t{crc}));
+-  SetCrcCordState(std::move(state));
+-}
+-
+-const crc_internal::CrcCordState* Cord::MaybeGetCrcCordState() const {
+-  if (!contents_.is_tree() || !contents_.tree()->IsCrc()) {
+-    return nullptr;
+-  }
+-  return &contents_.tree()->crc()->crc_cord_state;
+-}
+-
+ absl::optional<uint32_t> Cord::ExpectedChecksum() const {
+   if (!contents_.is_tree() || !contents_.tree()->IsCrc()) {
+     return absl::nullopt;
+   }
+-  return static_cast<uint32_t>(
+-      contents_.tree()->crc()->crc_cord_state.Checksum());
++  return contents_.tree()->crc()->crc;
+ }
+ 
+ inline int Cord::CompareSlowPath(absl::string_view rhs, size_t compared_size,
+@@ -1270,7 +1253,7 @@ static void DumpNode(CordRep* rep, bool include_data, std::ostream* os,
+       *os << "NULL\n";
+       leaf = true;
+     } else if (rep->IsCrc()) {
+-      *os << "CRC crc=" << rep->crc()->crc_cord_state.Checksum() << "\n";
++      *os << "CRC crc=" << rep->crc()->crc << "\n";
+       indent += kIndentStep;
+       rep = rep->crc()->child;
+     } else if (rep->IsSubstring()) {
+diff --git a/absl/strings/cord.h b/absl/strings/cord.h
+index c4a0d5a..333f96d 100644
+--- a/absl/strings/cord.h
++++ b/absl/strings/cord.h
+@@ -76,7 +76,6 @@
+ #include "absl/base/macros.h"
+ #include "absl/base/port.h"
+ #include "absl/container/inlined_vector.h"
+-#include "absl/crc/internal/crc_cord_state.h"
+ #include "absl/functional/function_ref.h"
+ #include "absl/meta/type_traits.h"
+ #include "absl/strings/cord_analysis.h"
+@@ -1002,10 +1001,6 @@ class Cord {
+     });
+     return H::combine(combiner.finalize(std::move(hash_state)), size());
+   }
+-
+-  friend class CrcCord;
+-  void SetCrcCordState(crc_internal::CrcCordState state);
+-  const crc_internal::CrcCordState* MaybeGetCrcCordState() const;
+ };
+ 
+ ABSL_NAMESPACE_END
+diff --git a/absl/strings/internal/cord_rep_crc.cc b/absl/strings/internal/cord_rep_crc.cc
+index dbe54cc..7d7273e 100644
+--- a/absl/strings/internal/cord_rep_crc.cc
++++ b/absl/strings/internal/cord_rep_crc.cc
+@@ -16,7 +16,6 @@
+ 
+ #include <cassert>
+ #include <cstdint>
+-#include <utility>
+ 
+ #include "absl/base/config.h"
+ #include "absl/strings/internal/cord_internal.h"
+@@ -25,10 +24,10 @@ namespace absl {
+ ABSL_NAMESPACE_BEGIN
+ namespace cord_internal {
+ 
+-CordRepCrc* CordRepCrc::New(CordRep* child, crc_internal::CrcCordState state) {
++CordRepCrc* CordRepCrc::New(CordRep* child, uint32_t crc) {
+   if (child != nullptr && child->IsCrc()) {
+     if (child->refcount.IsOne()) {
+-      child->crc()->crc_cord_state = std::move(state);
++      child->crc()->crc = crc;
+       return child->crc();
+     }
+     CordRep* old = child;
+@@ -40,7 +39,7 @@ CordRepCrc* CordRepCrc::New(CordRep* child, crc_internal::CrcCordState state) {
+   new_cordrep->length = child != nullptr ? child->length : 0;
+   new_cordrep->tag = cord_internal::CRC;
+   new_cordrep->child = child;
+-  new_cordrep->crc_cord_state = std::move(state);
++  new_cordrep->crc = crc;
+   return new_cordrep;
+ }
+ 
+diff --git a/absl/strings/internal/cord_rep_crc.h b/absl/strings/internal/cord_rep_crc.h
+index 379d7a6..455a112 100644
+--- a/absl/strings/internal/cord_rep_crc.h
++++ b/absl/strings/internal/cord_rep_crc.h
+@@ -20,7 +20,6 @@
+ 
+ #include "absl/base/config.h"
+ #include "absl/base/optimization.h"
+-#include "absl/crc/internal/crc_cord_state.h"
+ #include "absl/strings/internal/cord_internal.h"
+ 
+ namespace absl {
+@@ -35,14 +34,14 @@ namespace cord_internal {
+ // the contained checksum is the user's responsibility.
+ struct CordRepCrc : public CordRep {
+   CordRep* child;
+-  absl::crc_internal::CrcCordState crc_cord_state;
++  uint32_t crc;
+ 
+   // Consumes `child` and returns a CordRepCrc prefixed tree containing `child`.
+   // If the specified `child` is itself a CordRepCrc node, then this method
+-  // either replaces the existing node, or directly updates the crc state in it
++  // either replaces the existing node, or directly updates the crc value in it
+   // depending on the node being shared or not, i.e.: refcount.IsOne().
+   // `child` must only be null if the Cord is empty. Never returns null.
+-  static CordRepCrc* New(CordRep* child, crc_internal::CrcCordState state);
++  static CordRepCrc* New(CordRep* child, uint32_t crc);
+ 
+   // Destroys (deletes) the provided node. `node` must not be null.
+   static void Destroy(CordRepCrc* node);
+diff --git a/absl/strings/internal/cord_rep_crc_test.cc b/absl/strings/internal/cord_rep_crc_test.cc
+index 3d27c33..42a9110 100644
+--- a/absl/strings/internal/cord_rep_crc_test.cc
++++ b/absl/strings/internal/cord_rep_crc_test.cc
+@@ -17,7 +17,6 @@
+ #include "gmock/gmock.h"
+ #include "gtest/gtest.h"
+ #include "absl/base/config.h"
+-#include "absl/crc/internal/crc_cord_state.h"
+ #include "absl/strings/internal/cord_internal.h"
+ #include "absl/strings/internal/cord_rep_test_util.h"
+ 
+@@ -39,40 +38,33 @@ TEST(CordRepCrc, RemoveCrcWithNullptr) {
+ 
+ #endif  // !NDEBUG && GTEST_HAS_DEATH_TEST
+ 
+-absl::crc_internal::CrcCordState MakeCrcCordState(uint32_t crc) {
+-  crc_internal::CrcCordState state;
+-  state.mutable_rep()->prefix_crc.push_back(
+-      crc_internal::CrcCordState::PrefixCrc(42, crc32c_t{crc}));
+-  return state;
+-}
+-
+ TEST(CordRepCrc, NewDestroy) {
+   CordRep* rep = cordrep_testing::MakeFlat("Hello world");
+-  CordRepCrc* crc = CordRepCrc::New(rep, MakeCrcCordState(12345));
++  CordRepCrc* crc = CordRepCrc::New(rep, 12345);
+   EXPECT_TRUE(crc->refcount.IsOne());
+   EXPECT_THAT(crc->child, Eq(rep));
+-  EXPECT_THAT(crc->crc_cord_state.Checksum(), Eq(crc32c_t{12345u}));
++  EXPECT_THAT(crc->crc, Eq(12345u));
+   EXPECT_TRUE(rep->refcount.IsOne());
+   CordRepCrc::Destroy(crc);
+ }
+ 
+ TEST(CordRepCrc, NewExistingCrcNotShared) {
+   CordRep* rep = cordrep_testing::MakeFlat("Hello world");
+-  CordRepCrc* crc = CordRepCrc::New(rep, MakeCrcCordState(12345));
+-  CordRepCrc* new_crc = CordRepCrc::New(crc, MakeCrcCordState(54321));
++  CordRepCrc* crc = CordRepCrc::New(rep, 12345);
++  CordRepCrc* new_crc = CordRepCrc::New(crc, 54321);
+   EXPECT_THAT(new_crc, Eq(crc));
+   EXPECT_TRUE(new_crc->refcount.IsOne());
+   EXPECT_THAT(new_crc->child, Eq(rep));
+-  EXPECT_THAT(new_crc->crc_cord_state.Checksum(), Eq(crc32c_t{54321u}));
++  EXPECT_THAT(new_crc->crc, Eq(54321u));
+   EXPECT_TRUE(rep->refcount.IsOne());
+   CordRepCrc::Destroy(new_crc);
+ }
+ 
+ TEST(CordRepCrc, NewExistingCrcShared) {
+   CordRep* rep = cordrep_testing::MakeFlat("Hello world");
+-  CordRepCrc* crc = CordRepCrc::New(rep, MakeCrcCordState(12345));
++  CordRepCrc* crc = CordRepCrc::New(rep, 12345);
+   CordRep::Ref(crc);
+-  CordRepCrc* new_crc = CordRepCrc::New(crc, MakeCrcCordState(54321));
++  CordRepCrc* new_crc = CordRepCrc::New(crc, 54321);
+ 
+   EXPECT_THAT(new_crc, Ne(crc));
+   EXPECT_TRUE(new_crc->refcount.IsOne());
+@@ -80,19 +72,19 @@ TEST(CordRepCrc, NewExistingCrcShared) {
+   EXPECT_FALSE(rep->refcount.IsOne());
+   EXPECT_THAT(crc->child, Eq(rep));
+   EXPECT_THAT(new_crc->child, Eq(rep));
+-  EXPECT_THAT(crc->crc_cord_state.Checksum(), Eq(crc32c_t{12345u}));
+-  EXPECT_THAT(new_crc->crc_cord_state.Checksum(), Eq(crc32c_t{54321u}));
++  EXPECT_THAT(crc->crc, Eq(12345u));
++  EXPECT_THAT(new_crc->crc, Eq(54321u));
+ 
+   CordRep::Unref(crc);
+   CordRep::Unref(new_crc);
+ }
+ 
+ TEST(CordRepCrc, NewEmpty) {
+-  CordRepCrc* crc = CordRepCrc::New(nullptr, MakeCrcCordState(12345));
++  CordRepCrc* crc = CordRepCrc::New(nullptr, 12345);
+   EXPECT_TRUE(crc->refcount.IsOne());
+   EXPECT_THAT(crc->child, IsNull());
+   EXPECT_THAT(crc->length, Eq(0u));
+-  EXPECT_THAT(crc->crc_cord_state.Checksum(), Eq(crc32c_t{12345u}));
++  EXPECT_THAT(crc->crc, Eq(12345u));
+   EXPECT_TRUE(crc->refcount.IsOne());
+   CordRepCrc::Destroy(crc);
+ }
+@@ -106,7 +98,7 @@ TEST(CordRepCrc, RemoveCrcNotCrc) {
+ 
+ TEST(CordRepCrc, RemoveCrcNotShared) {
+   CordRep* rep = cordrep_testing::MakeFlat("Hello world");
+-  CordRepCrc* crc = CordRepCrc::New(rep, MakeCrcCordState(12345));
++  CordRepCrc* crc = CordRepCrc::New(rep, 12345);
+   CordRep* nocrc = RemoveCrcNode(crc);
+   EXPECT_THAT(nocrc, Eq(rep));
+   EXPECT_TRUE(rep->refcount.IsOne());
+@@ -115,7 +107,7 @@ TEST(CordRepCrc, RemoveCrcNotShared) {
+ 
+ TEST(CordRepCrc, RemoveCrcShared) {
+   CordRep* rep = cordrep_testing::MakeFlat("Hello world");
+-  CordRepCrc* crc = CordRepCrc::New(rep, MakeCrcCordState(12345));
++  CordRepCrc* crc = CordRepCrc::New(rep, 12345);
+   CordRep::Ref(crc);
+   CordRep* nocrc = RemoveCrcNode(crc);
+   EXPECT_THAT(nocrc, Eq(rep));
+diff --git a/absl/strings/internal/cordz_info_statistics_test.cc b/absl/strings/internal/cordz_info_statistics_test.cc
+index 53d2f2e..6d6feb5 100644
+--- a/absl/strings/internal/cordz_info_statistics_test.cc
++++ b/absl/strings/internal/cordz_info_statistics_test.cc
+@@ -19,7 +19,6 @@
+ #include "gmock/gmock.h"
+ #include "gtest/gtest.h"
+ #include "absl/base/config.h"
+-#include "absl/crc/internal/crc_cord_state.h"
+ #include "absl/strings/cord.h"
+ #include "absl/strings/internal/cord_internal.h"
+ #include "absl/strings/internal/cord_rep_btree.h"
+@@ -452,8 +451,7 @@ TEST(CordzInfoStatisticsTest, BtreeNodeShared) {
+ TEST(CordzInfoStatisticsTest, Crc) {
+   RefHelper ref;
+   auto* left = Flat(1000);
+-  auto* crc =
+-      ref.NeedsUnref(CordRepCrc::New(left, crc_internal::CrcCordState()));
++  auto* crc = ref.NeedsUnref(CordRepCrc::New(left, 12345));
+ 
+   CordzStatistics expected;
+   expected.size = left->length;
+-- 
+2.17.1
+

@@ -1,0 +1,2 @@
+halBufferMgrMode=2
+enableNCSService=FALSE

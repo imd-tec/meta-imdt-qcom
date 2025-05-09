@@ -1,0 +1,546 @@
+From ccfd20ca78c39567b4099fb2c04e79c33aeae268 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Thu, 27 Mar 2025 08:47:16 +0000
+Subject: [PATCH] Added support for all 8 cameras in device tree (#18)
+
+We should be able to access all 8 camera indexes
+in CamX/CHI-CDK. We'll have to take into account
+that CCM3 to CCM6 are all controlled via an I2C Mux
+through AON_I2C controller. And we also have to note
+that ISP CCM's are connected to an
+external ISP (AP1302). So we are actually communicating
+with the AP1302 and not with the sensor directly.
+---
+ kalama-camera-sensor-hdk.dts           |   2 +-
+ kalama-camera-sensor-imdt-sbc8550.dtsi | 506 +++++++++++++++++++++++++
+ 2 files changed, 507 insertions(+), 1 deletion(-)
+ create mode 100644 kalama-camera-sensor-imdt-sbc8550.dtsi
+
+diff --git a/kalama-camera-sensor-hdk.dts b/kalama-camera-sensor-hdk.dts
+index cc61bb8..3cfe40f 100755
+--- a/kalama-camera-sensor-hdk.dts
++++ b/kalama-camera-sensor-hdk.dts
+@@ -7,7 +7,7 @@
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator-levels.h>
+ 
+-#include "kalama-camera-sensor-hdk.dtsi"
++#include "kalama-camera-sensor-imdt-sbc8550.dtsi"
+ / {
+ 	model = "Qualcomm Technologies, Inc. Kalama QRD";
+ 	compatible = "qcom,kalama-qrd", "qcom,kalama", "qcom,qrd";
+diff --git a/kalama-camera-sensor-imdt-sbc8550.dtsi b/kalama-camera-sensor-imdt-sbc8550.dtsi
+new file mode 100644
+index 0000000..c15a03b
+--- /dev/null
++++ b/kalama-camera-sensor-imdt-sbc8550.dtsi
+@@ -0,0 +1,506 @@
++#include <dt-bindings/msm-camera.h>
++
++&qupv3_2 {
++	compatible = "qcom,geni-se-qup", "simple-bus";
++};
++
++
++&soc {
++	qcom,cam-res-mgr {
++		compatible = "qcom,cam-res-mgr";
++		status = "ok";
++	};
++};
++
++&tlmm {
++	cam_sensor_mclk6_active: cam_sensor_mclk6_active {
++		/* MCLK6 */
++		mux {
++			pins = "gpio106";
++			function = "cam_mclk";
++		};
++
++		config {
++			pins = "gpio106";
++			bias-disable; /* No PULL */
++			drive-strength = <2>; /* 2 MA */
++		};
++	};
++
++	cam_sensor_mclk6_suspend: cam_sensor_mclk6_suspend {
++		/* MCLK6 */
++		mux {
++			pins = "gpio106";
++			function = "cam_mclk";
++		};
++
++		config {
++			pins = "gpio106";
++			bias-pull-down; /* PULL DOWN */
++			drive-strength = <2>; /* 2 MA */
++		};
++	};
++
++	cam_sensor_mclk7_active: cam_sensor_mclk7_active {
++		/* MCLK7 */
++		mux {
++			pins = "gpio107";
++			function = "cam_mclk";
++		};
++
++		config {
++			pins = "gpio107";
++			bias-disable; /* No PULL */
++			drive-strength = <2>; /* 2 MA */
++		};
++	};
++
++	cam_sensor_mclk7_suspend: cam_sensor_mclk7_suspend {
++		/* MCLK7 */
++		mux {
++			pins = "gpio107";
++			function = "cam_mclk";
++		};
++
++		config {
++			pins = "gpio107";
++			bias-pull-down; /* PULL DOWN */
++			drive-strength = <2>; /* 2 MA */
++		};
++	};
++
++	cam_sensor_active_rst6: cam_sensor_active_rst6 {
++		mux {
++			pins = "gpio71";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio71";
++			bias-disable; /* No PULL */
++			drive-strength = <2>; /* 2 MA */
++		};
++	};
++
++	cam_sensor_suspend_rst6: cam_sensor_suspend_rst6 {
++		mux {
++			pins = "gpio71";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio71";
++			bias-pull-down; /* PULL DOWN */
++			drive-strength = <2>; /* 2 MA */
++			output-low;
++		};
++	};
++
++	cam_sensor_active_rst7: cam_sensor_active_rst7 {
++		mux {
++			pins = "gpio109";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio109";
++			bias-disable; /* No PULL */
++			drive-strength = <2>; /* 2 MA */
++		};
++	};
++
++	cam_sensor_suspend_rst7: cam_sensor_suspend_rst7 {
++		mux {
++			pins = "gpio109";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio109";
++			bias-pull-down; /* PULL DOWN */
++			drive-strength = <2>; /* 2 MA */
++			output-low;
++		};
++	};
++};
++
++&cam_cci0 {
++	// ISP CCM1 - I2C0, CSI0, MCLK0, CAM0_RESET, SPI0
++	qcom,cam-sensor0 {
++		cell-index = <0>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <0>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++
++		// Vio Max - 0.12mA | Vdig Max - 162mA | Vanlog Max - 103mA
++		rgltr-load-current = <1000 180000 0 110000>;
++
++		gpio-no-mux = <0>;
++		// Look in kalama-camera.dtsi to find the pin number for I2C/MCLK
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk0_active &cam_sensor_active_rst0>;
++		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_suspend_rst0>;
++		gpios = <&tlmm 100 0>,<&tlmm 116 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK0","CAM_RESET0";
++
++		cci-master = <CCI_MASTER_0>;
++		clocks = <&camcc CAM_CC_MCLK0_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++
++	// CCM1 - I2C1, CSI2, MCLK2, CAM2_RESET
++	qcom,cam-sensor2 {
++		cell-index = <2>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <2>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++
++		// Vio Max - 0.12mA | Vdig Max - 162mA | Vanlog Max - 103mA
++		rgltr-load-current = <1000 180000 0 110000>;
++
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_active_rst2>;
++		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_suspend_rst2>;
++		gpios = <&tlmm 102 0>, <&tlmm 118 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK2", "CAM_RESET2";
++
++		cci-master = <CCI_MASTER_1>;
++		clocks = <&camcc CAM_CC_MCLK2_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++};
++
++
++&cam_cci1 {
++	// CCM2 - I2C2, CSI3, MCLK3, CAM3_RESET
++	qcom,cam-sensor3 {
++		cell-index = <3>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <3>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++
++		// Vio Max - 0.12mA | Vdig Max - 162mA | Vanlog Max - 103mA
++		rgltr-load-current = <1000 180000 0 110000>;
++
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk3_active &cam_sensor_active_rst3>;
++		pinctrl-1 = <&cam_sensor_mclk3_suspend &cam_sensor_suspend_rst3>;
++		gpios = <&tlmm 103 0>, <&tlmm 119 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK3", "CAM_RESET3";
++
++		cci-master = <CCI_MASTER_0>;
++		clocks = <&camcc CAM_CC_MCLK3_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++
++	// CCM3 - AON_CAM_I2C (CCM3_I2C (Channel 0) on IO Expander), CSI4, AON_MCLK4, CAM4_AON_RESET
++	qcom,cam-sensor4 {
++		cell-index = <4>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <4>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++
++		// Vio Max - 0.12mA | Vdig Max - 162mA | Vanlog Max - 103mA
++		rgltr-load-current = <1000 180000 0 110000>;
++
++		aon-camera-id = <AON_CAM1>;
++		
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk4_active &cam_sensor_active_rst4>;
++		pinctrl-1 = <&cam_sensor_mclk4_suspend &cam_sensor_suspend_rst4>;
++		gpios = <&tlmm 104 0>, <&tlmm 120 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK4", "CAM_RESET4";
++
++		cci-master = <CCI_MASTER_1>;
++		clocks = <&camcc CAM_CC_MCLK4_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++
++	// CCM4 - AON_CAM_I2C (CCM4_I2C (Channel 1) on IO Expander), CSI5, CAM_MCLK5, CAM5_RESET_N
++	qcom,cam-sensor5 {
++		cell-index = <5>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <5>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++		rgltr-load-current = <1000 180000 0 110000>;
++		
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk5_active &cam_sensor_active_rst5>;
++		pinctrl-1 = <&cam_sensor_mclk5_suspend &cam_sensor_suspend_rst5>;
++		gpios = <&tlmm 105 0>, <&tlmm 69 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK5", "CAM_RESET5";
++
++		cci-master = <CCI_MASTER_1>;
++		clocks = <&camcc CAM_CC_MCLK5_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++
++	// CCM5 - AON_CAM_I2C (CCM5_I2C (Channel 2) on IO Expander), CSI6, CAM_MCLK6, CAM6_RESET_N
++	qcom,cam-sensor6 {
++		cell-index = <6>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <6>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++		rgltr-load-current = <1000 180000 0 110000>;
++		
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk6_active &cam_sensor_active_rst6>;
++		pinctrl-1 = <&cam_sensor_mclk6_suspend &cam_sensor_suspend_rst6>;
++		gpios = <&tlmm 106 0>, <&tlmm 71 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK6", "CAM_RESET6";
++
++		cci-master = <CCI_MASTER_1>;
++		clocks = <&camcc CAM_CC_MCLK6_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++
++	// CCM6 - AON_CAM_I2C (CCM6_I2C (Channel 3) on IO Expander), CSI7, CAM_MCLK7, CAM7_RESET_N
++	qcom,cam-sensor7 {
++		cell-index = <7>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <7>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++		rgltr-load-current = <1000 180000 0 110000>;
++		
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk7_active &cam_sensor_active_rst7>;
++		pinctrl-1 = <&cam_sensor_mclk7_suspend &cam_sensor_suspend_rst7>;
++		gpios = <&tlmm 107 0>, <&tlmm 109 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK7", "CAM_RESET7";
++
++		cci-master = <CCI_MASTER_1>;
++		clocks = <&camcc CAM_CC_MCLK7_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++};
++
++
++&cam_cci2 {
++	// ISP CCM2 - I2C4, CSI1, MCLK1, CAM1_RESET, SPI0
++	qcom,cam-sensor1 {
++		cell-index = <1>;
++		compatible = "qcom,cam-sensor";
++		csiphy-sd-index = <1>;
++
++		sensor-position-roll = <270>;
++		sensor-position-pitch = <0>;
++		sensor-position-yaw = <180>;
++
++		/* 
++		Power Supplies for CCM 
++		- 1V8_CAM (1.8V)
++		- 1V2 (1.2V)
++		- SNS_AVDD (2.8V)
++		*/
++		cam_vio-supply = <&cam_1v8_reg>;
++		cam_vdig-supply = <&cam_1v2_reg>;
++		cam_clk-supply = <&cam_cc_titan_top_gdsc>;
++		cam_vana-supply = <&cam_2v8_reg>;
++
++		regulator-names = "cam_vio", "cam_vdig","cam_clk", "cam_vana";
++		rgltr-cntrl-support;
++		rgltr-min-voltage = <1800000 1200000 0 2800000>;
++		rgltr-max-voltage = <1800000 1200000 0 2800000>;
++
++		// Vio Max - 0.12mA | Vdig Max - 162mA | Vanlog Max - 103mA
++		rgltr-load-current = <1000 180000 0 110000>;
++
++		gpio-no-mux = <0>;
++		pinctrl-names = "cam_default", "cam_suspend";
++		pinctrl-0 = <&cam_sensor_mclk1_active &cam_sensor_active_rst1>;
++		pinctrl-1 = <&cam_sensor_mclk1_suspend &cam_sensor_suspend_rst1>;
++		gpios = <&tlmm 101 0>, <&tlmm 117 0>;
++		gpio-reset = <1>;
++		gpio-req-tbl-num = <0 1>;
++		gpio-req-tbl-flags = <1 0>;
++		gpio-req-tbl-label = "CAMIF_MCLK1","CAM_RESET1";
++
++		cci-master = <CCI_MASTER_0>;
++		clocks = <&camcc CAM_CC_MCLK1_CLK>;
++		clock-names = "cam_clk";
++		clock-cntl-level = "nominal";
++		clock-rates = <24000000>;
++		status = "ok";
++	};
++};
+-- 
+2.34.1
+

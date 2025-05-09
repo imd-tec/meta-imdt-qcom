@@ -1,0 +1,31 @@
+From 229b4b6b69df573410c37fe6ab2fa4c0db8b9384 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Wed, 26 Apr 2023 11:40:27 +0100
+Subject: [PATCH 6/7] tensorflow-lite: Remove eigen/bench dir after fetching
+ eigen
+
+Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+
+Change-Id: Ia953853fa3e7f934274e33528fc00345cb2731a3
+---
+ tensorflow/lite/tools/cmake/modules/eigen.cmake | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/tensorflow/lite/tools/cmake/modules/eigen.cmake b/tensorflow/lite/tools/cmake/modules/eigen.cmake
+index 2fc8d1e4499..c6748dd1f7b 100644
+--- a/tensorflow/lite/tools/cmake/modules/eigen.cmake
++++ b/tensorflow/lite/tools/cmake/modules/eigen.cmake
+@@ -39,6 +39,10 @@ if(NOT eigen_POPULATED)
+   OverridableFetchContent_Populate(eigen)
+ endif()
+ 
++# Remove bench folder
++file(REMOVE_RECURSE ${eigen_SOURCE_DIR}/bench/)
++file(REMOVE_RECURSE ${eigen_BINARY_DIR}/bench/)
++
+ # Patch Eigen to disable Fortran compiler check for BLAS and LAPACK tests.
+ if(NOT EIGEN_DISABLED_FORTRAN_COMPILER_CHECK)
+   file(WRITE "${eigen_SOURCE_DIR}/cmake/language_support.cmake" "
+-- 
+2.17.1
+

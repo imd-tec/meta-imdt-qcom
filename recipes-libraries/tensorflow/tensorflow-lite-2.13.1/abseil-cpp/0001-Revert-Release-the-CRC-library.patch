@@ -1,0 +1,4712 @@
+From 499c0ee896b1a811ed6d0eeee916fd4838f84ecb Mon Sep 17 00:00:00 2001
+From: Mustafa Ali <quic_mustali@quicinc.com>
+Date: Tue, 30 May 2023 09:41:29 +0300
+Subject: [PATCH 1/2] Revert "Release the CRC library"
+
+This reverts commit 1687dbf814eceb93de2d93f91b31acaab404091c.
+---
+ CMake/AbseilDll.cmake                         |  25 -
+ README.md                                     |   2 -
+ absl/CMakeLists.txt                           |   1 -
+ absl/crc/BUILD.bazel                          | 210 -----
+ absl/crc/CMakeLists.txt                       | 176 -----
+ absl/crc/crc32c.cc                            |  99 ---
+ absl/crc/crc32c.h                             | 183 -----
+ absl/crc/crc32c_benchmark.cc                  | 183 -----
+ absl/crc/crc32c_test.cc                       | 194 -----
+ absl/crc/internal/cpu_detect.cc               | 256 -------
+ absl/crc/internal/cpu_detect.h                |  57 --
+ absl/crc/internal/crc.cc                      | 468 -----------
+ absl/crc/internal/crc.h                       |  91 ---
+ .../internal/crc32_x86_arm_combined_simd.h    | 269 -------
+ absl/crc/internal/crc32c.h                    |  39 -
+ absl/crc/internal/crc32c_inline.h             |  72 --
+ absl/crc/internal/crc_internal.h              | 179 -----
+ absl/crc/internal/crc_memcpy.h                | 119 ---
+ absl/crc/internal/crc_memcpy_fallback.cc      |  75 --
+ absl/crc/internal/crc_memcpy_test.cc          | 169 ----
+ absl/crc/internal/crc_memcpy_x86_64.cc        | 434 -----------
+ absl/crc/internal/crc_non_temporal_memcpy.cc  |  93 ---
+ absl/crc/internal/crc_x86_arm_combined.cc     | 725 ------------------
+ .../internal/non_temporal_arm_intrinsics.h    |  79 --
+ absl/crc/internal/non_temporal_memcpy.h       | 180 -----
+ absl/crc/internal/non_temporal_memcpy_test.cc |  88 ---
+ 26 files changed, 4466 deletions(-)
+ delete mode 100644 absl/crc/BUILD.bazel
+ delete mode 100644 absl/crc/CMakeLists.txt
+ delete mode 100644 absl/crc/crc32c.cc
+ delete mode 100644 absl/crc/crc32c.h
+ delete mode 100644 absl/crc/crc32c_benchmark.cc
+ delete mode 100644 absl/crc/crc32c_test.cc
+ delete mode 100644 absl/crc/internal/cpu_detect.cc
+ delete mode 100644 absl/crc/internal/cpu_detect.h
+ delete mode 100644 absl/crc/internal/crc.cc
+ delete mode 100644 absl/crc/internal/crc.h
+ delete mode 100644 absl/crc/internal/crc32_x86_arm_combined_simd.h
+ delete mode 100644 absl/crc/internal/crc32c.h
+ delete mode 100644 absl/crc/internal/crc32c_inline.h
+ delete mode 100644 absl/crc/internal/crc_internal.h
+ delete mode 100644 absl/crc/internal/crc_memcpy.h
+ delete mode 100644 absl/crc/internal/crc_memcpy_fallback.cc
+ delete mode 100644 absl/crc/internal/crc_memcpy_test.cc
+ delete mode 100644 absl/crc/internal/crc_memcpy_x86_64.cc
+ delete mode 100644 absl/crc/internal/crc_non_temporal_memcpy.cc
+ delete mode 100644 absl/crc/internal/crc_x86_arm_combined.cc
+ delete mode 100644 absl/crc/internal/non_temporal_arm_intrinsics.h
+ delete mode 100644 absl/crc/internal/non_temporal_memcpy.h
+ delete mode 100644 absl/crc/internal/non_temporal_memcpy_test.cc
+
+diff --git a/CMake/AbseilDll.cmake b/CMake/AbseilDll.cmake
+index c4a41e6..b31d17d 100644
+--- a/CMake/AbseilDll.cmake
++++ b/CMake/AbseilDll.cmake
+@@ -91,26 +91,6 @@ set(ABSL_INTERNAL_DLL_FILES
+   "container/internal/tracked.h"
+   "container/node_hash_map.h"
+   "container/node_hash_set.h"
+-  "crc/crc32c.cc"
+-  "crc/crc32c.h"
+-  "crc/internal/cpu_detect.cc"
+-  "crc/internal/cpu_detect.h"
+-  "crc/internal/crc32c.h"
+-  "crc/internal/crc32c_inline.h"
+-  "crc/internal/crc32_x86_arm_combined_simd.h"
+-  "crc/internal/crc.cc"
+-  "crc/internal/crc.h"
+-  "crc/internal/crc_cord_state.cc"
+-  "crc/internal/crc_cord_state.h"
+-  "crc/internal/crc_internal.h"
+-  "crc/internal/crc_x86_arm_combined.cc"
+-  "crc/internal/crc_memcpy_fallback.cc"
+-  "crc/internal/crc_memcpy.h"
+-  "crc/internal/crc_memcpy_x86_64.cc"
+-  "crc/internal/crc_non_temporal_memcpy.cc"
+-  "crc/internal/crc_x86_arm_combined.cc"
+-  "crc/internal/non_temporal_arm_intrinsics.h"
+-  "crc/internal/non_temporal_memcpy.h"
+   "debugging/failure_signal_handler.cc"
+   "debugging/failure_signal_handler.h"
+   "debugging/leak_check.h"
+@@ -450,9 +430,6 @@ set(ABSL_INTERNAL_DLL_TARGETS
+   "cord"
+   "core_headers"
+   "counting_allocator"
+-  "crc_cpu_detect"
+-  "crc_internal"
+-  "crc32c"
+   "debugging"
+   "debugging_internal"
+   "demangle_internal"
+@@ -510,8 +487,6 @@ set(ABSL_INTERNAL_DLL_TARGETS
+   "node_hash_map"
+   "node_hash_set"
+   "node_slot_policy"
+-  "non_temporal_arm_intrinsics"
+-  "non_temporal_memcpy"
+   "numeric"
+   "optional"
+   "periodic_sampler"
+diff --git a/README.md b/README.md
+index 0816692..36e9b7c 100644
+--- a/README.md
++++ b/README.md
+@@ -80,8 +80,6 @@ Abseil contains the following C++ library components:
+ * [`container`](absl/container/)
+   <br /> The `container` library contains additional STL-style containers,
+   including Abseil's unordered "Swiss table" containers.
+-* [`crc`](absl/crc/) The `crc` library contains code for
+-  computing error-detecting cyclic redundancy checks on data.
+ * [`debugging`](absl/debugging/)
+   <br /> The `debugging` library contains code useful for enabling leak
+   checks, and stacktrace and symbolization utilities.
+diff --git a/absl/CMakeLists.txt b/absl/CMakeLists.txt
+index 3a7c12f..1256e61 100644
+--- a/absl/CMakeLists.txt
++++ b/absl/CMakeLists.txt
+@@ -18,7 +18,6 @@ add_subdirectory(base)
+ add_subdirectory(algorithm)
+ add_subdirectory(cleanup)
+ add_subdirectory(container)
+-add_subdirectory(crc)
+ add_subdirectory(debugging)
+ add_subdirectory(flags)
+ add_subdirectory(functional)
+diff --git a/absl/crc/BUILD.bazel b/absl/crc/BUILD.bazel
+deleted file mode 100644
+index 1c58f46..0000000
+--- a/absl/crc/BUILD.bazel
++++ /dev/null
+@@ -1,210 +0,0 @@
+-# Copyright 2022 The Abseil Authors
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#     https://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-load(
+-    "//absl:copts/configure_copts.bzl",
+-    "ABSL_DEFAULT_COPTS",
+-    "ABSL_DEFAULT_LINKOPTS",
+-    "ABSL_TEST_COPTS",
+-)
+-
+-package(default_visibility = ["//visibility:private"])
+-
+-licenses(["notice"])
+-
+-cc_library(
+-    name = "cpu_detect",
+-    srcs = [
+-        "internal/cpu_detect.cc",
+-    ],
+-    hdrs = ["internal/cpu_detect.h"],
+-    copts = ABSL_DEFAULT_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        "//absl/base",
+-        "//absl/base:config",
+-    ],
+-)
+-
+-cc_library(
+-    name = "crc_internal",
+-    srcs = [
+-        "internal/crc.cc",
+-        "internal/crc_internal.h",
+-        "internal/crc_x86_arm_combined.cc",
+-    ],
+-    hdrs = [
+-        "internal/crc.h",
+-        "internal/crc32_x86_arm_combined_simd.h",
+-    ],
+-    copts = ABSL_DEFAULT_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":cpu_detect",
+-        "//absl/base",
+-        "//absl/base:config",
+-        "//absl/base:core_headers",
+-        "//absl/base:dynamic_annotations",
+-        "//absl/base:endian",
+-        "//absl/base:prefetch",
+-        "//absl/base:raw_logging_internal",
+-        "//absl/memory",
+-        "//absl/numeric:bits",
+-    ],
+-)
+-
+-cc_library(
+-    name = "crc32c",
+-    srcs = [
+-        "crc32c.cc",
+-        "internal/crc32c_inline.h",
+-        "internal/crc_memcpy_fallback.cc",
+-        "internal/crc_memcpy_x86_64.cc",
+-        "internal/crc_non_temporal_memcpy.cc",
+-    ],
+-    hdrs = [
+-        "crc32c.h",
+-        "internal/crc32c.h",
+-        "internal/crc_memcpy.h",
+-    ],
+-    copts = ABSL_DEFAULT_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:public"],
+-    deps = [
+-        ":cpu_detect",
+-        ":crc_internal",
+-        ":non_temporal_memcpy",
+-        "//absl/base:config",
+-        "//absl/base:core_headers",
+-        "//absl/base:dynamic_annotations",
+-        "//absl/base:endian",
+-        "//absl/base:prefetch",
+-        "//absl/strings",
+-    ],
+-)
+-
+-cc_test(
+-    name = "crc32c_test",
+-    srcs = ["crc32c_test.cc"],
+-    copts = ABSL_TEST_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":crc32c",
+-        "//absl/strings",
+-        "@com_google_googletest//:gtest_main",
+-    ],
+-)
+-
+-cc_library(
+-    name = "non_temporal_arm_intrinsics",
+-    hdrs = ["internal/non_temporal_arm_intrinsics.h"],
+-    copts = ABSL_DEFAULT_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        "//absl/base:config",
+-    ],
+-)
+-
+-cc_library(
+-    name = "non_temporal_memcpy",
+-    hdrs = ["internal/non_temporal_memcpy.h"],
+-    copts = ABSL_DEFAULT_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":non_temporal_arm_intrinsics",
+-        "//absl/base:config",
+-        "//absl/base:core_headers",
+-    ],
+-)
+-
+-cc_test(
+-    name = "crc_memcpy_test",
+-    size = "large",
+-    srcs = ["internal/crc_memcpy_test.cc"],
+-    copts = ABSL_TEST_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    shard_count = 3,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":crc32c",
+-        "//absl/memory",
+-        "//absl/random",
+-        "//absl/random:distributions",
+-        "//absl/strings",
+-        "@com_google_googletest//:gtest_main",
+-    ],
+-)
+-
+-cc_test(
+-    name = "non_temporal_memcpy_test",
+-    srcs = ["internal/non_temporal_memcpy_test.cc"],
+-    copts = ABSL_TEST_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":non_temporal_memcpy",
+-        "@com_google_googletest//:gtest_main",
+-    ],
+-)
+-
+-cc_library(
+-    name = "crc_cord_state",
+-    srcs = ["internal/crc_cord_state.cc"],
+-    hdrs = ["internal/crc_cord_state.h"],
+-    copts = ABSL_DEFAULT_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//absl/strings:__pkg__"],
+-    deps = [
+-        ":crc32c",
+-        "//absl/base:config",
+-        "//absl/numeric:bits",
+-        "//absl/strings",
+-    ],
+-)
+-
+-cc_test(
+-    name = "crc_cord_state_test",
+-    srcs = ["internal/crc_cord_state_test.cc"],
+-    copts = ABSL_TEST_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":crc32c",
+-        ":crc_cord_state",
+-        "@com_google_googletest//:gtest_main",
+-    ],
+-)
+-
+-cc_binary(
+-    name = "crc32c_benchmark",
+-    testonly = 1,
+-    srcs = ["crc32c_benchmark.cc"],
+-    copts = ABSL_TEST_COPTS,
+-    linkopts = ABSL_DEFAULT_LINKOPTS,
+-    tags = [
+-        "benchmark",
+-    ],
+-    visibility = ["//visibility:private"],
+-    deps = [
+-        ":crc32c",
+-        "//absl/memory",
+-        "//absl/strings",
+-        "@com_github_google_benchmark//:benchmark_main",
+-    ],
+-)
+diff --git a/absl/crc/CMakeLists.txt b/absl/crc/CMakeLists.txt
+deleted file mode 100644
+index 72ea209..0000000
+--- a/absl/crc/CMakeLists.txt
++++ /dev/null
+@@ -1,176 +0,0 @@
+-# Copyright 2022 The Abseil Authors.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
+-#
+-#      https://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-
+-# Internal-only target, do not depend on directly.
+-absl_cc_library(
+-  NAME
+-    crc_cpu_detect
+-  HDRS
+-    "internal/cpu_detect.h"
+-  SRCS
+-    "internal/cpu_detect.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::base
+-    absl::config
+-)
+-
+-# Internal-only target, do not depend on directly.
+-absl_cc_library(
+-  NAME
+-    crc_internal
+-  HDRS
+-    "internal/crc.h"
+-    "internal/crc32_x86_arm_combined_simd.h"
+-  SRCS
+-    "internal/crc.cc"
+-    "internal/crc_internal.h"
+-    "internal/crc_x86_arm_combined.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::crc_cpu_detect
+-    absl::base
+-    absl::config
+-    absl::core_headers
+-    absl::dynamic_annotations
+-    absl::endian
+-    absl::prefetch
+-    absl::raw_logging_internal
+-    absl::memory
+-    absl::bits
+-)
+-
+-absl_cc_library(
+-  NAME
+-    crc32c
+-  HDRS
+-    "crc32c.h"
+-    "internal/crc32c.h"
+-    "internal/crc_memcpy.h"
+-  SRCS
+-    "crc32c.cc"
+-    "internal/crc32c_inline.h"
+-    "internal/crc_memcpy_fallback.cc"
+-    "internal/crc_memcpy_x86_64.cc"
+-    "internal/crc_non_temporal_memcpy.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::crc_cpu_detect
+-    absl::crc_internal
+-    absl::non_temporal_memcpy
+-    absl::config
+-    absl::core_headers
+-    absl::dynamic_annotations
+-    absl::endian
+-    absl::prefetch
+-    absl::strings
+-)
+-
+-absl_cc_test(
+-  NAME
+-    crc32c_test
+-  SRCS
+-    "crc32c_test.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::crc32c
+-    absl::strings
+-    GTest::gtest_main
+-)
+-
+-# Internal-only target, do not depend on directly.
+-absl_cc_library(
+-  NAME
+-    non_temporal_arm_intrinsics
+-  HDRS
+-    "internal/non_temporal_arm_intrinsics.h"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::config
+-)
+-
+-# Internal-only target, do not depend on directly.
+-absl_cc_library(
+-  NAME
+-    non_temporal_memcpy
+-  HDRS
+-    "internal/non_temporal_memcpy.h"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::non_temporal_arm_intrinsics
+-    absl::config
+-    absl::core_headers
+-)
+-
+-absl_cc_test(
+-  NAME
+-    crc_memcpy_test
+-  SRCS
+-    "internal/crc_memcpy_test.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::crc32c
+-    absl::memory
+-    absl::random_random
+-    absl::random_distributions
+-    absl::strings
+-    GTest::gtest_main
+-)
+-
+-absl_cc_test(
+-  NAME
+-    non_temporal_memcpy_test
+-  SRCS
+-    "internal/non_temporal_memcpy_test.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::non_temporal_memcpy
+-    GTest::gtest_main
+-)
+-
+-absl_cc_library(
+-  NAME
+-    crc_cord_state
+-  HDRS
+-    "internal/crc_cord_state.h"
+-  SRCS
+-    "internal/crc_cord_state.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::crc32c
+-    absl::config
+-    absl::strings
+-)
+-
+-absl_cc_test(
+-  NAME
+-    crc_cord_state_test
+-  SRCS
+-    "internal/crc_cord_state_test.cc"
+-  COPTS
+-    ${ABSL_DEFAULT_COPTS}
+-  DEPS
+-    absl::crc_cord_state
+-    absl::crc32c
+-    GTest::gtest_main
+-)
+diff --git a/absl/crc/crc32c.cc b/absl/crc/crc32c.cc
+deleted file mode 100644
+index 468c1b3..0000000
+--- a/absl/crc/crc32c.cc
++++ /dev/null
+@@ -1,99 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/crc32c.h"
+-
+-#include <cstdint>
+-
+-#include "absl/crc/internal/crc.h"
+-#include "absl/crc/internal/crc32c.h"
+-#include "absl/crc/internal/crc_memcpy.h"
+-#include "absl/strings/string_view.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-
+-namespace {
+-
+-const crc_internal::CRC* CrcEngine() {
+-  static const crc_internal::CRC* engine = crc_internal::CRC::Crc32c();
+-  return engine;
+-}
+-
+-constexpr uint32_t kCRC32Xor = 0xffffffffU;
+-
+-}  // namespace
+-
+-namespace crc_internal {
+-
+-crc32c_t UnextendCrc32cByZeroes(crc32c_t initial_crc, size_t length) {
+-  uint32_t crc = static_cast<uint32_t>(initial_crc) ^ kCRC32Xor;
+-  CrcEngine()->UnextendByZeroes(&crc, length);
+-  return static_cast<crc32c_t>(crc ^ kCRC32Xor);
+-}
+-
+-// Called by `absl::ExtendCrc32c()` on strings with size > 64 or when hardware
+-// CRC32C support is missing.
+-crc32c_t ExtendCrc32cInternal(crc32c_t initial_crc,
+-                              absl::string_view buf_to_add) {
+-  uint32_t crc = static_cast<uint32_t>(initial_crc) ^ kCRC32Xor;
+-  CrcEngine()->Extend(&crc, buf_to_add.data(), buf_to_add.size());
+-  return static_cast<crc32c_t>(crc ^ kCRC32Xor);
+-}
+-
+-}  // namespace crc_internal
+-
+-crc32c_t ComputeCrc32c(absl::string_view buf) {
+-  return ExtendCrc32c(crc32c_t{0}, buf);
+-}
+-
+-crc32c_t ExtendCrc32cByZeroes(crc32c_t initial_crc, size_t length) {
+-  uint32_t crc = static_cast<uint32_t>(initial_crc) ^ kCRC32Xor;
+-  CrcEngine()->ExtendByZeroes(&crc, length);
+-  return static_cast<crc32c_t>(crc ^ kCRC32Xor);
+-}
+-
+-crc32c_t ConcatCrc32c(crc32c_t lhs_crc, crc32c_t rhs_crc, size_t rhs_len) {
+-  uint32_t result = static_cast<uint32_t>(lhs_crc);
+-  CrcEngine()->ExtendByZeroes(&result, rhs_len);
+-  return crc32c_t{result ^ static_cast<uint32_t>(rhs_crc)};
+-}
+-
+-crc32c_t RemoveCrc32cPrefix(crc32c_t crc_a, crc32c_t crc_ab, size_t length_b) {
+-  return ConcatCrc32c(crc_a, crc_ab, length_b);
+-}
+-
+-crc32c_t MemcpyCrc32c(void* dest, const void* src, size_t count,
+-                      crc32c_t initial_crc) {
+-  return static_cast<crc32c_t>(
+-      crc_internal::Crc32CAndCopy(dest, src, count, initial_crc, false));
+-}
+-
+-// Remove a Suffix of given size from a buffer
+-//
+-// Given a CRC32C of an existing buffer, `full_string_crc`; the CRC32C of a
+-// suffix of that buffer to remove, `suffix_crc`; and suffix buffer's length,
+-// `suffix_len` return the CRC32C of the buffer with suffix removed
+-//
+-// This operation has a runtime cost of O(log(`suffix_len`))
+-crc32c_t RemoveCrc32cSuffix(crc32c_t full_string_crc, crc32c_t suffix_crc,
+-                            size_t suffix_len) {
+-  uint32_t result = static_cast<uint32_t>(full_string_crc) ^
+-                    static_cast<uint32_t>(suffix_crc);
+-  CrcEngine()->UnextendByZeroes(&result, suffix_len);
+-  return crc32c_t{result};
+-}
+-
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/crc32c.h b/absl/crc/crc32c.h
+deleted file mode 100644
+index ba09e52..0000000
+--- a/absl/crc/crc32c.h
++++ /dev/null
+@@ -1,183 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-//
+-// -----------------------------------------------------------------------------
+-// File: crc32c.h
+-// -----------------------------------------------------------------------------
+-//
+-// This header file defines the API for computing CRC32C values as checksums
+-// for arbitrary sequences of bytes provided as a string buffer.
+-//
+-// The API includes the basic functions for computing such CRC32C values and
+-// some utility functions for performing more efficient mathematical
+-// computations using an existing checksum.
+-#ifndef ABSL_CRC_CRC32C_H_
+-#define ABSL_CRC_CRC32C_H_
+-
+-#include <cstdint>
+-#include <ostream>
+-
+-#include "absl/crc/internal/crc32c_inline.h"
+-#include "absl/strings/string_view.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-
+-//-----------------------------------------------------------------------------
+-// crc32c_t
+-//-----------------------------------------------------------------------------
+-
+-// `crc32c_t` defines a strongly-typed integer for holding a CRC32C value.
+-//
+-// Some operators are intentionally omitted. Only equality operators are defined
+-// so that `crc32c_t` can be directly compared. Methods for putting `crc32c_t`
+-// directly into a set are omitted because this is bug-prone due to checksum
+-// collisions. Use an explicit conversion to the `uint32_t` space for operations
+-// that treat `crc32c_t` as an integer.
+-class crc32c_t final {
+- public:
+-  crc32c_t() = default;
+-  constexpr explicit crc32c_t(uint32_t crc) : crc_(crc) {}
+-
+-  crc32c_t(const crc32c_t&) = default;
+-  crc32c_t& operator=(const crc32c_t&) = default;
+-
+-  explicit operator uint32_t() const { return crc_; }
+-
+-  friend bool operator==(crc32c_t lhs, crc32c_t rhs) {
+-    return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
+-  }
+-
+-  friend bool operator!=(crc32c_t lhs, crc32c_t rhs) { return !(lhs == rhs); }
+-
+- private:
+-  uint32_t crc_;
+-};
+-
+-namespace crc_internal {
+-// Non-inline code path for `absl::ExtendCrc32c()`. Do not call directly.
+-// Call `absl::ExtendCrc32c()` (defined below) instead.
+-crc32c_t ExtendCrc32cInternal(crc32c_t initial_crc,
+-                              absl::string_view buf_to_add);
+-}  // namespace crc_internal
+-
+-// -----------------------------------------------------------------------------
+-// CRC32C Computation Functions
+-// -----------------------------------------------------------------------------
+-
+-// ComputeCrc32c()
+-//
+-// Returns the CRC32C value of the provided string.
+-crc32c_t ComputeCrc32c(absl::string_view buf);
+-
+-// ExtendCrc32c()
+-//
+-// Computes a CRC32C value from an `initial_crc` CRC32C value including the
+-// `buf_to_add` bytes of an additional buffer. Using this function is more
+-// efficient than computing a CRC32C value for the combined buffer from
+-// scratch.
+-//
+-// Note: `ExtendCrc32c` with an initial_crc of 0 is equivalent to
+-// `ComputeCrc32c`.
+-//
+-// This operation has a runtime cost of O(`buf_to_add.size()`)
+-inline crc32c_t ExtendCrc32c(crc32c_t initial_crc,
+-                             absl::string_view buf_to_add) {
+-  // Approximately 75% of calls have size <= 64.
+-  if (buf_to_add.size() <= 64) {
+-    uint32_t crc = static_cast<uint32_t>(initial_crc);
+-    if (crc_internal::ExtendCrc32cInline(&crc, buf_to_add.data(),
+-                                         buf_to_add.size())) {
+-      return crc32c_t{crc};
+-    }
+-  }
+-  return crc_internal::ExtendCrc32cInternal(initial_crc, buf_to_add);
+-}
+-
+-// ExtendCrc32cByZeroes()
+-//
+-// Computes a CRC32C value for a buffer with an `initial_crc` CRC32C value,
+-// where `length` bytes with a value of 0 are appended to the buffer. Using this
+-// function is more efficient than computing a CRC32C value for the combined
+-// buffer from scratch.
+-//
+-// This operation has a runtime cost of O(log(`length`))
+-crc32c_t ExtendCrc32cByZeroes(crc32c_t initial_crc, size_t length);
+-
+-// MemcpyCrc32c()
+-//
+-// Copies `src` to `dest` using `memcpy()` semantics, returning the CRC32C
+-// value of the copied buffer.
+-//
+-// Using `MemcpyCrc32c()` is potentially faster than performing the `memcpy()`
+-// and `ComputeCrc32c()` operations separately.
+-crc32c_t MemcpyCrc32c(void* dest, const void* src, size_t count,
+-                      crc32c_t initial_crc = crc32c_t{0});
+-
+-// -----------------------------------------------------------------------------
+-// CRC32C Arithmetic Functions
+-// -----------------------------------------------------------------------------
+-
+-// The following functions perform arithmetic on CRC32C values, which are
+-// generally more efficient than recalculating any given result's CRC32C value.
+-
+-// ConcatCrc32c()
+-//
+-// Calculates the CRC32C value of two buffers with known CRC32C values
+-// concatenated together.
+-//
+-// Given a buffer with CRC32C value `crc1` and a buffer with
+-// CRC32C value `crc2` and length, `crc2_length`, returns the CRC32C value of
+-// the concatenation of these two buffers.
+-//
+-// This operation has a runtime cost of O(log(`crc2_length`)).
+-crc32c_t ConcatCrc32c(crc32c_t crc1, crc32c_t crc2, size_t crc2_length);
+-
+-// RemoveCrc32cPrefix()
+-//
+-// Calculates the CRC32C value of an existing buffer with a series of bytes
+-// (the prefix) removed from the beginning of that buffer.
+-//
+-// Given the CRC32C value of an existing buffer, `full_string_crc`; The CRC32C
+-// value of a prefix of that buffer, `prefix_crc`; and the length of the buffer
+-// with the prefix removed, `remaining_string_length` , return the CRC32C
+-// value of the buffer with the prefix removed.
+-//
+-// This operation has a runtime cost of O(log(`remaining_string_length`)).
+-crc32c_t RemoveCrc32cPrefix(crc32c_t prefix_crc, crc32c_t full_string_crc,
+-                            size_t remaining_string_length);
+-// RemoveCrc32cSuffix()
+-//
+-// Calculates the CRC32C value of an existing buffer with a series of bytes
+-// (the suffix) removed from the end of that buffer.
+-//
+-// Given a CRC32C value of an existing buffer `full_string_crc`, the CRC32C
+-// value of the suffix to remove `suffix_crc`, and the length of that suffix
+-// `suffix_len`, returns the CRC32C value of the buffer with suffix removed.
+-//
+-// This operation has a runtime cost of O(log(`suffix_len`))
+-crc32c_t RemoveCrc32cSuffix(crc32c_t full_string_crc, crc32c_t suffix_crc,
+-                            size_t suffix_length);
+-
+-// operator<<
+-//
+-// Streams the CRC32C value `crc` to the stream `os`.
+-inline std::ostream& operator<<(std::ostream& os, crc32c_t crc) {
+-  return os << static_cast<uint32_t>(crc);
+-}
+-
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_CRC32C_H_
+diff --git a/absl/crc/crc32c_benchmark.cc b/absl/crc/crc32c_benchmark.cc
+deleted file mode 100644
+index 3b46ef3..0000000
+--- a/absl/crc/crc32c_benchmark.cc
++++ /dev/null
+@@ -1,183 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include <string>
+-
+-#include "absl/crc/crc32c.h"
+-#include "absl/crc/internal/crc32c.h"
+-#include "absl/memory/memory.h"
+-#include "absl/strings/string_view.h"
+-#include "benchmark/benchmark.h"
+-
+-namespace {
+-
+-std::string TestString(size_t len) {
+-  std::string result;
+-  result.reserve(len);
+-  for (size_t i = 0; i < len; ++i) {
+-    result.push_back(static_cast<char>(i % 256));
+-  }
+-  return result;
+-}
+-
+-void BM_Calculate(benchmark::State& state) {
+-  int len = state.range(0);
+-  std::string data = TestString(len);
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(data);
+-    absl::crc32c_t crc = absl::ComputeCrc32c(data);
+-    benchmark::DoNotOptimize(crc);
+-  }
+-}
+-BENCHMARK(BM_Calculate)->Arg(0)->Arg(1)->Arg(100)->Arg(10000)->Arg(500000);
+-
+-void BM_Extend(benchmark::State& state) {
+-  int len = state.range(0);
+-  std::string extension = TestString(len);
+-  absl::crc32c_t base = absl::crc32c_t{0xC99465AA};  // CRC32C of "Hello World"
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(base);
+-    benchmark::DoNotOptimize(extension);
+-    absl::crc32c_t crc = absl::ExtendCrc32c(base, extension);
+-    benchmark::DoNotOptimize(crc);
+-  }
+-}
+-BENCHMARK(BM_Extend)->Arg(0)->Arg(1)->Arg(100)->Arg(10000)->Arg(500000)->Arg(
+-    100 * 1000 * 1000);
+-
+-// Make working set >> CPU cache size to benchmark prefetches better
+-void BM_ExtendCacheMiss(benchmark::State& state) {
+-  int len = state.range(0);
+-  constexpr int total = 300 * 1000 * 1000;
+-  std::string extension = TestString(total);
+-  absl::crc32c_t base = absl::crc32c_t{0xC99465AA};  // CRC32C of "Hello World"
+-  for (auto s : state) {
+-    for (int i = 0; i < total; i += len * 2) {
+-      benchmark::DoNotOptimize(base);
+-      benchmark::DoNotOptimize(extension);
+-      absl::crc32c_t crc =
+-          absl::ExtendCrc32c(base, absl::string_view(&extension[i], len));
+-      benchmark::DoNotOptimize(crc);
+-    }
+-  }
+-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total / 2);
+-}
+-BENCHMARK(BM_ExtendCacheMiss)->Arg(10)->Arg(100)->Arg(1000)->Arg(100000);
+-
+-void BM_ExtendByZeroes(benchmark::State& state) {
+-  absl::crc32c_t base = absl::crc32c_t{0xC99465AA};  // CRC32C of "Hello World"
+-  int num_zeroes = state.range(0);
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(base);
+-    absl::crc32c_t crc = absl::ExtendCrc32cByZeroes(base, num_zeroes);
+-    benchmark::DoNotOptimize(crc);
+-  }
+-}
+-BENCHMARK(BM_ExtendByZeroes)
+-    ->RangeMultiplier(10)
+-    ->Range(1, 1000000)
+-    ->RangeMultiplier(32)
+-    ->Range(1, 1 << 20);
+-
+-void BM_UnextendByZeroes(benchmark::State& state) {
+-  absl::crc32c_t base = absl::crc32c_t{0xdeadbeef};
+-  int num_zeroes = state.range(0);
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(base);
+-    absl::crc32c_t crc =
+-        absl::crc_internal::UnextendCrc32cByZeroes(base, num_zeroes);
+-    benchmark::DoNotOptimize(crc);
+-  }
+-}
+-BENCHMARK(BM_UnextendByZeroes)
+-    ->RangeMultiplier(10)
+-    ->Range(1, 1000000)
+-    ->RangeMultiplier(32)
+-    ->Range(1, 1 << 20);
+-
+-void BM_Concat(benchmark::State& state) {
+-  int string_b_len = state.range(0);
+-  std::string string_b = TestString(string_b_len);
+-
+-  // CRC32C of "Hello World"
+-  absl::crc32c_t crc_a = absl::crc32c_t{0xC99465AA};
+-  absl::crc32c_t crc_b = absl::ComputeCrc32c(string_b);
+-
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(crc_a);
+-    benchmark::DoNotOptimize(crc_b);
+-    benchmark::DoNotOptimize(string_b_len);
+-    absl::crc32c_t crc_ab = absl::ConcatCrc32c(crc_a, crc_b, string_b_len);
+-    benchmark::DoNotOptimize(crc_ab);
+-  }
+-}
+-BENCHMARK(BM_Concat)
+-    ->RangeMultiplier(10)
+-    ->Range(1, 1000000)
+-    ->RangeMultiplier(32)
+-    ->Range(1, 1 << 20);
+-
+-void BM_Memcpy(benchmark::State& state) {
+-  int string_len = state.range(0);
+-
+-  std::string source = TestString(string_len);
+-  auto dest = absl::make_unique<char[]>(string_len);
+-
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(source);
+-    absl::crc32c_t crc =
+-        absl::MemcpyCrc32c(dest.get(), source.data(), source.size());
+-    benchmark::DoNotOptimize(crc);
+-    benchmark::DoNotOptimize(dest);
+-    benchmark::DoNotOptimize(dest.get());
+-    benchmark::DoNotOptimize(dest[0]);
+-  }
+-
+-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+-                          state.range(0));
+-}
+-BENCHMARK(BM_Memcpy)->Arg(0)->Arg(1)->Arg(100)->Arg(10000)->Arg(500000);
+-
+-void BM_RemoveSuffix(benchmark::State& state) {
+-  int full_string_len = state.range(0);
+-  int suffix_len = state.range(1);
+-
+-  std::string full_string = TestString(full_string_len);
+-  std::string suffix = full_string.substr(
+-    full_string_len - suffix_len, full_string_len);
+-
+-  absl::crc32c_t full_string_crc = absl::ComputeCrc32c(full_string);
+-  absl::crc32c_t suffix_crc = absl::ComputeCrc32c(suffix);
+-
+-  for (auto s : state) {
+-    benchmark::DoNotOptimize(full_string_crc);
+-    benchmark::DoNotOptimize(suffix_crc);
+-    benchmark::DoNotOptimize(suffix_len);
+-    absl::crc32c_t crc = absl::RemoveCrc32cSuffix(full_string_crc, suffix_crc,
+-      suffix_len);
+-    benchmark::DoNotOptimize(crc);
+-  }
+-}
+-BENCHMARK(BM_RemoveSuffix)
+-    ->ArgPair(1, 1)
+-    ->ArgPair(100, 10)
+-    ->ArgPair(100, 100)
+-    ->ArgPair(10000, 1)
+-    ->ArgPair(10000, 100)
+-    ->ArgPair(10000, 10000)
+-    ->ArgPair(500000, 1)
+-    ->ArgPair(500000, 100)
+-    ->ArgPair(500000, 10000)
+-    ->ArgPair(500000, 500000);
+-}  // namespace
+diff --git a/absl/crc/crc32c_test.cc b/absl/crc/crc32c_test.cc
+deleted file mode 100644
+index 72d422a..0000000
+--- a/absl/crc/crc32c_test.cc
++++ /dev/null
+@@ -1,194 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/crc32c.h"
+-
+-#include <algorithm>
+-#include <cstddef>
+-#include <cstdint>
+-#include <cstring>
+-#include <string>
+-
+-#include "gtest/gtest.h"
+-#include "absl/crc/internal/crc32c.h"
+-#include "absl/strings/str_cat.h"
+-#include "absl/strings/string_view.h"
+-
+-namespace {
+-
+-TEST(CRC32C, RFC3720) {
+-  // Test the results of the vectors from
+-  // https://www.rfc-editor.org/rfc/rfc3720#appendix-B.4
+-  char data[32];
+-
+-  // 32 bytes of ones.
+-  memset(data, 0, sizeof(data));
+-  EXPECT_EQ(absl::ComputeCrc32c(absl::string_view(data, sizeof(data))),
+-            absl::crc32c_t{0x8a9136aa});
+-
+-  // 32 bytes of ones.
+-  memset(data, 0xff, sizeof(data));
+-  EXPECT_EQ(absl::ComputeCrc32c(absl::string_view(data, sizeof(data))),
+-            absl::crc32c_t{0x62a8ab43});
+-
+-  // 32 incrementing bytes.
+-  for (int i = 0; i < 32; ++i) data[i] = static_cast<char>(i);
+-  EXPECT_EQ(absl::ComputeCrc32c(absl::string_view(data, sizeof(data))),
+-            absl::crc32c_t{0x46dd794e});
+-
+-  // 32 decrementing bytes.
+-  for (int i = 0; i < 32; ++i) data[i] = static_cast<char>(31 - i);
+-  EXPECT_EQ(absl::ComputeCrc32c(absl::string_view(data, sizeof(data))),
+-            absl::crc32c_t{0x113fdb5c});
+-
+-  // An iSCSI - SCSI Read (10) Command PDU.
+-  constexpr uint8_t cmd[48] = {
+-      0x01, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+-      0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00,
+-      0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x18, 0x28, 0x00, 0x00, 0x00,
+-      0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+-  };
+-  EXPECT_EQ(absl::ComputeCrc32c(absl::string_view(
+-                reinterpret_cast<const char*>(cmd), sizeof(cmd))),
+-            absl::crc32c_t{0xd9963a56});
+-}
+-
+-std::string TestString(size_t len) {
+-  std::string result;
+-  result.reserve(len);
+-  for (size_t i = 0; i < len; ++i) {
+-    result.push_back(static_cast<char>(i % 256));
+-  }
+-  return result;
+-}
+-
+-TEST(CRC32C, Compute) {
+-  EXPECT_EQ(absl::ComputeCrc32c(""), absl::crc32c_t{0});
+-  EXPECT_EQ(absl::ComputeCrc32c("hello world"), absl::crc32c_t{0xc99465aa});
+-}
+-
+-TEST(CRC32C, Extend) {
+-  uint32_t base = 0xC99465AA;  // CRC32C of "Hello World"
+-  std::string extension = "Extension String";
+-
+-  EXPECT_EQ(
+-      absl::ExtendCrc32c(absl::crc32c_t{base}, extension),
+-      absl::crc32c_t{0xD2F65090});  // CRC32C of "Hello WorldExtension String"
+-}
+-
+-TEST(CRC32C, ExtendByZeroes) {
+-  std::string base = "hello world";
+-  absl::crc32c_t base_crc = absl::crc32c_t{0xc99465aa};
+-
+-  constexpr size_t kExtendByValues[] = {100, 10000, 100000};
+-  for (const size_t extend_by : kExtendByValues) {
+-    SCOPED_TRACE(extend_by);
+-    absl::crc32c_t crc2 = absl::ExtendCrc32cByZeroes(base_crc, extend_by);
+-    EXPECT_EQ(crc2, absl::ComputeCrc32c(base + std::string(extend_by, '\0')));
+-  }
+-}
+-
+-TEST(CRC32C, UnextendByZeroes) {
+-  constexpr size_t kExtendByValues[] = {2, 200, 20000, 200000, 20000000};
+-  constexpr size_t kUnextendByValues[] = {0, 100, 10000, 100000, 10000000};
+-
+-  for (auto seed_crc : {absl::crc32c_t{0}, absl::crc32c_t{0xc99465aa}}) {
+-    SCOPED_TRACE(seed_crc);
+-    for (const size_t size_1 : kExtendByValues) {
+-      for (const size_t size_2 : kUnextendByValues) {
+-        size_t extend_size = std::max(size_1, size_2);
+-        size_t unextend_size = std::min(size_1, size_2);
+-        SCOPED_TRACE(extend_size);
+-        SCOPED_TRACE(unextend_size);
+-
+-        // Extending by A zeroes an unextending by B<A zeros should be identical
+-        // to extending by A-B zeroes.
+-        absl::crc32c_t crc1 = seed_crc;
+-        crc1 = absl::ExtendCrc32cByZeroes(crc1, extend_size);
+-        crc1 = absl::crc_internal::UnextendCrc32cByZeroes(crc1, unextend_size);
+-
+-        absl::crc32c_t crc2 = seed_crc;
+-        crc2 = absl::ExtendCrc32cByZeroes(crc2, extend_size - unextend_size);
+-
+-        EXPECT_EQ(crc1, crc2);
+-      }
+-    }
+-  }
+-
+-  constexpr size_t kSizes[] = {0, 1, 100, 10000};
+-  for (const size_t size : kSizes) {
+-    SCOPED_TRACE(size);
+-    std::string string_before = TestString(size);
+-    std::string string_after = string_before + std::string(size, '\0');
+-
+-    absl::crc32c_t crc_before = absl::ComputeCrc32c(string_before);
+-    absl::crc32c_t crc_after = absl::ComputeCrc32c(string_after);
+-
+-    EXPECT_EQ(crc_before,
+-              absl::crc_internal::UnextendCrc32cByZeroes(crc_after, size));
+-  }
+-}
+-
+-TEST(CRC32C, Concat) {
+-  std::string hello = "Hello, ";
+-  std::string world = "world!";
+-  std::string hello_world = absl::StrCat(hello, world);
+-
+-  absl::crc32c_t crc_a = absl::ComputeCrc32c(hello);
+-  absl::crc32c_t crc_b = absl::ComputeCrc32c(world);
+-  absl::crc32c_t crc_ab = absl::ComputeCrc32c(hello_world);
+-
+-  EXPECT_EQ(absl::ConcatCrc32c(crc_a, crc_b, world.size()), crc_ab);
+-}
+-
+-TEST(CRC32C, Memcpy) {
+-  constexpr size_t kBytesSize[] = {0, 1, 20, 500, 100000};
+-  for (size_t bytes : kBytesSize) {
+-    SCOPED_TRACE(bytes);
+-    std::string sample_string = TestString(bytes);
+-    std::string target_buffer = std::string(bytes, '\0');
+-
+-    absl::crc32c_t memcpy_crc =
+-        absl::MemcpyCrc32c(&(target_buffer[0]), sample_string.data(), bytes);
+-    absl::crc32c_t compute_crc = absl::ComputeCrc32c(sample_string);
+-
+-    EXPECT_EQ(memcpy_crc, compute_crc);
+-    EXPECT_EQ(sample_string, target_buffer);
+-  }
+-}
+-
+-TEST(CRC32C, RemovePrefix) {
+-  std::string hello = "Hello, ";
+-  std::string world = "world!";
+-  std::string hello_world = absl::StrCat(hello, world);
+-
+-  absl::crc32c_t crc_a = absl::ComputeCrc32c(hello);
+-  absl::crc32c_t crc_b = absl::ComputeCrc32c(world);
+-  absl::crc32c_t crc_ab = absl::ComputeCrc32c(hello_world);
+-
+-  EXPECT_EQ(absl::RemoveCrc32cPrefix(crc_a, crc_ab, world.size()), crc_b);
+-}
+-
+-TEST(CRC32C, RemoveSuffix) {
+-  std::string hello = "Hello, ";
+-  std::string world = "world!";
+-  std::string hello_world = absl::StrCat(hello, world);
+-
+-  absl::crc32c_t crc_a = absl::ComputeCrc32c(hello);
+-  absl::crc32c_t crc_b = absl::ComputeCrc32c(world);
+-  absl::crc32c_t crc_ab = absl::ComputeCrc32c(hello_world);
+-
+-  EXPECT_EQ(absl::RemoveCrc32cSuffix(crc_ab, crc_b, world.size()), crc_a);
+-}
+-}  // namespace
+diff --git a/absl/crc/internal/cpu_detect.cc b/absl/crc/internal/cpu_detect.cc
+deleted file mode 100644
+index d61b701..0000000
+--- a/absl/crc/internal/cpu_detect.cc
++++ /dev/null
+@@ -1,256 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/internal/cpu_detect.h"
+-
+-#include <cstdint>
+-#include <string>
+-
+-#include "absl/base/config.h"
+-
+-#if defined(__aarch64__) && defined(__linux__)
+-#include <asm/hwcap.h>
+-#include <sys/auxv.h>
+-#endif
+-
+-#if defined(_WIN32) || defined(_WIN64)
+-#include <intrin.h>
+-#endif
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-#if defined(__x86_64__) || defined(_M_X64)
+-
+-namespace {
+-
+-#if !defined(_WIN32) && !defined(_WIN64)
+-// MSVC defines this function for us.
+-// https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex
+-static void __cpuid(int cpu_info[4], int info_type) {
+-  __asm__ volatile("cpuid \n\t"
+-                   : "=a"(cpu_info[0]), "=b"(cpu_info[1]), "=c"(cpu_info[2]),
+-                     "=d"(cpu_info[3])
+-                   : "a"(info_type), "c"(0));
+-}
+-#endif  // !defined(_WIN32) && !defined(_WIN64)
+-
+-enum class Vendor {
+-  kUnknown,
+-  kIntel,
+-  kAmd,
+-};
+-
+-Vendor GetVendor() {
+-  // Get the vendor string (issue CPUID with eax = 0).
+-  int cpu_info[4];
+-  __cpuid(cpu_info, 0);
+-
+-  std::string vendor;
+-  vendor.append(reinterpret_cast<char*>(&cpu_info[1]), 4);
+-  vendor.append(reinterpret_cast<char*>(&cpu_info[3]), 4);
+-  vendor.append(reinterpret_cast<char*>(&cpu_info[2]), 4);
+-  if (vendor == "GenuineIntel") {
+-    return Vendor::kIntel;
+-  } else if (vendor == "AuthenticAMD") {
+-    return Vendor::kAmd;
+-  } else {
+-    return Vendor::kUnknown;
+-  }
+-}
+-
+-CpuType GetIntelCpuType() {
+-  // To get general information and extended features we send eax = 1 and
+-  // ecx = 0 to cpuid.  The response is returned in eax, ebx, ecx and edx.
+-  // (See Intel 64 and IA-32 Architectures Software Developer's Manual
+-  // Volume 2A: Instruction Set Reference, A-M CPUID).
+-  // https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-2a-manual.html
+-  // https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex
+-  int cpu_info[4];
+-  __cpuid(cpu_info, 1);
+-
+-  // Response in eax bits as follows:
+-  // 0-3 (stepping id)
+-  // 4-7 (model number),
+-  // 8-11 (family code),
+-  // 12-13 (processor type),
+-  // 16-19 (extended model)
+-  // 20-27 (extended family)
+-
+-  int family = (cpu_info[0] >> 8) & 0x0f;
+-  int model_num = (cpu_info[0] >> 4) & 0x0f;
+-  int ext_family = (cpu_info[0] >> 20) & 0xff;
+-  int ext_model_num = (cpu_info[0] >> 16) & 0x0f;
+-
+-  int brand_id = cpu_info[1] & 0xff;
+-
+-  // Process the extended family and model info if necessary
+-  if (family == 0x0f) {
+-    family += ext_family;
+-  }
+-
+-  if (family == 0x0f || family == 0x6) {
+-    model_num += (ext_model_num << 4);
+-  }
+-
+-  switch (brand_id) {
+-    case 0:  // no brand ID, so parse CPU family/model
+-      switch (family) {
+-        case 6:  // Most PentiumIII processors are in this category
+-          switch (model_num) {
+-            case 0x2c:  // Westmere: Gulftown
+-              return CpuType::kIntelWestmere;
+-            case 0x2d:  // Sandybridge
+-              return CpuType::kIntelSandybridge;
+-            case 0x3e:  // Ivybridge
+-              return CpuType::kIntelIvybridge;
+-            case 0x3c:  // Haswell (client)
+-            case 0x3f:  // Haswell
+-              return CpuType::kIntelHaswell;
+-            case 0x4f:  // Broadwell
+-            case 0x56:  // BroadwellDE
+-              return CpuType::kIntelBroadwell;
+-            case 0x55:                 // Skylake Xeon
+-              if ((cpu_info[0] & 0x0f) < 5) {  // stepping < 5 is skylake
+-                return CpuType::kIntelSkylakeXeon;
+-              } else {  // stepping >= 5 is cascadelake
+-                return CpuType::kIntelCascadelakeXeon;
+-              }
+-            case 0x5e:  // Skylake (client)
+-              return CpuType::kIntelSkylake;
+-            default:
+-              return CpuType::kUnknown;
+-          }
+-        default:
+-          return CpuType::kUnknown;
+-      }
+-    default:
+-      return CpuType::kUnknown;
+-  }
+-}
+-
+-CpuType GetAmdCpuType() {
+-  // To get general information and extended features we send eax = 1 and
+-  // ecx = 0 to cpuid.  The response is returned in eax, ebx, ecx and edx.
+-  // (See Intel 64 and IA-32 Architectures Software Developer's Manual
+-  // Volume 2A: Instruction Set Reference, A-M CPUID).
+-  // https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex
+-  int cpu_info[4];
+-  __cpuid(cpu_info, 1);
+-
+-  // Response in eax bits as follows:
+-  // 0-3 (stepping id)
+-  // 4-7 (model number),
+-  // 8-11 (family code),
+-  // 12-13 (processor type),
+-  // 16-19 (extended model)
+-  // 20-27 (extended family)
+-
+-  int family = (cpu_info[0] >> 8) & 0x0f;
+-  int model_num = (cpu_info[0] >> 4) & 0x0f;
+-  int ext_family = (cpu_info[0] >> 20) & 0xff;
+-  int ext_model_num = (cpu_info[0] >> 16) & 0x0f;
+-
+-  if (family == 0x0f) {
+-    family += ext_family;
+-    model_num += (ext_model_num << 4);
+-  }
+-
+-  switch (family) {
+-    case 0x17:
+-      switch (model_num) {
+-        case 0x0:  // Stepping Ax
+-        case 0x1:  // Stepping Bx
+-          return CpuType::kAmdNaples;
+-        case 0x30:  // Stepping Ax
+-        case 0x31:  // Stepping Bx
+-          return CpuType::kAmdRome;
+-        default:
+-          return CpuType::kUnknown;
+-      }
+-      break;
+-    case 0x19:
+-      switch (model_num) {
+-        case 0x1:  // Stepping B0
+-          return CpuType::kAmdMilan;
+-        default:
+-          return CpuType::kUnknown;
+-      }
+-      break;
+-    default:
+-      return CpuType::kUnknown;
+-  }
+-}
+-
+-}  // namespace
+-
+-CpuType GetCpuType() {
+-  switch (GetVendor()) {
+-    case Vendor::kIntel:
+-      return GetIntelCpuType();
+-    case Vendor::kAmd:
+-      return GetAmdCpuType();
+-    default:
+-      return CpuType::kUnknown;
+-  }
+-}
+-
+-bool SupportsArmCRC32PMULL() { return false; }
+-
+-#elif defined(__aarch64__) && defined(__linux__)
+-
+-#ifndef HWCAP_CPUID
+-#define HWCAP_CPUID (1 << 11)
+-#endif
+-
+-#define ABSL_INTERNAL_AARCH64_ID_REG_READ(id, val) \
+-  asm("mrs %0, " #id : "=r"(val))
+-
+-CpuType GetCpuType() {
+-  // MIDR_EL1 is not visible to EL0, however the access will be emulated by
+-  // linux if AT_HWCAP has HWCAP_CPUID set.
+-  //
+-  // This method will be unreliable on heterogeneous computing systems (ex:
+-  // big.LITTLE) since the value of MIDR_EL1 will change based on the calling
+-  // thread.
+-  uint64_t hwcaps = getauxval(AT_HWCAP);
+-  if (hwcaps & HWCAP_CPUID) {
+-    uint64_t midr = 0;
+-    ABSL_INTERNAL_AARCH64_ID_REG_READ(MIDR_EL1, midr);
+-    uint32_t implementer = (midr >> 24) & 0xff;
+-    uint32_t part_number = (midr >> 4) & 0xfff;
+-    if (implementer == 0x41 && part_number == 0xd0c) {
+-      return CpuType::kArmNeoverseN1;
+-    }
+-  }
+-  return CpuType::kUnknown;
+-}
+-
+-bool SupportsArmCRC32PMULL() {
+-  uint64_t hwcaps = getauxval(AT_HWCAP);
+-  return (hwcaps & HWCAP_CRC32) && (hwcaps & HWCAP_PMULL);
+-}
+-
+-#else
+-
+-CpuType GetCpuType() { return CpuType::kUnknown; }
+-
+-bool SupportsArmCRC32PMULL() { return false; }
+-
+-#endif
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/internal/cpu_detect.h b/absl/crc/internal/cpu_detect.h
+deleted file mode 100644
+index 6054f69..0000000
+--- a/absl/crc/internal/cpu_detect.h
++++ /dev/null
+@@ -1,57 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CPU_DETECT_H_
+-#define ABSL_CRC_INTERNAL_CPU_DETECT_H_
+-
+-#include "absl/base/config.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-// Enumeration of architectures that we have special-case tuning parameters for.
+-// This set may change over time.
+-enum class CpuType {
+-  kUnknown,
+-  kIntelHaswell,
+-  kAmdRome,
+-  kAmdNaples,
+-  kAmdMilan,
+-  kIntelCascadelakeXeon,
+-  kIntelSkylakeXeon,
+-  kIntelBroadwell,
+-  kIntelSkylake,
+-  kIntelIvybridge,
+-  kIntelSandybridge,
+-  kIntelWestmere,
+-  kArmNeoverseN1,
+-};
+-
+-// Returns the type of host CPU this code is running on.  Returns kUnknown if
+-// the host CPU is of unknown type, or if detection otherwise fails.
+-CpuType GetCpuType();
+-
+-// Returns whether the host CPU supports the CPU features needed for our
+-// accelerated implementations. The CpuTypes enumerated above apart from
+-// kUnknown support the required features. On unknown CPUs, we can use
+-// this to see if it's safe to use hardware acceleration, though without any
+-// tuning.
+-bool SupportsArmCRC32PMULL();
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CPU_DETECT_H_
+diff --git a/absl/crc/internal/crc.cc b/absl/crc/internal/crc.cc
+deleted file mode 100644
+index bb8936e..0000000
+--- a/absl/crc/internal/crc.cc
++++ /dev/null
+@@ -1,468 +0,0 @@
+-// Copyright 2022 The Abseil Authors.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-// Implementation of CRCs (aka Rabin Fingerprints).
+-// Treats the input as a polynomial with coefficients in Z(2),
+-// and finds the remainder when divided by an irreducible polynomial
+-// of the appropriate length.
+-// It handles all CRC sizes from 8 to 128 bits.
+-// It's somewhat complicated by having separate implementations optimized for
+-// CRC's <=32 bits, <= 64 bits, and <= 128 bits.
+-// The input string is prefixed with a "1" bit, and has "degree" "0" bits
+-// appended to it before the remainder is found.   This ensures that
+-// short strings are scrambled somewhat and that strings consisting
+-// of all nulls have a non-zero CRC.
+-//
+-// Uses the "interleaved word-by-word" method from
+-// "Everything we know about CRC but afraid to forget" by Andrew Kadatch
+-// and Bob Jenkins,
+-// http://crcutil.googlecode.com/files/crc-doc.1.0.pdf
+-//
+-// The idea is to compute kStride CRCs simultaneously, allowing the
+-// processor to more effectively use multiple execution units. Each of
+-// the CRCs is calculated on one word of data followed by kStride - 1
+-// words of zeroes; the CRC starting points are staggered by one word.
+-// Assuming a stride of 4 with data words "ABCDABCDABCD", the first
+-// CRC is over A000A000A, the second over 0B000B000B, and so on.
+-// The CRC of the whole data is then calculated by properly aligning the
+-// CRCs by appending zeroes until the data lengths agree then XORing
+-// the CRCs.
+-
+-#include "absl/crc/internal/crc.h"
+-
+-#include <cstdint>
+-
+-#include "absl/base/internal/endian.h"
+-#include "absl/base/internal/prefetch.h"
+-#include "absl/base/internal/raw_logging.h"
+-#include "absl/crc/internal/crc_internal.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-namespace {
+-
+-// Constants
+-#if defined(__i386__) || defined(__x86_64__)
+-constexpr bool kNeedAlignedLoads = false;
+-#else
+-constexpr bool kNeedAlignedLoads = true;
+-#endif
+-
+-// We express the number of zeroes as a number in base ZEROES_BASE. By
+-// pre-computing the zero extensions for all possible components of such an
+-// expression (numbers in a form a*ZEROES_BASE**b), we can calculate the
+-// resulting extension by multiplying the extensions for individual components
+-// using log_{ZEROES_BASE}(num_zeroes) polynomial multiplications. The tables of
+-// zero extensions contain (ZEROES_BASE - 1) * (log_{ZEROES_BASE}(64)) entries.
+-constexpr int ZEROES_BASE_LG = 4;                   // log_2(ZEROES_BASE)
+-constexpr int ZEROES_BASE = (1 << ZEROES_BASE_LG);  // must be a power of 2
+-
+-constexpr uint32_t kCrc32cPoly = 0x82f63b78;
+-
+-uint32_t ReverseBits(uint32_t bits) {
+-  bits = (bits & 0xaaaaaaaau) >> 1 | (bits & 0x55555555u) << 1;
+-  bits = (bits & 0xccccccccu) >> 2 | (bits & 0x33333333u) << 2;
+-  bits = (bits & 0xf0f0f0f0u) >> 4 | (bits & 0x0f0f0f0fu) << 4;
+-  return absl::gbswap_32(bits);
+-}
+-
+-// Polynomial long multiplication mod the polynomial of degree 32.
+-void PolyMultiply(uint32_t* val, uint32_t m, uint32_t poly) {
+-  uint32_t l = *val;
+-  uint32_t result = 0;
+-  auto onebit = uint32_t{0x80000000u};
+-  for (uint32_t one = onebit; one != 0; one >>= 1) {
+-    if ((l & one) != 0) {
+-      result ^= m;
+-    }
+-    if (m & 1) {
+-      m = (m >> 1) ^ poly;
+-    } else {
+-      m >>= 1;
+-    }
+-  }
+-  *val = result;
+-}
+-}  // namespace
+-
+-void CRCImpl::FillWordTable(uint32_t poly, uint32_t last, int word_size,
+-                            Uint32By256* t) {
+-  for (int j = 0; j != word_size; j++) {  // for each byte of extension....
+-    t[j][0] = 0;                          // a zero has no effect
+-    for (int i = 128; i != 0; i >>= 1) {  // fill in entries for powers of 2
+-      if (j == 0 && i == 128) {
+-        t[j][i] = last;  // top bit in last byte is given
+-      } else {
+-        // each successive power of two is derived from the previous
+-        // one, either in this table, or the last table
+-        uint32_t pred;
+-        if (i == 128) {
+-          pred = t[j - 1][1];
+-        } else {
+-          pred = t[j][i << 1];
+-        }
+-        // Advance the CRC by one bit (multiply by X, and take remainder
+-        // through one step of polynomial long division)
+-        if (pred & 1) {
+-          t[j][i] = (pred >> 1) ^ poly;
+-        } else {
+-          t[j][i] = pred >> 1;
+-        }
+-      }
+-    }
+-    // CRCs have the property that CRC(a xor b) == CRC(a) xor CRC(b)
+-    // so we can make all the tables for non-powers of two by
+-    // xoring previously created entries.
+-    for (int i = 2; i != 256; i <<= 1) {
+-      for (int k = i + 1; k != (i << 1); k++) {
+-        t[j][k] = t[j][i] ^ t[j][k - i];
+-      }
+-    }
+-  }
+-}
+-
+-int CRCImpl::FillZeroesTable(uint32_t poly, Uint32By256* t) {
+-  uint32_t inc = 1;
+-  inc <<= 31;
+-
+-  // Extend by one zero bit. We know degree > 1 so (inc & 1) == 0.
+-  inc >>= 1;
+-
+-  // Now extend by 2, 4, and 8 bits, so now `inc` is extended by one zero byte.
+-  for (int i = 0; i < 3; ++i) {
+-    PolyMultiply(&inc, inc, poly);
+-  }
+-
+-  int j = 0;
+-  for (uint64_t inc_len = 1; inc_len != 0; inc_len <<= ZEROES_BASE_LG) {
+-    // Every entry in the table adds an additional inc_len zeroes.
+-    uint32_t v = inc;
+-    for (int a = 1; a != ZEROES_BASE; a++) {
+-      t[0][j] = v;
+-      PolyMultiply(&v, inc, poly);
+-      j++;
+-    }
+-    inc = v;
+-  }
+-  ABSL_RAW_CHECK(j <= 256, "");
+-  return j;
+-}
+-
+-// Internal version of the "constructor".
+-CRCImpl* CRCImpl::NewInternal() {
+-  // Find an accelearated implementation first.
+-  CRCImpl* result = TryNewCRC32AcceleratedX86ARMCombined();
+-
+-  // Fall back to generic implementions if no acceleration is available.
+-  if (result == nullptr) {
+-    result = new CRC32();
+-  }
+-
+-  result->InitTables();
+-
+-  return result;
+-}
+-
+-// The CRC of the empty string is always the CRC polynomial itself.
+-void CRCImpl::Empty(uint32_t* crc) const { *crc = kCrc32cPoly; }
+-
+-//  The 32-bit implementation
+-
+-void CRC32::InitTables() {
+-  // Compute the table for extending a CRC by one byte.
+-  Uint32By256* t = new Uint32By256[4];
+-  FillWordTable(kCrc32cPoly, kCrc32cPoly, 1, t);
+-  for (int i = 0; i != 256; i++) {
+-    this->table0_[i] = t[0][i];
+-  }
+-
+-  // Construct a table for updating the CRC by 4 bytes data followed by
+-  // 12 bytes of zeroes.
+-  //
+-  // Note: the data word size could be larger than the CRC size; it might
+-  // be slightly faster to use a 64-bit data word, but doing so doubles the
+-  // table size.
+-  uint32_t last = kCrc32cPoly;
+-  const size_t size = 12;
+-  for (size_t i = 0; i < size; ++i) {
+-    last = (last >> 8) ^ this->table0_[last & 0xff];
+-  }
+-  FillWordTable(kCrc32cPoly, last, 4, t);
+-  for (size_t b = 0; b < 4; ++b) {
+-    for (int i = 0; i < 256; ++i) {
+-      this->table_[b][i] = t[b][i];
+-    }
+-  }
+-
+-  int j = FillZeroesTable(kCrc32cPoly, t);
+-  ABSL_RAW_CHECK(j <= static_cast<int>(ABSL_ARRAYSIZE(this->zeroes_)), "");
+-  for (int i = 0; i < j; i++) {
+-    this->zeroes_[i] = t[0][i];
+-  }
+-
+-  delete[] t;
+-
+-  // Build up tables for _reversing_ the operation of doing CRC operations on
+-  // zero bytes.
+-
+-  // In C++, extending `crc` by a single zero bit is done by the following:
+-  // (A)  bool low_bit_set = (crc & 1);
+-  //      crc >>= 1;
+-  //      if (low_bit_set) crc ^= kCrc32cPoly;
+-  //
+-  // In particular note that the high bit of `crc` after this operation will be
+-  // set if and only if the low bit of `crc` was set before it.  This means that
+-  // no information is lost, and the operation can be reversed, as follows:
+-  // (B)  bool high_bit_set = (crc & 0x80000000u);
+-  //      if (high_bit_set) crc ^= kCrc32cPoly;
+-  //      crc <<= 1;
+-  //      if (high_bit_set) crc ^= 1;
+-  //
+-  // Or, equivalently:
+-  // (C)  bool high_bit_set = (crc & 0x80000000u);
+-  //      crc <<= 1;
+-  //      if (high_bit_set) crc ^= ((kCrc32cPoly << 1) ^ 1);
+-  //
+-  // The last observation is, if we store our checksums in variable `rcrc`,
+-  // with order of the bits reversed, the inverse operation becomes:
+-  // (D)  bool low_bit_set = (rcrc & 1);
+-  //      rcrc >>= 1;
+-  //      if (low_bit_set) rcrc ^= ReverseBits((kCrc32cPoly << 1) ^ 1)
+-  //
+-  // This is the same algorithm (A) that we started with, only with a different
+-  // polynomial bit pattern.  This means that by building up our tables with
+-  // this alternate polynomial, we can apply the CRC algorithms to a
+-  // bit-reversed CRC checksum to perform inverse zero-extension.
+-
+-  const uint32_t kCrc32cUnextendPoly =
+-      ReverseBits(static_cast<uint32_t>((kCrc32cPoly << 1) ^ 1));
+-  FillWordTable(kCrc32cUnextendPoly, kCrc32cUnextendPoly, 1, &reverse_table0_);
+-
+-  j = FillZeroesTable(kCrc32cUnextendPoly, &reverse_zeroes_);
+-  ABSL_RAW_CHECK(j <= static_cast<int>(ABSL_ARRAYSIZE(this->reverse_zeroes_)),
+-                 "");
+-}
+-
+-void CRC32::Extend(uint32_t* crc, const void* bytes, size_t length) const {
+-  const uint8_t* p = static_cast<const uint8_t*>(bytes);
+-  const uint8_t* e = p + length;
+-  uint32_t l = *crc;
+-
+-  auto step_one_byte = [this, &p, &l] () {
+-    int c = (l & 0xff) ^ *p++;
+-    l = this->table0_[c] ^ (l >> 8);
+-  };
+-
+-  if (kNeedAlignedLoads) {
+-    // point x at first 4-byte aligned byte in string. this might be past the
+-    // end of the string.
+-    const uint8_t* x = RoundUp<4>(p);
+-    if (x <= e) {
+-      // Process bytes until finished or p is 4-byte aligned
+-      while (p != x) {
+-        step_one_byte();
+-      }
+-    }
+-  }
+-
+-  const size_t kSwathSize = 16;
+-  if (static_cast<size_t>(e - p) >= kSwathSize) {
+-    // Load one swath of data into the operating buffers.
+-    uint32_t buf0 = absl::little_endian::Load32(p) ^ l;
+-    uint32_t buf1 = absl::little_endian::Load32(p + 4);
+-    uint32_t buf2 = absl::little_endian::Load32(p + 8);
+-    uint32_t buf3 = absl::little_endian::Load32(p + 12);
+-    p += kSwathSize;
+-
+-    // Increment a CRC value by a "swath"; this combines the four bytes
+-    // starting at `ptr` and twelve zero bytes, so that four CRCs can be
+-    // built incrementally and combined at the end.
+-    const auto step_swath = [this](uint32_t crc_in, const std::uint8_t* ptr) {
+-      return absl::little_endian::Load32(ptr) ^
+-             this->table_[3][crc_in & 0xff] ^
+-             this->table_[2][(crc_in >> 8) & 0xff] ^
+-             this->table_[1][(crc_in >> 16) & 0xff] ^
+-             this->table_[0][crc_in >> 24];
+-    };
+-
+-    // Run one CRC calculation step over all swaths in one 16-byte stride
+-    const auto step_stride = [&]() {
+-      buf0 = step_swath(buf0, p);
+-      buf1 = step_swath(buf1, p + 4);
+-      buf2 = step_swath(buf2, p + 8);
+-      buf3 = step_swath(buf3, p + 12);
+-      p += 16;
+-    };
+-
+-    // Process kStride interleaved swaths through the data in parallel.
+-    while ((e - p) > kPrefetchHorizon) {
+-      base_internal::PrefetchNta(
+-          reinterpret_cast<const void*>(p + kPrefetchHorizon));
+-      // Process 64 bytes at a time
+-      step_stride();
+-      step_stride();
+-      step_stride();
+-      step_stride();
+-    }
+-    while (static_cast<size_t>(e - p) >= kSwathSize) {
+-      step_stride();
+-    }
+-
+-    // Now advance one word at a time as far as possible. This isn't worth
+-    // doing if we have word-advance tables.
+-    while (static_cast<size_t>(e - p) >= 4) {
+-      buf0 = step_swath(buf0, p);
+-      uint32_t tmp = buf0;
+-      buf0 = buf1;
+-      buf1 = buf2;
+-      buf2 = buf3;
+-      buf3 = tmp;
+-      p += 4;
+-    }
+-
+-    // Combine the results from the different swaths. This is just a CRC
+-    // on the data values in the bufX words.
+-    auto combine_one_word = [this](uint32_t crc_in, uint32_t w) {
+-      w ^= crc_in;
+-      for (size_t i = 0; i < 4; ++i) {
+-        w = (w >> 8) ^ this->table0_[w & 0xff];
+-      }
+-      return w;
+-    };
+-
+-    l = combine_one_word(0, buf0);
+-    l = combine_one_word(l, buf1);
+-    l = combine_one_word(l, buf2);
+-    l = combine_one_word(l, buf3);
+-  }
+-
+-  // Process the last few bytes
+-  while (p != e) {
+-    step_one_byte();
+-  }
+-
+-  *crc = l;
+-}
+-
+-void CRC32::ExtendByZeroesImpl(uint32_t* crc, size_t length,
+-                               const uint32_t zeroes_table[256],
+-                               const uint32_t poly_table[256]) const {
+-  if (length != 0) {
+-    uint32_t l = *crc;
+-    // For each ZEROES_BASE_LG bits in length
+-    // (after the low-order bits have been removed)
+-    // we lookup the appropriate polynomial in the zeroes_ array
+-    // and do a polynomial long multiplication (mod the CRC polynomial)
+-    // to extend the CRC by the appropriate number of bits.
+-    for (int i = 0; length != 0;
+-         i += ZEROES_BASE - 1, length >>= ZEROES_BASE_LG) {
+-      int c = length & (ZEROES_BASE - 1);  // pick next ZEROES_BASE_LG bits
+-      if (c != 0) {                        // if they are not zero,
+-                                           // multiply by entry in table
+-        // Build a table to aid in multiplying 2 bits at a time.
+-        // It takes too long to build tables for more bits.
+-        uint64_t m = zeroes_table[c + i - 1];
+-        m <<= 1;
+-        uint64_t m2 = m << 1;
+-        uint64_t mtab[4] = {0, m, m2, m2 ^ m};
+-
+-        // Do the multiply one byte at a time.
+-        uint64_t result = 0;
+-        for (int x = 0; x < 32; x += 8) {
+-          // The carry-less multiply.
+-          result ^= mtab[l & 3] ^ (mtab[(l >> 2) & 3] << 2) ^
+-                    (mtab[(l >> 4) & 3] << 4) ^ (mtab[(l >> 6) & 3] << 6);
+-          l >>= 8;
+-
+-          // Reduce modulo the polynomial
+-          result = (result >> 8) ^ poly_table[result & 0xff];
+-        }
+-        l = static_cast<uint32_t>(result);
+-      }
+-    }
+-    *crc = l;
+-  }
+-}
+-
+-void CRC32::ExtendByZeroes(uint32_t* crc, size_t length) const {
+-  return CRC32::ExtendByZeroesImpl(crc, length, zeroes_, table0_);
+-}
+-
+-void CRC32::UnextendByZeroes(uint32_t* crc, size_t length) const {
+-  // See the comment in CRC32::InitTables() for an explanation of the algorithm
+-  // below.
+-  *crc = ReverseBits(*crc);
+-  ExtendByZeroesImpl(crc, length, reverse_zeroes_, reverse_table0_);
+-  *crc = ReverseBits(*crc);
+-}
+-
+-void CRC32::Scramble(uint32_t* crc) const {
+-  // Rotate by near half the word size plus 1.  See the scramble comment in
+-  // crc_internal.h for an explanation.
+-  constexpr int scramble_rotate = (32 / 2) + 1;
+-  *crc = RotateRight<uint32_t>(static_cast<unsigned int>(*crc + kScrambleLo),
+-                               32, scramble_rotate) &
+-         MaskOfLength<uint32_t>(32);
+-}
+-
+-void CRC32::Unscramble(uint32_t* crc) const {
+-  constexpr int scramble_rotate = (32 / 2) + 1;
+-  uint64_t rotated = RotateRight<uint32_t>(static_cast<unsigned int>(*crc), 32,
+-                                           32 - scramble_rotate);
+-  *crc = (rotated - kScrambleLo) & MaskOfLength<uint32_t>(32);
+-}
+-
+-// Constructor and destructor for base class CRC.
+-CRC::~CRC() {}
+-CRC::CRC() {}
+-
+-// The "constructor" for a CRC32C with a standard polynomial.
+-CRC* CRC::Crc32c() {
+-  static CRC* singleton = CRCImpl::NewInternal();
+-  return singleton;
+-}
+-
+-// This Concat implementation works for arbitrary polynomials.
+-void CRC::Concat(uint32_t* px, uint32_t y, size_t ylen) {
+-  // https://en.wikipedia.org/wiki/Mathematics_of_cyclic_redundancy_checks
+-  // The CRC of a message M is the remainder of polynomial divison modulo G,
+-  // where the coefficient arithmetic is performed modulo 2 (so +/- are XOR):
+-  //   R(x) = M(x) x**n (mod G)
+-  // (n is the degree of G)
+-  // In practice, we use an initial value A and a bitmask B to get
+-  //   R = (A ^ B)x**|M| ^ Mx**n ^ B (mod G)
+-  // If M is the concatenation of two strings S and T, and Z is the string of
+-  // len(T) 0s, then the remainder CRC(ST) can be expressed as:
+-  //   R = (A ^ B)x**|ST| ^ STx**n ^ B
+-  //     = (A ^ B)x**|SZ| ^ SZx**n ^ B ^ Tx**n
+-  //     = CRC(SZ) ^ Tx**n
+-  // CRC(Z) = (A ^ B)x**|T| ^ B
+-  // CRC(T) = (A ^ B)x**|T| ^ Tx**n ^ B
+-  // So R = CRC(SZ) ^ CRC(Z) ^ CRC(T)
+-  //
+-  // And further, since CRC(SZ) = Extend(CRC(S), Z),
+-  //  CRC(SZ) ^ CRC(Z) = Extend(CRC(S) ^ CRC(''), Z).
+-  uint32_t z;
+-  uint32_t t;
+-  Empty(&z);
+-  t = *px ^ z;
+-  ExtendByZeroes(&t, ylen);
+-  *px = t ^ y;
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/internal/crc.h b/absl/crc/internal/crc.h
+deleted file mode 100644
+index 72515b0..0000000
+--- a/absl/crc/internal/crc.h
++++ /dev/null
+@@ -1,91 +0,0 @@
+-// Copyright 2022 The Abseil Authors.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC_H_
+-#define ABSL_CRC_INTERNAL_CRC_H_
+-
+-#include <cstdint>
+-
+-#include "absl/base/config.h"
+-
+-// This class implements CRCs (aka Rabin Fingerprints).
+-// Treats the input as a polynomial with coefficients in Z(2),
+-// and finds the remainder when divided by an primitive polynomial
+-// of the appropriate length.
+-
+-// A polynomial is represented by the bit pattern formed by its coefficients,
+-// but with the highest order bit not stored.
+-// The highest degree coefficient is stored in the lowest numbered bit
+-// in the lowest addressed byte.   Thus, in what follows, the highest degree
+-// coefficient that is stored is in the low order bit of "lo" or "*lo".
+-
+-// Hardware acceleration is used when available.
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-class CRC {
+- public:
+-  virtual ~CRC();
+-
+-  // Place the CRC of the empty string in "*crc"
+-  virtual void Empty(uint32_t* crc) const = 0;
+-
+-  // If "*crc" is the CRC of bytestring A, place the CRC of
+-  // the bytestring formed from the concatenation of A and the "length"
+-  // bytes at "bytes" into "*crc".
+-  virtual void Extend(uint32_t* crc, const void* bytes,
+-                      size_t length) const = 0;
+-
+-  // Equivalent to Extend(crc, bytes, length) where "bytes"
+-  // points to an array of "length" zero bytes.
+-  virtual void ExtendByZeroes(uint32_t* crc, size_t length) const = 0;
+-
+-  // Inverse opration of ExtendByZeroes.  If `crc` is the CRC value of a string
+-  // ending in `length` zero bytes, this returns a CRC value of that string
+-  // with those zero bytes removed.
+-  virtual void UnextendByZeroes(uint32_t* crc, size_t length) const = 0;
+-
+-  // If *px is the CRC (as defined by *crc) of some string X,
+-  // and y is the CRC of some string Y that is ylen bytes long, set
+-  // *px to the CRC of the concatenation of X followed by Y.
+-  virtual void Concat(uint32_t* px, uint32_t y, size_t ylen);
+-
+-  // Apply a non-linear transformation to "*crc" so that
+-  // it is safe to CRC the result with the same polynomial without
+-  // any reduction of error-detection ability in the outer CRC.
+-  // Unscramble() performs the inverse transformation.
+-  // It is strongly recommended that CRCs be scrambled before storage or
+-  // transmission, and unscrambled at the other end before futher manipulation.
+-  virtual void Scramble(uint32_t* crc) const = 0;
+-  virtual void Unscramble(uint32_t* crc) const = 0;
+-
+-  // Crc32c() returns the singleton implementation of CRC for the CRC32C
+-  // polynomial.  Returns a handle that MUST NOT be destroyed with delete.
+-  static CRC* Crc32c();
+-
+- protected:
+-  CRC();  // Clients may not call constructor; use Crc32c() instead.
+-
+- private:
+-  CRC(const CRC&) = delete;
+-  CRC& operator=(const CRC&) = delete;
+-};
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC_H_
+diff --git a/absl/crc/internal/crc32_x86_arm_combined_simd.h b/absl/crc/internal/crc32_x86_arm_combined_simd.h
+deleted file mode 100644
+index fb64398..0000000
+--- a/absl/crc/internal/crc32_x86_arm_combined_simd.h
++++ /dev/null
+@@ -1,269 +0,0 @@
+-// Copyright 2022 The Abseil Authors.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC32_X86_ARM_COMBINED_SIMD_H_
+-#define ABSL_CRC_INTERNAL_CRC32_X86_ARM_COMBINED_SIMD_H_
+-
+-#include <cstdint>
+-
+-#include "absl/base/config.h"
+-
+-// -------------------------------------------------------------------------
+-// Many x86 and ARM machines have CRC acceleration hardware.
+-// We can do a faster version of Extend() on such machines.
+-// We define a translation layer for both x86 and ARM for the ease of use and
+-// most performance gains.
+-
+-// This implementation requires 64-bit CRC instructions (part of SSE 4.2) and
+-// PCLMULQDQ instructions. 32-bit builds with SSE 4.2 do exist, so the
+-// __x86_64__ condition is necessary.
+-#if defined(__x86_64__) && defined(__SSE4_2__) && defined(__PCLMUL__)
+-
+-#include <x86intrin.h>
+-#define ABSL_CRC_INTERNAL_HAVE_X86_SIMD
+-
+-#elif defined(_MSC_VER) && defined(__AVX__)
+-
+-// MSVC AVX (/arch:AVX) implies SSE 4.2 and PCLMULQDQ.
+-#include <intrin.h>
+-#define ABSL_CRC_INTERNAL_HAVE_X86_SIMD
+-
+-#elif defined(__aarch64__) && defined(__LITTLE_ENDIAN__) && \
+-    defined(__ARM_FEATURE_CRC32) && defined(ABSL_INTERNAL_HAVE_ARM_NEON) &&  \
+-    defined(__ARM_FEATURE_CRYPTO)
+-
+-#include <arm_acle.h>
+-#include <arm_neon.h>
+-#define ABSL_CRC_INTERNAL_HAVE_ARM_SIMD
+-
+-#endif
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-#if defined(ABSL_CRC_INTERNAL_HAVE_ARM_SIMD) || \
+-    defined(ABSL_CRC_INTERNAL_HAVE_X86_SIMD)
+-
+-#if defined(ABSL_CRC_INTERNAL_HAVE_ARM_SIMD)
+-using V128 = uint64x2_t;
+-#else
+-using V128 = __m128i;
+-#endif
+-
+-// Starting with the initial value in |crc|, accumulates a CRC32 value for
+-// unsigned integers of different sizes.
+-uint32_t CRC32_u8(uint32_t crc, uint8_t v);
+-
+-uint32_t CRC32_u16(uint32_t crc, uint16_t v);
+-
+-uint32_t CRC32_u32(uint32_t crc, uint32_t v);
+-
+-uint32_t CRC32_u64(uint32_t crc, uint64_t v);
+-
+-// Loads 128 bits of integer data. |src| must be 16-byte aligned.
+-V128 V128_Load(const V128* src);
+-
+-// Load 128 bits of integer data. |src| does not need to be aligned.
+-V128 V128_LoadU(const V128* src);
+-
+-// Polynomially multiplies the high 64 bits of |l| and |r|.
+-V128 V128_PMulHi(const V128 l, const V128 r);
+-
+-// Polynomially multiplies the low 64 bits of |l| and |r|.
+-V128 V128_PMulLow(const V128 l, const V128 r);
+-
+-// Polynomially multiplies the low 64 bits of |r| and high 64 bits of |l|.
+-V128 V128_PMul01(const V128 l, const V128 r);
+-
+-// Polynomially multiplies the low 64 bits of |l| and high 64 bits of |r|.
+-V128 V128_PMul10(const V128 l, const V128 r);
+-
+-// Produces a XOR operation of |l| and |r|.
+-V128 V128_Xor(const V128 l, const V128 r);
+-
+-// Produces an AND operation of |l| and |r|.
+-V128 V128_And(const V128 l, const V128 r);
+-
+-// Sets two 64 bit integers to one 128 bit vector. The order is reverse.
+-// dst[63:0] := |r|
+-// dst[127:64] := |l|
+-V128 V128_From2x64(const uint64_t l, const uint64_t r);
+-
+-// Shift |l| right by |imm| bytes while shifting in zeros.
+-template <int imm>
+-V128 V128_ShiftRight(const V128 l);
+-
+-// Extracts a 32-bit integer from |l|, selected with |imm|.
+-template <int imm>
+-int V128_Extract32(const V128 l);
+-
+-// Extracts the low 64 bits from V128.
+-int64_t V128_Low64(const V128 l);
+-
+-// Left-shifts packed 64-bit integers in l by r.
+-V128 V128_ShiftLeft64(const V128 l, const V128 r);
+-
+-#endif
+-
+-#if defined(ABSL_CRC_INTERNAL_HAVE_X86_SIMD)
+-
+-inline uint32_t CRC32_u8(uint32_t crc, uint8_t v) {
+-  return _mm_crc32_u8(crc, v);
+-}
+-
+-inline uint32_t CRC32_u16(uint32_t crc, uint16_t v) {
+-  return _mm_crc32_u16(crc, v);
+-}
+-
+-inline uint32_t CRC32_u32(uint32_t crc, uint32_t v) {
+-  return _mm_crc32_u32(crc, v);
+-}
+-
+-inline uint32_t CRC32_u64(uint32_t crc, uint64_t v) {
+-  return static_cast<uint32_t>(_mm_crc32_u64(crc, v));
+-}
+-
+-inline V128 V128_Load(const V128* src) { return _mm_load_si128(src); }
+-
+-inline V128 V128_LoadU(const V128* src) { return _mm_loadu_si128(src); }
+-
+-inline V128 V128_PMulHi(const V128 l, const V128 r) {
+-  return _mm_clmulepi64_si128(l, r, 0x11);
+-}
+-
+-inline V128 V128_PMulLow(const V128 l, const V128 r) {
+-  return _mm_clmulepi64_si128(l, r, 0x00);
+-}
+-
+-inline V128 V128_PMul01(const V128 l, const V128 r) {
+-  return _mm_clmulepi64_si128(l, r, 0x01);
+-}
+-
+-inline V128 V128_PMul10(const V128 l, const V128 r) {
+-  return _mm_clmulepi64_si128(l, r, 0x10);
+-}
+-
+-inline V128 V128_Xor(const V128 l, const V128 r) { return _mm_xor_si128(l, r); }
+-
+-inline V128 V128_And(const V128 l, const V128 r) { return _mm_and_si128(l, r); }
+-
+-inline V128 V128_From2x64(const uint64_t l, const uint64_t r) {
+-  return _mm_set_epi64x(static_cast<int64_t>(l), static_cast<int64_t>(r));
+-}
+-
+-template <int imm>
+-inline V128 V128_ShiftRight(const V128 l) {
+-  return _mm_srli_si128(l, imm);
+-}
+-
+-template <int imm>
+-inline int V128_Extract32(const V128 l) {
+-  return _mm_extract_epi32(l, imm);
+-}
+-
+-inline int64_t V128_Low64(const V128 l) { return _mm_cvtsi128_si64(l); }
+-
+-inline V128 V128_ShiftLeft64(const V128 l, const V128 r) {
+-  return _mm_sll_epi64(l, r);
+-}
+-
+-#elif defined(ABSL_CRC_INTERNAL_HAVE_ARM_SIMD)
+-
+-inline uint32_t CRC32_u8(uint32_t crc, uint8_t v) { return __crc32cb(crc, v); }
+-
+-inline uint32_t CRC32_u16(uint32_t crc, uint16_t v) {
+-  return __crc32ch(crc, v);
+-}
+-
+-inline uint32_t CRC32_u32(uint32_t crc, uint32_t v) {
+-  return __crc32cw(crc, v);
+-}
+-
+-inline uint32_t CRC32_u64(uint32_t crc, uint64_t v) {
+-  return __crc32cd(crc, v);
+-}
+-
+-inline V128 V128_Load(const V128* src) {
+-  return vld1q_u64(reinterpret_cast<const uint64_t*>(src));
+-}
+-
+-inline V128 V128_LoadU(const V128* src) {
+-  return vld1q_u64(reinterpret_cast<const uint64_t*>(src));
+-}
+-
+-// Using inline assembly as clang does not generate the pmull2 instruction and
+-// performance drops by 15-20%.
+-// TODO(b/193678732): Investigate why the compiler decides not to generate
+-// such instructions and why it becomes so much worse.
+-inline V128 V128_PMulHi(const V128 l, const V128 r) {
+-  uint64x2_t res;
+-  __asm__ __volatile__("pmull2 %0.1q, %1.2d, %2.2d \n\t"
+-                       : "=w"(res)
+-                       : "w"(l), "w"(r));
+-  return res;
+-}
+-
+-inline V128 V128_PMulLow(const V128 l, const V128 r) {
+-  return reinterpret_cast<V128>(vmull_p64(
+-      reinterpret_cast<poly64_t>(vget_low_p64(vreinterpretq_p64_u64(l))),
+-      reinterpret_cast<poly64_t>(vget_low_p64(vreinterpretq_p64_u64(r)))));
+-}
+-
+-inline V128 V128_PMul01(const V128 l, const V128 r) {
+-  return reinterpret_cast<V128>(vmull_p64(
+-      reinterpret_cast<poly64_t>(vget_high_p64(vreinterpretq_p64_u64(l))),
+-      reinterpret_cast<poly64_t>(vget_low_p64(vreinterpretq_p64_u64(r)))));
+-}
+-
+-inline V128 V128_PMul10(const V128 l, const V128 r) {
+-  return reinterpret_cast<V128>(vmull_p64(
+-      reinterpret_cast<poly64_t>(vget_low_p64(vreinterpretq_p64_u64(l))),
+-      reinterpret_cast<poly64_t>(vget_high_p64(vreinterpretq_p64_u64(r)))));
+-}
+-
+-inline V128 V128_Xor(const V128 l, const V128 r) { return veorq_u64(l, r); }
+-
+-inline V128 V128_And(const V128 l, const V128 r) { return vandq_u64(l, r); }
+-
+-inline V128 V128_From2x64(const uint64_t l, const uint64_t r) {
+-  return vcombine_u64(vcreate_u64(r), vcreate_u64(l));
+-}
+-
+-template <int imm>
+-inline V128 V128_ShiftRight(const V128 l) {
+-  return vreinterpretq_u64_s8(
+-      vextq_s8(vreinterpretq_s8_u64(l), vdupq_n_s8(0), imm));
+-}
+-
+-template <int imm>
+-inline int V128_Extract32(const V128 l) {
+-  return vgetq_lane_s32(vreinterpretq_s32_u64(l), imm);
+-}
+-
+-inline int64_t V128_Low64(const V128 l) {
+-  return vgetq_lane_s64(vreinterpretq_s64_u64(l), 0);
+-}
+-
+-inline V128 V128_ShiftLeft64(const V128 l, const V128 r) {
+-  return vshlq_u64(l, vreinterpretq_s64_u64(r));
+-}
+-
+-#endif
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC32_X86_ARM_COMBINED_SIMD_H_
+diff --git a/absl/crc/internal/crc32c.h b/absl/crc/internal/crc32c.h
+deleted file mode 100644
+index 34027c5..0000000
+--- a/absl/crc/internal/crc32c.h
++++ /dev/null
+@@ -1,39 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC32C_H_
+-#define ABSL_CRC_INTERNAL_CRC32C_H_
+-
+-#include "absl/base/config.h"
+-#include "absl/crc/crc32c.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-// Modifies a CRC32 value by removing `length` bytes with a value of 0 from
+-// the end of the string.
+-//
+-// This is the inverse operation of ExtendCrc32cByZeroes().
+-//
+-// This operation has a runtime cost of O(log(`length`))
+-//
+-// Internal implementation detail, exposed for testing only.
+-crc32c_t UnextendCrc32cByZeroes(crc32c_t initial_crc, size_t length);
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC32C_H_
+diff --git a/absl/crc/internal/crc32c_inline.h b/absl/crc/internal/crc32c_inline.h
+deleted file mode 100644
+index 6236c10..0000000
+--- a/absl/crc/internal/crc32c_inline.h
++++ /dev/null
+@@ -1,72 +0,0 @@
+-// Copyright 2022 The Abseil Authors.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC32C_INLINE_H_
+-#define ABSL_CRC_INTERNAL_CRC32C_INLINE_H_
+-
+-#include <cstdint>
+-
+-#include "absl/base/config.h"
+-#include "absl/base/internal/endian.h"
+-#include "absl/crc/internal/crc32_x86_arm_combined_simd.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-// CRC32C implementation optimized for small inputs.
+-// Either computes crc and return true, or if there is
+-// no hardware support does nothing and returns false.
+-inline bool ExtendCrc32cInline(uint32_t* crc, const char* p, size_t n) {
+-#if defined(ABSL_CRC_INTERNAL_HAVE_ARM_SIMD) || \
+-    defined(ABSL_CRC_INTERNAL_HAVE_X86_SIMD)
+-  constexpr uint32_t kCrc32Xor = 0xffffffffU;
+-  *crc ^= kCrc32Xor;
+-  if (n & 1) {
+-    *crc = CRC32_u8(*crc, static_cast<uint8_t>(*p));
+-    n--;
+-    p++;
+-  }
+-  if (n & 2) {
+-    *crc = CRC32_u16(*crc, absl::little_endian::Load16(p));
+-    n -= 2;
+-    p += 2;
+-  }
+-  if (n & 4) {
+-    *crc = CRC32_u32(*crc, absl::little_endian::Load32(p));
+-    n -= 4;
+-    p += 4;
+-  }
+-  while (n) {
+-    *crc = CRC32_u64(*crc, absl::little_endian::Load64(p));
+-    n -= 8;
+-    p += 8;
+-  }
+-  *crc ^= kCrc32Xor;
+-  return true;
+-#else
+-  // No hardware support, signal the need to fallback.
+-  static_cast<void>(crc);
+-  static_cast<void>(p);
+-  static_cast<void>(n);
+-  return false;
+-#endif  // defined(ABSL_CRC_INTERNAL_HAVE_ARM_SIMD) ||
+-        // defined(ABSL_CRC_INTERNAL_HAVE_X86_SIMD)
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC32C_INLINE_H_
+diff --git a/absl/crc/internal/crc_internal.h b/absl/crc/internal/crc_internal.h
+deleted file mode 100644
+index 0611b38..0000000
+--- a/absl/crc/internal/crc_internal.h
++++ /dev/null
+@@ -1,179 +0,0 @@
+-// Copyright 2022 The Abseil Authors.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC_INTERNAL_H_
+-#define ABSL_CRC_INTERNAL_CRC_INTERNAL_H_
+-
+-#include <cstdint>
+-#include <memory>
+-#include <vector>
+-
+-#include "absl/base/internal/raw_logging.h"
+-#include "absl/crc/internal/crc.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-
+-namespace crc_internal {
+-
+-// Prefetch constants used in some Extend() implementations
+-constexpr int kPrefetchHorizon = ABSL_CACHELINE_SIZE * 4;  // Prefetch this far
+-// Shorter prefetch distance for smaller buffers
+-constexpr int kPrefetchHorizonMedium = ABSL_CACHELINE_SIZE * 1;
+-static_assert(kPrefetchHorizon >= 64, "CRCPrefetchHorizon less than loop len");
+-
+-// We require the Scramble() function:
+-//  - to be reversible (Unscramble() must exist)
+-//  - to be non-linear in the polynomial's Galois field (so the CRC of a
+-//    scrambled CRC is not linearly affected by the scrambled CRC, even if
+-//    using the same polynomial)
+-//  - not to be its own inverse.  Preferably, if X=Scramble^N(X) and N!=0, then
+-//    N is large.
+-//  - to be fast.
+-//  - not to change once defined.
+-// We introduce non-linearity in two ways:
+-//     Addition of a constant.
+-//         - The carries introduce non-linearity; we use bits of an irrational
+-//           (phi) to make it unlikely that we introduce no carries.
+-//     Rotate by a constant number of bits.
+-//         - We use floor(degree/2)+1, which does not divide the degree, and
+-//           splits the bits nearly evenly, which makes it less likely the
+-//           halves will be the same or one will be all zeroes.
+-// We do both things to improve the chances of non-linearity in the face of
+-// bit patterns with low numbers of bits set, while still being fast.
+-// Below is the constant that we add.  The bits are the first 128 bits of the
+-// fractional part of phi, with a 1 ored into the bottom bit to maximize the
+-// cycle length of repeated adds.
+-constexpr uint64_t kScrambleHi = (static_cast<uint64_t>(0x4f1bbcdcU) << 32) |
+-                                 static_cast<uint64_t>(0xbfa53e0aU);
+-constexpr uint64_t kScrambleLo = (static_cast<uint64_t>(0xf9ce6030U) << 32) |
+-                                 static_cast<uint64_t>(0x2e76e41bU);
+-
+-class CRCImpl : public CRC {  // Implemention of the abstract class CRC
+- public:
+-  using Uint32By256 = uint32_t[256];
+-
+-  CRCImpl() {}
+-  ~CRCImpl() override = default;
+-
+-  // The internal version of CRC::New().
+-  static CRCImpl* NewInternal();
+-
+-  void Empty(uint32_t* crc) const override;
+-
+-  // Fill in a table for updating a CRC by one word of 'word_size' bytes
+-  // [last_lo, last_hi] contains the answer if the last bit in the word
+-  // is set.
+-  static void FillWordTable(uint32_t poly, uint32_t last, int word_size,
+-                            Uint32By256* t);
+-
+-  // Build the table for extending by zeroes, returning the number of entries.
+-  // For a in {1, 2, ..., ZEROES_BASE-1}, b in {0, 1, 2, 3, ...},
+-  // entry j=a-1+(ZEROES_BASE-1)*b
+-  // contains a polynomial Pi such that multiplying
+-  // a CRC by Pi mod P, where P is the CRC polynomial, is equivalent to
+-  // appending a*2**(ZEROES_BASE_LG*b) zero bytes to the original string.
+-  static int FillZeroesTable(uint32_t poly, Uint32By256* t);
+-
+-  virtual void InitTables() = 0;
+-
+- private:
+-  CRCImpl(const CRCImpl&) = delete;
+-  CRCImpl& operator=(const CRCImpl&) = delete;
+-};
+-
+-// This is the 32-bit implementation.  It handles all sizes from 8 to 32.
+-class CRC32 : public CRCImpl {
+- public:
+-  CRC32() {}
+-  ~CRC32() override {}
+-
+-  void Extend(uint32_t* crc, const void* bytes, size_t length) const override;
+-  void ExtendByZeroes(uint32_t* crc, size_t length) const override;
+-  void Scramble(uint32_t* crc) const override;
+-  void Unscramble(uint32_t* crc) const override;
+-  void UnextendByZeroes(uint32_t* crc, size_t length) const override;
+-
+-  void InitTables() override;
+-
+- private:
+-  // Common implementation guts for ExtendByZeroes and UnextendByZeroes().
+-  //
+-  // zeroes_table is a table as returned by FillZeroesTable(), containing
+-  // polynomials representing CRCs of strings-of-zeros of various lenghts,
+-  // and which can be combined by polynomial multiplication.  poly_table is
+-  // a table of CRC byte extension values.  These tables are determined by
+-  // the generator polynomial.
+-  //
+-  // These will be set to reverse_zeroes_ and reverse_table0_ for Unextend, and
+-  // CRC32::zeroes_ and CRC32::table0_ for Extend.
+-  void ExtendByZeroesImpl(uint32_t* crc, size_t length,
+-                          const uint32_t zeroes_table[256],
+-                          const uint32_t poly_table[256]) const;
+-
+-  uint32_t table0_[256];  // table of byte extensions
+-  uint32_t zeroes_[256];  // table of zero extensions
+-
+-  // table of 4-byte extensions shifted by 12 bytes of zeroes
+-  uint32_t table_[4][256];
+-
+-  // Reverse lookup tables, using the alternate polynomial used by
+-  // UnextendByZeroes().
+-  uint32_t reverse_table0_[256];  // table of reverse byte extensions
+-  uint32_t reverse_zeroes_[256];  // table of reverse zero extensions
+-
+-  CRC32(const CRC32&) = delete;
+-  CRC32& operator=(const CRC32&) = delete;
+-};
+-
+-// Helpers
+-
+-// Return a bit mask containing len 1-bits.
+-// Requires 0 < len <= sizeof(T)
+-template <typename T>
+-T MaskOfLength(int len) {
+-  // shift 2 by len-1 rather than 1 by len because shifts of wordsize
+-  // are undefined.
+-  return (T(2) << (len - 1)) - 1;
+-}
+-
+-// Rotate low-order "width" bits of "in" right by "r" bits,
+-// setting other bits in word to arbitrary values.
+-template <typename T>
+-T RotateRight(T in, int width, int r) {
+-  return (in << (width - r)) | ((in >> r) & MaskOfLength<T>(width - r));
+-}
+-
+-// RoundUp<N>(p) returns the lowest address >= p aligned to an N-byte
+-// boundary.  Requires that N is a power of 2.
+-template <int alignment>
+-const uint8_t* RoundUp(const uint8_t* p) {
+-  static_assert((alignment & (alignment - 1)) == 0, "alignment is not 2^n");
+-  constexpr uintptr_t mask = alignment - 1;
+-  const uintptr_t as_uintptr = reinterpret_cast<uintptr_t>(p);
+-  return reinterpret_cast<const uint8_t*>((as_uintptr + mask) & ~mask);
+-}
+-
+-// Return a newly created CRC32AcceleratedX86ARMCombined if we can use Intel's
+-// or ARM's CRC acceleration for a given polynomial.  Return nullptr otherwise.
+-CRCImpl* TryNewCRC32AcceleratedX86ARMCombined();
+-
+-// Return all possible hardware accelerated implementations. For testing only.
+-std::vector<std::unique_ptr<CRCImpl>> NewCRC32AcceleratedX86ARMCombinedAll();
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC_INTERNAL_H_
+diff --git a/absl/crc/internal/crc_memcpy.h b/absl/crc/internal/crc_memcpy.h
+deleted file mode 100644
+index 4909d43..0000000
+--- a/absl/crc/internal/crc_memcpy.h
++++ /dev/null
+@@ -1,119 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_CRC_MEMCPY_H_
+-#define ABSL_CRC_INTERNAL_CRC_MEMCPY_H_
+-
+-#include <cstddef>
+-#include <memory>
+-
+-#include "absl/base/config.h"
+-#include "absl/crc/crc32c.h"
+-
+-// Defined if the class AcceleratedCrcMemcpyEngine exists.
+-#if defined(__x86_64__) && defined(__SSE4_2__)
+-#define ABSL_INTERNAL_HAVE_X86_64_ACCELERATED_CRC_MEMCPY_ENGINE 1
+-#elif defined(_MSC_VER) && defined(__AVX__)
+-#define ABSL_INTERNAL_HAVE_X86_64_ACCELERATED_CRC_MEMCPY_ENGINE 1
+-#endif
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-class CrcMemcpyEngine {
+- public:
+-  virtual ~CrcMemcpyEngine() = default;
+-
+-  virtual crc32c_t Compute(void* __restrict dst, const void* __restrict src,
+-                           std::size_t length, crc32c_t initial_crc) const = 0;
+-
+- protected:
+-  CrcMemcpyEngine() = default;
+-};
+-
+-class CrcMemcpy {
+- public:
+-  static crc32c_t CrcAndCopy(void* __restrict dst, const void* __restrict src,
+-                             std::size_t length,
+-                             crc32c_t initial_crc = crc32c_t{0},
+-                             bool non_temporal = false) {
+-    static const ArchSpecificEngines engines = GetArchSpecificEngines();
+-    auto* engine = non_temporal ? engines.non_temporal : engines.temporal;
+-    return engine->Compute(dst, src, length, initial_crc);
+-  }
+-
+-  // For testing only: get an architecture-specific engine for tests.
+-  static std::unique_ptr<CrcMemcpyEngine> GetTestEngine(int vector,
+-                                                        int integer);
+-
+- private:
+-  struct ArchSpecificEngines {
+-    CrcMemcpyEngine* temporal;
+-    CrcMemcpyEngine* non_temporal;
+-  };
+-
+-  static ArchSpecificEngines GetArchSpecificEngines();
+-};
+-
+-// Fallback CRC-memcpy engine.
+-class FallbackCrcMemcpyEngine : public CrcMemcpyEngine {
+- public:
+-  FallbackCrcMemcpyEngine() = default;
+-  FallbackCrcMemcpyEngine(const FallbackCrcMemcpyEngine&) = delete;
+-  FallbackCrcMemcpyEngine operator=(const FallbackCrcMemcpyEngine&) = delete;
+-
+-  crc32c_t Compute(void* __restrict dst, const void* __restrict src,
+-                   std::size_t length, crc32c_t initial_crc) const override;
+-};
+-
+-// CRC Non-Temporal-Memcpy engine.
+-class CrcNonTemporalMemcpyEngine : public CrcMemcpyEngine {
+- public:
+-  CrcNonTemporalMemcpyEngine() = default;
+-  CrcNonTemporalMemcpyEngine(const CrcNonTemporalMemcpyEngine&) = delete;
+-  CrcNonTemporalMemcpyEngine operator=(const CrcNonTemporalMemcpyEngine&) =
+-      delete;
+-
+-  crc32c_t Compute(void* __restrict dst, const void* __restrict src,
+-                   std::size_t length, crc32c_t initial_crc) const override;
+-};
+-
+-// CRC Non-Temporal-Memcpy AVX engine.
+-class CrcNonTemporalMemcpyAVXEngine : public CrcMemcpyEngine {
+- public:
+-  CrcNonTemporalMemcpyAVXEngine() = default;
+-  CrcNonTemporalMemcpyAVXEngine(const CrcNonTemporalMemcpyAVXEngine&) = delete;
+-  CrcNonTemporalMemcpyAVXEngine operator=(
+-      const CrcNonTemporalMemcpyAVXEngine&) = delete;
+-
+-  crc32c_t Compute(void* __restrict dst, const void* __restrict src,
+-                   std::size_t length, crc32c_t initial_crc) const override;
+-};
+-
+-// Copy source to destination and return the CRC32C of the data copied.  If an
+-// accelerated version is available, use the accelerated version, otherwise use
+-// the generic fallback version.
+-inline crc32c_t Crc32CAndCopy(void* __restrict dst, const void* __restrict src,
+-                              std::size_t length,
+-                              crc32c_t initial_crc = crc32c_t{0},
+-                              bool non_temporal = false) {
+-  return CrcMemcpy::CrcAndCopy(dst, src, length, initial_crc, non_temporal);
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_CRC_MEMCPY_H_
+diff --git a/absl/crc/internal/crc_memcpy_fallback.cc b/absl/crc/internal/crc_memcpy_fallback.cc
+deleted file mode 100644
+index 15b4b05..0000000
+--- a/absl/crc/internal/crc_memcpy_fallback.cc
++++ /dev/null
+@@ -1,75 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include <cstdint>
+-#include <memory>
+-
+-#include "absl/base/config.h"
+-#include "absl/crc/crc32c.h"
+-#include "absl/crc/internal/crc_memcpy.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-absl::crc32c_t FallbackCrcMemcpyEngine::Compute(void* __restrict dst,
+-                                                const void* __restrict src,
+-                                                std::size_t length,
+-                                                crc32c_t initial_crc) const {
+-  constexpr size_t kBlockSize = 8192;
+-  absl::crc32c_t crc = initial_crc;
+-
+-  const char* src_bytes = reinterpret_cast<const char*>(src);
+-  char* dst_bytes = reinterpret_cast<char*>(dst);
+-
+-  // Copy + CRC loop - run 8k chunks until we are out of full chunks.  CRC
+-  // then copy was found to be slightly more efficient in our test cases.
+-  std::size_t offset = 0;
+-  for (; offset + kBlockSize < length; offset += kBlockSize) {
+-    crc = absl::ExtendCrc32c(crc,
+-                             absl::string_view(src_bytes + offset, kBlockSize));
+-    memcpy(dst_bytes + offset, src_bytes + offset, kBlockSize);
+-  }
+-
+-  // Save some work if length is 0.
+-  if (offset < length) {
+-    std::size_t final_copy_size = length - offset;
+-    crc = absl::ExtendCrc32c(
+-        crc, absl::string_view(src_bytes + offset, final_copy_size));
+-    memcpy(dst_bytes + offset, src_bytes + offset, final_copy_size);
+-  }
+-
+-  return crc;
+-}
+-
+-// Compile the following only if we don't have
+-#ifndef ABSL_INTERNAL_HAVE_X86_64_ACCELERATED_CRC_MEMCPY_ENGINE
+-
+-CrcMemcpy::ArchSpecificEngines CrcMemcpy::GetArchSpecificEngines() {
+-  CrcMemcpy::ArchSpecificEngines engines;
+-  engines.temporal = new FallbackCrcMemcpyEngine();
+-  engines.non_temporal = new FallbackCrcMemcpyEngine();
+-  return engines;
+-}
+-
+-std::unique_ptr<CrcMemcpyEngine> CrcMemcpy::GetTestEngine(int /*vector*/,
+-                                                          int /*integer*/) {
+-  return std::make_unique<FallbackCrcMemcpyEngine>();
+-}
+-
+-#endif  // ABSL_INTERNAL_HAVE_X86_64_ACCELERATED_CRC_MEMCPY_ENGINE
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/internal/crc_memcpy_test.cc b/absl/crc/internal/crc_memcpy_test.cc
+deleted file mode 100644
+index bbdcd20..0000000
+--- a/absl/crc/internal/crc_memcpy_test.cc
++++ /dev/null
+@@ -1,169 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/internal/crc_memcpy.h"
+-
+-#include <cstddef>
+-#include <cstdint>
+-#include <cstring>
+-#include <limits>
+-#include <memory>
+-#include <string>
+-#include <utility>
+-
+-#include "gtest/gtest.h"
+-#include "absl/crc/crc32c.h"
+-#include "absl/memory/memory.h"
+-#include "absl/random/distributions.h"
+-#include "absl/random/random.h"
+-#include "absl/strings/str_cat.h"
+-#include "absl/strings/string_view.h"
+-
+-namespace {
+-
+-enum CrcEngine {
+-  X86 = 0,
+-  NONTEMPORAL = 1,
+-  FALLBACK = 2,
+-};
+-
+-// Correctness tests:
+-// - Every source/destination byte alignment 0-15, every size 0-511 bytes
+-// - Arbitrarily aligned source, large size
+-template <size_t max_size>
+-class CrcMemcpyTest : public testing::Test {
+- protected:
+-  CrcMemcpyTest() {
+-    source_ = std::make_unique<char[]>(kSize);
+-    destination_ = std::make_unique<char[]>(kSize);
+-  }
+-  static constexpr size_t kAlignment = 16;
+-  static constexpr size_t kMaxCopySize = max_size;
+-  static constexpr size_t kSize = kAlignment + kMaxCopySize;
+-  std::unique_ptr<char[]> source_;
+-  std::unique_ptr<char[]> destination_;
+-
+-  absl::BitGen gen_;
+-};
+-
+-// Small test is slightly larger 4096 bytes to allow coverage of the "large"
+-// copy function.  The minimum size to exercise all code paths in that function
+-// would be around 256 consecutive tests (getting every possible tail value
+-// and 0-2 small copy loops after the main block), so testing from 4096-4500
+-// will cover all of those code paths multiple times.
+-typedef CrcMemcpyTest<4500> CrcSmallTest;
+-typedef CrcMemcpyTest<(1 << 24)> CrcLargeTest;
+-// Parametrize the small test so that it can be done with all configurations.
+-template <typename ParamsT>
+-class x86ParamTestTemplate : public CrcSmallTest,
+-                             public ::testing::WithParamInterface<ParamsT> {
+- protected:
+-  x86ParamTestTemplate() {
+-    if (GetParam().crc_engine_selector == FALLBACK) {
+-      engine_ = std::make_unique<absl::crc_internal::FallbackCrcMemcpyEngine>();
+-    } else if (GetParam().crc_engine_selector == NONTEMPORAL) {
+-      engine_ =
+-          std::make_unique<absl::crc_internal::CrcNonTemporalMemcpyEngine>();
+-    } else {
+-      engine_ = absl::crc_internal::CrcMemcpy::GetTestEngine(
+-          GetParam().vector_lanes, GetParam().integer_lanes);
+-    }
+-  }
+-
+-  // Convenience method.
+-  ParamsT GetParam() const {
+-    return ::testing::WithParamInterface<ParamsT>::GetParam();
+-  }
+-
+-  std::unique_ptr<absl::crc_internal::CrcMemcpyEngine> engine_;
+-};
+-struct TestParams {
+-  CrcEngine crc_engine_selector = X86;
+-  int vector_lanes = 0;
+-  int integer_lanes = 0;
+-};
+-using x86ParamTest = x86ParamTestTemplate<TestParams>;
+-// SmallCorrectness is designed to exercise every possible set of code paths
+-// in the memcpy code, not including the loop.
+-TEST_P(x86ParamTest, SmallCorrectnessCheckSourceAlignment) {
+-  constexpr size_t kTestSizes[] = {0, 100, 255, 512, 1024, 4000, kMaxCopySize};
+-
+-  for (size_t source_alignment = 0; source_alignment < kAlignment;
+-       source_alignment++) {
+-    for (auto size : kTestSizes) {
+-      char* base_data = static_cast<char*>(source_.get()) + source_alignment;
+-      for (size_t i = 0; i < size; i++) {
+-        *(base_data + i) =
+-            static_cast<char>(absl::Uniform<unsigned char>(gen_));
+-      }
+-      absl::crc32c_t initial_crc =
+-          absl::crc32c_t{absl::Uniform<uint32_t>(gen_)};
+-      absl::crc32c_t experiment_crc =
+-          engine_->Compute(destination_.get(), source_.get() + source_alignment,
+-                           size, initial_crc);
+-      // Check the memory region to make sure it is the same
+-      int mem_comparison =
+-          memcmp(destination_.get(), source_.get() + source_alignment, size);
+-      SCOPED_TRACE(absl::StrCat("Error in memcpy of size: ", size,
+-                                " with source alignment: ", source_alignment));
+-      ASSERT_EQ(mem_comparison, 0);
+-      absl::crc32c_t baseline_crc = absl::ExtendCrc32c(
+-          initial_crc,
+-          absl::string_view(
+-              static_cast<char*>(source_.get()) + source_alignment, size));
+-      ASSERT_EQ(baseline_crc, experiment_crc);
+-    }
+-  }
+-}
+-
+-TEST_P(x86ParamTest, SmallCorrectnessCheckDestAlignment) {
+-  constexpr size_t kTestSizes[] = {0, 100, 255, 512, 1024, 4000, kMaxCopySize};
+-
+-  for (size_t dest_alignment = 0; dest_alignment < kAlignment;
+-       dest_alignment++) {
+-    for (auto size : kTestSizes) {
+-      char* base_data = static_cast<char*>(source_.get());
+-      for (size_t i = 0; i < size; i++) {
+-        *(base_data + i) =
+-            static_cast<char>(absl::Uniform<unsigned char>(gen_));
+-      }
+-      absl::crc32c_t initial_crc =
+-          absl::crc32c_t{absl::Uniform<uint32_t>(gen_)};
+-      absl::crc32c_t experiment_crc =
+-          engine_->Compute(destination_.get() + dest_alignment, source_.get(),
+-                           size, initial_crc);
+-      // Check the memory region to make sure it is the same
+-      int mem_comparison =
+-          memcmp(destination_.get() + dest_alignment, source_.get(), size);
+-      SCOPED_TRACE(absl::StrCat("Error in memcpy of size: ", size,
+-                                " with dest alignment: ", dest_alignment));
+-      ASSERT_EQ(mem_comparison, 0);
+-      absl::crc32c_t baseline_crc = absl::ExtendCrc32c(
+-          initial_crc,
+-          absl::string_view(static_cast<char*>(source_.get()), size));
+-      ASSERT_EQ(baseline_crc, experiment_crc);
+-    }
+-  }
+-}
+-
+-INSTANTIATE_TEST_SUITE_P(x86ParamTest, x86ParamTest,
+-                         ::testing::Values(
+-                             // Tests for configurations that may occur in prod.
+-                             TestParams{X86, 3, 0}, TestParams{X86, 1, 2},
+-                             // Fallback test.
+-                             TestParams{FALLBACK, 0, 0},
+-                             // Non Temporal
+-                             TestParams{NONTEMPORAL, 0, 0}));
+-
+-}  // namespace
+diff --git a/absl/crc/internal/crc_memcpy_x86_64.cc b/absl/crc/internal/crc_memcpy_x86_64.cc
+deleted file mode 100644
+index 66f784d..0000000
+--- a/absl/crc/internal/crc_memcpy_x86_64.cc
++++ /dev/null
+@@ -1,434 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-// Simultaneous memcopy and CRC-32C for x86-64.  Uses integer registers because
+-// XMM registers do not support the CRC instruction (yet).  While copying,
+-// compute the running CRC of the data being copied.
+-//
+-// It is assumed that any CPU running this code has SSE4.2 instructions
+-// available (for CRC32C).  This file will do nothing if that is not true.
+-//
+-// The CRC instruction has a 3-byte latency, and we are stressing the ALU ports
+-// here (unlike a traditional memcopy, which has almost no ALU use), so we will
+-// need to copy in such a way that the CRC unit is used efficiently. We have two
+-// regimes in this code:
+-//  1. For operations of size < kCrcSmallSize, do the CRC then the memcpy
+-//  2. For operations of size > kCrcSmallSize:
+-//      a) compute an initial CRC + copy on a small amount of data to align the
+-//         destination pointer on a 16-byte boundary.
+-//      b) Split the data into 3 main regions and a tail (smaller than 48 bytes)
+-//      c) Do the copy and CRC of the 3 main regions, interleaving (start with
+-//         full cache line copies for each region, then move to single 16 byte
+-//         pieces per region).
+-//      d) Combine the CRCs with CRC32C::Concat.
+-//      e) Copy the tail and extend the CRC with the CRC of the tail.
+-// This method is not ideal for op sizes between ~1k and ~8k because CRC::Concat
+-// takes a significant amount of time.  A medium-sized approach could be added
+-// using 3 CRCs over fixed-size blocks where the zero-extensions required for
+-// CRC32C::Concat can be precomputed.
+-
+-#ifdef __SSE4_2__
+-#include <immintrin.h>
+-#endif
+-
+-#ifdef _MSC_VER
+-#include <intrin.h>
+-#endif
+-
+-#include <array>
+-#include <cstddef>
+-#include <cstdint>
+-#include <type_traits>
+-
+-#include "absl/base/dynamic_annotations.h"
+-#include "absl/base/internal/prefetch.h"
+-#include "absl/base/optimization.h"
+-#include "absl/crc/crc32c.h"
+-#include "absl/crc/internal/cpu_detect.h"
+-#include "absl/crc/internal/crc_memcpy.h"
+-#include "absl/strings/string_view.h"
+-
+-#ifdef ABSL_INTERNAL_HAVE_X86_64_ACCELERATED_CRC_MEMCPY_ENGINE
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-namespace {
+-
+-inline crc32c_t ShortCrcCopy(char* dst, const char* src, std::size_t length,
+-                             crc32c_t crc) {
+-  // Small copy: just go 1 byte at a time: being nice to the branch predictor
+-  // is more important here than anything else
+-  uint32_t crc_uint32 = static_cast<uint32_t>(crc);
+-  for (std::size_t i = 0; i < length; i++) {
+-    uint8_t data = *reinterpret_cast<const uint8_t*>(src);
+-    crc_uint32 = _mm_crc32_u8(crc_uint32, data);
+-    *reinterpret_cast<uint8_t*>(dst) = data;
+-    ++src;
+-    ++dst;
+-  }
+-  return crc32c_t{crc_uint32};
+-}
+-
+-constexpr size_t kIntLoadsPerVec = sizeof(__m128i) / sizeof(uint64_t);
+-
+-// Common function for copying the tails of multiple large regions.
+-template <size_t vec_regions, size_t int_regions>
+-inline void LargeTailCopy(crc32c_t* crcs, char** dst, const char** src,
+-                          size_t region_size, size_t copy_rounds) {
+-  std::array<__m128i, vec_regions> data;
+-  std::array<uint64_t, kIntLoadsPerVec * int_regions> int_data;
+-
+-  while (copy_rounds > 0) {
+-    for (size_t i = 0; i < vec_regions; i++) {
+-      size_t region = i;
+-
+-      auto* vsrc =
+-          reinterpret_cast<const __m128i*>(*src + region_size * region);
+-      auto* vdst = reinterpret_cast<__m128i*>(*dst + region_size * region);
+-
+-      // Load the blocks, unaligned
+-      data[i] = _mm_loadu_si128(vsrc);
+-
+-      // Store the blocks, aligned
+-      _mm_store_si128(vdst, data[i]);
+-
+-      // Compute the running CRC
+-      crcs[region] = crc32c_t{static_cast<uint32_t>(
+-          _mm_crc32_u64(static_cast<uint32_t>(crcs[region]),
+-                        static_cast<uint64_t>(_mm_extract_epi64(data[i], 0))))};
+-      crcs[region] = crc32c_t{static_cast<uint32_t>(
+-          _mm_crc32_u64(static_cast<uint32_t>(crcs[region]),
+-                        static_cast<uint64_t>(_mm_extract_epi64(data[i], 1))))};
+-    }
+-
+-    for (size_t i = 0; i < int_regions; i++) {
+-      size_t region = vec_regions + i;
+-
+-      auto* usrc =
+-          reinterpret_cast<const uint64_t*>(*src + region_size * region);
+-      auto* udst = reinterpret_cast<uint64_t*>(*dst + region_size * region);
+-
+-      for (size_t j = 0; j < kIntLoadsPerVec; j++) {
+-        size_t data_index = i * kIntLoadsPerVec + j;
+-
+-        int_data[data_index] = *(usrc + j);
+-        crcs[region] = crc32c_t{static_cast<uint32_t>(_mm_crc32_u64(
+-            static_cast<uint32_t>(crcs[region]), int_data[data_index]))};
+-
+-        *(udst + j) = int_data[data_index];
+-      }
+-    }
+-
+-    // Increment pointers
+-    *src += sizeof(__m128i);
+-    *dst += sizeof(__m128i);
+-    --copy_rounds;
+-  }
+-}
+-
+-}  // namespace
+-
+-template <size_t vec_regions, size_t int_regions>
+-class AcceleratedCrcMemcpyEngine : public CrcMemcpyEngine {
+- public:
+-  AcceleratedCrcMemcpyEngine() = default;
+-  AcceleratedCrcMemcpyEngine(const AcceleratedCrcMemcpyEngine&) = delete;
+-  AcceleratedCrcMemcpyEngine operator=(const AcceleratedCrcMemcpyEngine&) =
+-      delete;
+-
+-  crc32c_t Compute(void* __restrict dst, const void* __restrict src,
+-                   std::size_t length, crc32c_t initial_crc) const override;
+-};
+-
+-template <size_t vec_regions, size_t int_regions>
+-crc32c_t AcceleratedCrcMemcpyEngine<vec_regions, int_regions>::Compute(
+-    void* __restrict dst, const void* __restrict src, std::size_t length,
+-    crc32c_t initial_crc) const {
+-  constexpr std::size_t kRegions = vec_regions + int_regions;
+-  constexpr uint32_t kCrcDataXor = uint32_t{0xffffffff};
+-  constexpr std::size_t kBlockSize = sizeof(__m128i);
+-  constexpr std::size_t kCopyRoundSize = kRegions * kBlockSize;
+-
+-  // Number of blocks per cacheline.
+-  constexpr std::size_t kBlocksPerCacheLine = ABSL_CACHELINE_SIZE / kBlockSize;
+-
+-  char* dst_bytes = static_cast<char*>(dst);
+-  const char* src_bytes = static_cast<const char*>(src);
+-
+-  // Make sure that one prefetch per big block is enough to cover the whole
+-  // dataset, and we don't prefetch too much.
+-  static_assert(ABSL_CACHELINE_SIZE % kBlockSize == 0,
+-                "Cache lines are not divided evenly into blocks, may have "
+-                "unintended behavior!");
+-
+-  // Experimentally-determined boundary between a small and large copy.
+-  // Below this number, spin-up and concatenation of CRCs takes enough time that
+-  // it kills the throughput gains of using 3 regions and wide vectors.
+-  constexpr size_t kCrcSmallSize = 256;
+-
+-  // Experimentally-determined prefetch distance.  Main loop copies will
+-  // prefeth data 2 cache lines ahead.
+-  constexpr std::size_t kPrefetchAhead = 2 * ABSL_CACHELINE_SIZE;
+-
+-  // Small-size CRC-memcpy : just do CRC + memcpy
+-  if (length < kCrcSmallSize) {
+-    crc32c_t crc =
+-        ExtendCrc32c(initial_crc, absl::string_view(src_bytes, length));
+-    memcpy(dst, src, length);
+-    return crc;
+-  }
+-
+-  // Start work on the CRC: undo the XOR from the previous calculation or set up
+-  // the initial value of the CRC.
+-  // initial_crc ^= kCrcDataXor;
+-  initial_crc = crc32c_t{static_cast<uint32_t>(initial_crc) ^ kCrcDataXor};
+-
+-  // Do an initial alignment copy, so we can use aligned store instructions to
+-  // the destination pointer.  We align the destination pointer because the
+-  // penalty for an unaligned load is small compared to the penalty of an
+-  // unaligned store on modern CPUs.
+-  std::size_t bytes_from_last_aligned =
+-      reinterpret_cast<uintptr_t>(dst) & (kBlockSize - 1);
+-  if (bytes_from_last_aligned != 0) {
+-    std::size_t bytes_for_alignment = kBlockSize - bytes_from_last_aligned;
+-
+-    // Do the short-sized copy and CRC.
+-    initial_crc =
+-        ShortCrcCopy(dst_bytes, src_bytes, bytes_for_alignment, initial_crc);
+-    src_bytes += bytes_for_alignment;
+-    dst_bytes += bytes_for_alignment;
+-    length -= bytes_for_alignment;
+-  }
+-
+-  // We are going to do the copy and CRC in kRegions regions to make sure that
+-  // we can saturate the CRC unit.  The CRCs will be combined at the end of the
+-  // run.  Copying will use the SSE registers, and we will extract words from
+-  // the SSE registers to add to the CRC.  Initially, we run the loop one full
+-  // cache line per region at a time, in order to insert prefetches.
+-
+-  // Initialize CRCs for kRegions regions.
+-  crc32c_t crcs[kRegions];
+-  crcs[0] = initial_crc;
+-  for (size_t i = 1; i < kRegions; i++) {
+-    crcs[i] = crc32c_t{kCrcDataXor};
+-  }
+-
+-  // Find the number of rounds to copy and the region size.  Also compute the
+-  // tail size here.
+-  size_t copy_rounds = length / kCopyRoundSize;
+-
+-  // Find the size of each region and the size of the tail.
+-  const std::size_t region_size = copy_rounds * kBlockSize;
+-  const std::size_t tail_size = length - (kRegions * region_size);
+-
+-  // Holding registers for data in each region.
+-  std::array<__m128i, vec_regions> vec_data;
+-  std::array<uint64_t, int_regions * kIntLoadsPerVec> int_data;
+-
+-  // Main loop.
+-  while (copy_rounds > kBlocksPerCacheLine) {
+-    // Prefetch kPrefetchAhead bytes ahead of each pointer.
+-    for (size_t i = 0; i < kRegions; i++) {
+-      absl::base_internal::PrefetchT0(src_bytes + kPrefetchAhead +
+-                                      region_size * i);
+-      absl::base_internal::PrefetchT0(dst_bytes + kPrefetchAhead +
+-                                      region_size * i);
+-    }
+-
+-    // Load and store data, computing CRC on the way.
+-    for (size_t i = 0; i < kBlocksPerCacheLine; i++) {
+-      // Copy and CRC the data for the CRC regions.
+-      for (size_t j = 0; j < vec_regions; j++) {
+-        // Cycle which regions get vector load/store and integer load/store, to
+-        // engage prefetching logic around vector load/stores and save issue
+-        // slots by using the integer registers.
+-        size_t region = (j + i) % kRegions;
+-
+-        auto* vsrc =
+-            reinterpret_cast<const __m128i*>(src_bytes + region_size * region);
+-        auto* vdst =
+-            reinterpret_cast<__m128i*>(dst_bytes + region_size * region);
+-
+-        // Load and CRC data.
+-        vec_data[j] = _mm_loadu_si128(vsrc + i);
+-        crcs[region] = crc32c_t{static_cast<uint32_t>(_mm_crc32_u64(
+-            static_cast<uint32_t>(crcs[region]),
+-            static_cast<uint64_t>(_mm_extract_epi64(vec_data[j], 0))))};
+-        crcs[region] = crc32c_t{static_cast<uint32_t>(_mm_crc32_u64(
+-            static_cast<uint32_t>(crcs[region]),
+-            static_cast<uint64_t>(_mm_extract_epi64(vec_data[j], 1))))};
+-
+-        // Store the data.
+-        _mm_store_si128(vdst + i, vec_data[j]);
+-      }
+-
+-      // Preload the partial CRCs for the CLMUL subregions.
+-      for (size_t j = 0; j < int_regions; j++) {
+-        // Cycle which regions get vector load/store and integer load/store, to
+-        // engage prefetching logic around vector load/stores and save issue
+-        // slots by using the integer registers.
+-        size_t region = (j + vec_regions + i) % kRegions;
+-
+-        auto* usrc =
+-            reinterpret_cast<const uint64_t*>(src_bytes + region_size * region);
+-        auto* udst =
+-            reinterpret_cast<uint64_t*>(dst_bytes + region_size * region);
+-
+-        for (size_t k = 0; k < kIntLoadsPerVec; k++) {
+-          size_t data_index = j * kIntLoadsPerVec + k;
+-
+-          // Load and CRC the data.
+-          int_data[data_index] = *(usrc + i * kIntLoadsPerVec + k);
+-          crcs[region] = crc32c_t{static_cast<uint32_t>(_mm_crc32_u64(
+-              static_cast<uint32_t>(crcs[region]), int_data[data_index]))};
+-
+-          // Store the data.
+-          *(udst + i * kIntLoadsPerVec + k) = int_data[data_index];
+-        }
+-      }
+-    }
+-
+-    // Increment pointers
+-    src_bytes += kBlockSize * kBlocksPerCacheLine;
+-    dst_bytes += kBlockSize * kBlocksPerCacheLine;
+-    copy_rounds -= kBlocksPerCacheLine;
+-  }
+-
+-  // Copy and CRC the tails of each region.
+-  LargeTailCopy<vec_regions, int_regions>(crcs, &dst_bytes, &src_bytes,
+-                                          region_size, copy_rounds);
+-
+-  // Move the source and destination pointers to the end of the region
+-  src_bytes += region_size * (kRegions - 1);
+-  dst_bytes += region_size * (kRegions - 1);
+-
+-  // Finalize the first CRCs: XOR the internal CRCs by the XOR mask to undo the
+-  // XOR done before doing block copy + CRCs.
+-  for (size_t i = 0; i + 1 < kRegions; i++) {
+-    crcs[i] = crc32c_t{static_cast<uint32_t>(crcs[i]) ^ kCrcDataXor};
+-  }
+-
+-  // Build a CRC of the first kRegions - 1 regions.
+-  crc32c_t full_crc = crcs[0];
+-  for (size_t i = 1; i + 1 < kRegions; i++) {
+-    full_crc = ConcatCrc32c(full_crc, crcs[i], region_size);
+-  }
+-
+-  // Copy and CRC the tail through the XMM registers.
+-  std::size_t tail_blocks = tail_size / kBlockSize;
+-  LargeTailCopy<0, 1>(&crcs[kRegions - 1], &dst_bytes, &src_bytes, 0,
+-                      tail_blocks);
+-
+-  // Final tail copy for under 16 bytes.
+-  crcs[kRegions - 1] =
+-      ShortCrcCopy(dst_bytes, src_bytes, tail_size - tail_blocks * kBlockSize,
+-                   crcs[kRegions - 1]);
+-
+-  // Finalize and concatenate the final CRC, then return.
+-  crcs[kRegions - 1] =
+-      crc32c_t{static_cast<uint32_t>(crcs[kRegions - 1]) ^ kCrcDataXor};
+-  return ConcatCrc32c(full_crc, crcs[kRegions - 1], region_size + tail_size);
+-}
+-
+-CrcMemcpy::ArchSpecificEngines CrcMemcpy::GetArchSpecificEngines() {
+-#ifdef UNDEFINED_BEHAVIOR_SANITIZER
+-  // UBSAN does not play nicely with unaligned loads (which we use a lot).
+-  // Get the underlying architecture.
+-  CpuType cpu_type = GetCpuType();
+-  switch (cpu_type) {
+-    case CpuType::kUnknown:
+-    case CpuType::kAmdRome:
+-    case CpuType::kAmdNaples:
+-    case CpuType::kIntelCascadelakeXeon:
+-    case CpuType::kIntelSkylakeXeon:
+-    case CpuType::kIntelSkylake:
+-    case CpuType::kIntelBroadwell:
+-    case CpuType::kIntelHaswell:
+-    case CpuType::kIntelIvybridge:
+-      return {
+-          .temporal = new FallbackCrcMemcpyEngine(),
+-          .non_temporal = new CrcNonTemporalMemcpyAVXEngine(),
+-      };
+-    // INTEL_SANDYBRIDGE performs better with SSE than AVX.
+-    case CpuType::kIntelSandybridge:
+-      return {
+-          .temporal = new FallbackCrcMemcpyEngine(),
+-          .non_temporal = new CrcNonTemporalMemcpyEngine(),
+-      };
+-    default:
+-      return {.temporal = new FallbackCrcMemcpyEngine(),
+-              .non_temporal = new FallbackCrcMemcpyEngine()};
+-  }
+-#else
+-  // Get the underlying architecture.
+-  CpuType cpu_type = GetCpuType();
+-  switch (cpu_type) {
+-    // On Zen 2, PEXTRQ uses 2 micro-ops, including one on the vector store port
+-    // which data movement from the vector registers to the integer registers
+-    // (where CRC32C happens) to crowd the same units as vector stores.  As a
+-    // result, using that path exclusively causes bottlenecking on this port.
+-    // We can avoid this bottleneck by using the integer side of the CPU for
+-    // most operations rather than the vector side.  We keep a vector region to
+-    // engage some of the prefetching logic in the cache hierarchy which seems
+-    // to give vector instructions special treatment.  These prefetch units see
+-    // strided access to each region, and do the right thing.
+-    case CpuType::kAmdRome:
+-    case CpuType::kAmdNaples:
+-      return {
+-          .temporal = new AcceleratedCrcMemcpyEngine<1, 2>(),
+-          .non_temporal = new CrcNonTemporalMemcpyAVXEngine(),
+-      };
+-    // PCLMULQDQ is slow and we don't have wide enough issue width to take
+-    // advantage of it.  For an unknown architecture, don't risk using CLMULs.
+-    case CpuType::kIntelCascadelakeXeon:
+-    case CpuType::kIntelSkylakeXeon:
+-    case CpuType::kIntelSkylake:
+-    case CpuType::kIntelBroadwell:
+-    case CpuType::kIntelHaswell:
+-    case CpuType::kIntelIvybridge:
+-      return {
+-          .temporal = new AcceleratedCrcMemcpyEngine<3, 0>(),
+-          .non_temporal = new CrcNonTemporalMemcpyAVXEngine(),
+-      };
+-    // INTEL_SANDYBRIDGE performs better with SSE than AVX.
+-    case CpuType::kIntelSandybridge:
+-      return {
+-          .temporal = new AcceleratedCrcMemcpyEngine<3, 0>(),
+-          .non_temporal = new CrcNonTemporalMemcpyEngine(),
+-      };
+-    default:
+-      return {.temporal = new FallbackCrcMemcpyEngine(),
+-              .non_temporal = new FallbackCrcMemcpyEngine()};
+-  }
+-#endif  // UNDEFINED_BEHAVIOR_SANITIZER
+-}
+-
+-// For testing, allow the user to specify which engine they want.
+-std::unique_ptr<CrcMemcpyEngine> CrcMemcpy::GetTestEngine(int vector,
+-                                                          int integer) {
+-  if (vector == 3 && integer == 0) {
+-    return std::make_unique<AcceleratedCrcMemcpyEngine<3, 0>>();
+-  } else if (vector == 1 && integer == 2) {
+-    return std::make_unique<AcceleratedCrcMemcpyEngine<1, 2>>();
+-  }
+-  return nullptr;
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_INTERNAL_HAVE_X86_64_ACCELERATED_CRC_MEMCPY_ENGINE
+diff --git a/absl/crc/internal/crc_non_temporal_memcpy.cc b/absl/crc/internal/crc_non_temporal_memcpy.cc
+deleted file mode 100644
+index adc867f..0000000
+--- a/absl/crc/internal/crc_non_temporal_memcpy.cc
++++ /dev/null
+@@ -1,93 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include <cstdint>
+-
+-#include "absl/base/config.h"
+-#include "absl/crc/crc32c.h"
+-#include "absl/crc/internal/crc_memcpy.h"
+-#include "absl/crc/internal/non_temporal_memcpy.h"
+-#include "absl/strings/string_view.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-crc32c_t CrcNonTemporalMemcpyEngine::Compute(void* __restrict dst,
+-                                             const void* __restrict src,
+-                                             std::size_t length,
+-                                             crc32c_t initial_crc) const {
+-  constexpr size_t kBlockSize = 8192;
+-  crc32c_t crc = initial_crc;
+-
+-  const char* src_bytes = reinterpret_cast<const char*>(src);
+-  char* dst_bytes = reinterpret_cast<char*>(dst);
+-
+-  // Copy + CRC loop - run 8k chunks until we are out of full chunks.
+-  std::size_t offset = 0;
+-  for (; offset + kBlockSize < length; offset += kBlockSize) {
+-    crc = absl::ExtendCrc32c(crc,
+-                             absl::string_view(src_bytes + offset, kBlockSize));
+-    non_temporal_store_memcpy(dst_bytes + offset, src_bytes + offset,
+-                              kBlockSize);
+-  }
+-
+-  // Save some work if length is 0.
+-  if (offset < length) {
+-    std::size_t final_copy_size = length - offset;
+-    crc = ExtendCrc32c(crc,
+-                       absl::string_view(src_bytes + offset, final_copy_size));
+-
+-    non_temporal_store_memcpy(dst_bytes + offset, src_bytes + offset,
+-                              final_copy_size);
+-  }
+-
+-  return crc;
+-}
+-
+-crc32c_t CrcNonTemporalMemcpyAVXEngine::Compute(void* __restrict dst,
+-                                                const void* __restrict src,
+-                                                std::size_t length,
+-                                                crc32c_t initial_crc) const {
+-  constexpr size_t kBlockSize = 8192;
+-  crc32c_t crc = initial_crc;
+-
+-  const char* src_bytes = reinterpret_cast<const char*>(src);
+-  char* dst_bytes = reinterpret_cast<char*>(dst);
+-
+-  // Copy + CRC loop - run 8k chunks until we are out of full chunks.
+-  std::size_t offset = 0;
+-  for (; offset + kBlockSize < length; offset += kBlockSize) {
+-    crc = ExtendCrc32c(crc, absl::string_view(src_bytes + offset, kBlockSize));
+-
+-    non_temporal_store_memcpy_avx(dst_bytes + offset, src_bytes + offset,
+-                                  kBlockSize);
+-  }
+-
+-  // Save some work if length is 0.
+-  if (offset < length) {
+-    std::size_t final_copy_size = length - offset;
+-    crc = ExtendCrc32c(crc,
+-                       absl::string_view(src_bytes + offset, final_copy_size));
+-
+-    non_temporal_store_memcpy_avx(dst_bytes + offset, src_bytes + offset,
+-                                  final_copy_size);
+-  }
+-
+-  return crc;
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/internal/crc_x86_arm_combined.cc b/absl/crc/internal/crc_x86_arm_combined.cc
+deleted file mode 100644
+index d71191e..0000000
+--- a/absl/crc/internal/crc_x86_arm_combined.cc
++++ /dev/null
+@@ -1,725 +0,0 @@
+-// Copyright 2022 The Abseil Authors.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-// Hardware accelerated CRC32 computation on Intel and ARM architecture.
+-
+-#include <cstddef>
+-#include <cstdint>
+-
+-#include "absl/base/attributes.h"
+-#include "absl/base/config.h"
+-#include "absl/base/dynamic_annotations.h"
+-#include "absl/base/internal/endian.h"
+-#include "absl/base/internal/prefetch.h"
+-#include "absl/crc/internal/cpu_detect.h"
+-#include "absl/crc/internal/crc.h"
+-#include "absl/crc/internal/crc32_x86_arm_combined_simd.h"
+-#include "absl/crc/internal/crc_internal.h"
+-#include "absl/memory/memory.h"
+-#include "absl/numeric/bits.h"
+-
+-#if defined(ABSL_CRC_INTERNAL_HAVE_ARM_SIMD) || \
+-    defined(ABSL_CRC_INTERNAL_HAVE_X86_SIMD)
+-#define ABSL_INTERNAL_CAN_USE_SIMD_CRC32C
+-#endif
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-#if defined(ABSL_INTERNAL_CAN_USE_SIMD_CRC32C)
+-
+-// Implementation details not exported outside of file
+-namespace {
+-
+-// Some machines have CRC acceleration hardware.
+-// We can do a faster version of Extend() on such machines.
+-class CRC32AcceleratedX86ARMCombined : public CRC32 {
+- public:
+-  CRC32AcceleratedX86ARMCombined() {}
+-  ~CRC32AcceleratedX86ARMCombined() override {}
+-  void ExtendByZeroes(uint32_t* crc, size_t length) const override;
+-  uint32_t ComputeZeroConstant(size_t length) const;
+-
+- private:
+-  CRC32AcceleratedX86ARMCombined(const CRC32AcceleratedX86ARMCombined&) =
+-      delete;
+-  CRC32AcceleratedX86ARMCombined& operator=(
+-      const CRC32AcceleratedX86ARMCombined&) = delete;
+-};
+-
+-// Constants for switching between algorithms.
+-// Chosen by comparing speed at different powers of 2.
+-constexpr size_t kSmallCutoff = 256;
+-constexpr size_t kMediumCutoff = 2048;
+-
+-#define ABSL_INTERNAL_STEP1(crc)                      \
+-  do {                                                \
+-    crc = CRC32_u8(static_cast<uint32_t>(crc), *p++); \
+-  } while (0)
+-#define ABSL_INTERNAL_STEP2(crc)                                               \
+-  do {                                                                         \
+-    crc =                                                                      \
+-        CRC32_u16(static_cast<uint32_t>(crc), absl::little_endian::Load16(p)); \
+-    p += 2;                                                                    \
+-  } while (0)
+-#define ABSL_INTERNAL_STEP4(crc)                                               \
+-  do {                                                                         \
+-    crc =                                                                      \
+-        CRC32_u32(static_cast<uint32_t>(crc), absl::little_endian::Load32(p)); \
+-    p += 4;                                                                    \
+-  } while (0)
+-#define ABSL_INTERNAL_STEP8(crc, data)                  \
+-  do {                                                  \
+-    crc = CRC32_u64(static_cast<uint32_t>(crc),         \
+-                    absl::little_endian::Load64(data)); \
+-    data += 8;                                          \
+-  } while (0)
+-#define ABSL_INTERNAL_STEP8BY2(crc0, crc1, p0, p1) \
+-  do {                                             \
+-    ABSL_INTERNAL_STEP8(crc0, p0);                 \
+-    ABSL_INTERNAL_STEP8(crc1, p1);                 \
+-  } while (0)
+-#define ABSL_INTERNAL_STEP8BY3(crc0, crc1, crc2, p0, p1, p2) \
+-  do {                                                       \
+-    ABSL_INTERNAL_STEP8(crc0, p0);                           \
+-    ABSL_INTERNAL_STEP8(crc1, p1);                           \
+-    ABSL_INTERNAL_STEP8(crc2, p2);                           \
+-  } while (0)
+-
+-namespace {
+-
+-uint32_t multiply(uint32_t a, uint32_t b) {
+-  V128 shifts = V128_From2x64(0, 1);
+-  V128 power = V128_From2x64(0, a);
+-  V128 crc = V128_From2x64(0, b);
+-  V128 res = V128_PMulLow(power, crc);
+-
+-  // Combine crc values
+-  res = V128_ShiftLeft64(res, shifts);
+-  return static_cast<uint32_t>(V128_Extract32<1>(res)) ^
+-         CRC32_u32(0, static_cast<uint32_t>(V128_Low64(res)));
+-}
+-
+-// Powers of crc32c polynomial, for faster ExtendByZeros.
+-// Verified against folly:
+-// folly/hash/detail/Crc32CombineDetail.cpp
+-constexpr uint32_t kCRC32CPowers[] = {
+-    0x82f63b78, 0x6ea2d55c, 0x18b8ea18, 0x510ac59a, 0xb82be955, 0xb8fdb1e7,
+-    0x88e56f72, 0x74c360a4, 0xe4172b16, 0x0d65762a, 0x35d73a62, 0x28461564,
+-    0xbf455269, 0xe2ea32dc, 0xfe7740e6, 0xf946610b, 0x3c204f8f, 0x538586e3,
+-    0x59726915, 0x734d5309, 0xbc1ac763, 0x7d0722cc, 0xd289cabe, 0xe94ca9bc,
+-    0x05b74f3f, 0xa51e1f42, 0x40000000, 0x20000000, 0x08000000, 0x00800000,
+-    0x00008000, 0x82f63b78, 0x6ea2d55c, 0x18b8ea18, 0x510ac59a, 0xb82be955,
+-    0xb8fdb1e7, 0x88e56f72, 0x74c360a4, 0xe4172b16, 0x0d65762a, 0x35d73a62,
+-    0x28461564, 0xbf455269, 0xe2ea32dc, 0xfe7740e6, 0xf946610b, 0x3c204f8f,
+-    0x538586e3, 0x59726915, 0x734d5309, 0xbc1ac763, 0x7d0722cc, 0xd289cabe,
+-    0xe94ca9bc, 0x05b74f3f, 0xa51e1f42, 0x40000000, 0x20000000, 0x08000000,
+-    0x00800000, 0x00008000,
+-};
+-
+-}  // namespace
+-
+-// Compute a magic constant, so that multiplying by it is the same as
+-// extending crc by length zeros.
+-uint32_t CRC32AcceleratedX86ARMCombined::ComputeZeroConstant(
+-    size_t length) const {
+-  // Lowest 2 bits are handled separately in ExtendByZeroes
+-  length >>= 2;
+-
+-  int index = absl::countr_zero(length);
+-  uint32_t prev = kCRC32CPowers[index];
+-  length &= length - 1;
+-
+-  while (length) {
+-    // For each bit of length, extend by 2**n zeros.
+-    index = absl::countr_zero(length);
+-    prev = multiply(prev, kCRC32CPowers[index]);
+-    length &= length - 1;
+-  }
+-  return prev;
+-}
+-
+-void CRC32AcceleratedX86ARMCombined::ExtendByZeroes(uint32_t* crc,
+-                                                    size_t length) const {
+-  uint32_t val = *crc;
+-  // Don't bother with multiplication for small length.
+-  switch (length & 3) {
+-    case 0:
+-      break;
+-    case 1:
+-      val = CRC32_u8(val, 0);
+-      break;
+-    case 2:
+-      val = CRC32_u16(val, 0);
+-      break;
+-    case 3:
+-      val = CRC32_u8(val, 0);
+-      val = CRC32_u16(val, 0);
+-      break;
+-  }
+-  if (length > 3) {
+-    val = multiply(val, ComputeZeroConstant(length));
+-  }
+-  *crc = val;
+-}
+-
+-// Taken from Intel paper "Fast CRC Computation for iSCSI Polynomial Using CRC32
+-// Instruction"
+-// https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/crc-iscsi-polynomial-crc32-instruction-paper.pdf
+-// We only need every 4th value, because we unroll loop by 4.
+-constexpr uint64_t kClmulConstants[] = {
+-    0x09e4addf8, 0x0ba4fc28e, 0x00d3b6092, 0x09e4addf8, 0x0ab7aff2a,
+-    0x102f9b8a2, 0x0b9e02b86, 0x00d3b6092, 0x1bf2e8b8a, 0x18266e456,
+-    0x0d270f1a2, 0x0ab7aff2a, 0x11eef4f8e, 0x083348832, 0x0dd7e3b0c,
+-    0x0b9e02b86, 0x0271d9844, 0x1b331e26a, 0x06b749fb2, 0x1bf2e8b8a,
+-    0x0e6fc4e6a, 0x0ce7f39f4, 0x0d7a4825c, 0x0d270f1a2, 0x026f6a60a,
+-    0x12ed0daac, 0x068bce87a, 0x11eef4f8e, 0x1329d9f7e, 0x0b3e32c28,
+-    0x0170076fa, 0x0dd7e3b0c, 0x1fae1cc66, 0x010746f3c, 0x086d8e4d2,
+-    0x0271d9844, 0x0b3af077a, 0x093a5f730, 0x1d88abd4a, 0x06b749fb2,
+-    0x0c9c8b782, 0x0cec3662e, 0x1ddffc5d4, 0x0e6fc4e6a, 0x168763fa6,
+-    0x0b0cd4768, 0x19b1afbc4, 0x0d7a4825c, 0x123888b7a, 0x00167d312,
+-    0x133d7a042, 0x026f6a60a, 0x000bcf5f6, 0x19d34af3a, 0x1af900c24,
+-    0x068bce87a, 0x06d390dec, 0x16cba8aca, 0x1f16a3418, 0x1329d9f7e,
+-    0x19fb2a8b0, 0x02178513a, 0x1a0f717c4, 0x0170076fa,
+-};
+-
+-enum class CutoffStrategy {
+-  // Use 3 CRC streams to fold into 1.
+-  Fold3,
+-  // Unroll CRC instructions for 64 bytes.
+-  Unroll64CRC,
+-};
+-
+-// Base class for CRC32AcceleratedX86ARMCombinedMultipleStreams containing the
+-// methods and data that don't need the template arguments.
+-class CRC32AcceleratedX86ARMCombinedMultipleStreamsBase
+-    : public CRC32AcceleratedX86ARMCombined {
+- protected:
+-  // Update partialCRC with crc of 64 byte block. Calling FinalizePclmulStream
+-  // would produce a single crc checksum, but it is expensive. PCLMULQDQ has a
+-  // high latency, so we run 4 128-bit partial checksums that can be reduced to
+-  // a single value by FinalizePclmulStream later. Computing crc for arbitrary
+-  // polynomialas with PCLMULQDQ is described in Intel paper "Fast CRC
+-  // Computation for Generic Polynomials Using PCLMULQDQ Instruction"
+-  // https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/fast-crc-computation-generic-polynomials-pclmulqdq-paper.pdf
+-  // We are applying it to CRC32C polynomial.
+-  ABSL_ATTRIBUTE_ALWAYS_INLINE void Process64BytesPclmul(
+-      const uint8_t* p, V128* partialCRC) const {
+-    V128 loopMultiplicands = V128_Load(reinterpret_cast<const V128*>(k1k2));
+-
+-    V128 partialCRC1 = partialCRC[0];
+-    V128 partialCRC2 = partialCRC[1];
+-    V128 partialCRC3 = partialCRC[2];
+-    V128 partialCRC4 = partialCRC[3];
+-
+-    V128 tmp1 = V128_PMulHi(partialCRC1, loopMultiplicands);
+-    V128 tmp2 = V128_PMulHi(partialCRC2, loopMultiplicands);
+-    V128 tmp3 = V128_PMulHi(partialCRC3, loopMultiplicands);
+-    V128 tmp4 = V128_PMulHi(partialCRC4, loopMultiplicands);
+-    V128 data1 = V128_LoadU(reinterpret_cast<const V128*>(p + 16 * 0));
+-    V128 data2 = V128_LoadU(reinterpret_cast<const V128*>(p + 16 * 1));
+-    V128 data3 = V128_LoadU(reinterpret_cast<const V128*>(p + 16 * 2));
+-    V128 data4 = V128_LoadU(reinterpret_cast<const V128*>(p + 16 * 3));
+-    partialCRC1 = V128_PMulLow(partialCRC1, loopMultiplicands);
+-    partialCRC2 = V128_PMulLow(partialCRC2, loopMultiplicands);
+-    partialCRC3 = V128_PMulLow(partialCRC3, loopMultiplicands);
+-    partialCRC4 = V128_PMulLow(partialCRC4, loopMultiplicands);
+-    partialCRC1 = V128_Xor(tmp1, partialCRC1);
+-    partialCRC2 = V128_Xor(tmp2, partialCRC2);
+-    partialCRC3 = V128_Xor(tmp3, partialCRC3);
+-    partialCRC4 = V128_Xor(tmp4, partialCRC4);
+-    partialCRC1 = V128_Xor(partialCRC1, data1);
+-    partialCRC2 = V128_Xor(partialCRC2, data2);
+-    partialCRC3 = V128_Xor(partialCRC3, data3);
+-    partialCRC4 = V128_Xor(partialCRC4, data4);
+-    partialCRC[0] = partialCRC1;
+-    partialCRC[1] = partialCRC2;
+-    partialCRC[2] = partialCRC3;
+-    partialCRC[3] = partialCRC4;
+-  }
+-
+-  // Reduce partialCRC produced by Process64BytesPclmul into a single value,
+-  // that represents crc checksum of all the processed bytes.
+-  ABSL_ATTRIBUTE_ALWAYS_INLINE uint64_t
+-  FinalizePclmulStream(V128* partialCRC) const {
+-    V128 partialCRC1 = partialCRC[0];
+-    V128 partialCRC2 = partialCRC[1];
+-    V128 partialCRC3 = partialCRC[2];
+-    V128 partialCRC4 = partialCRC[3];
+-
+-    // Combine 4 vectors of partial crc into a single vector.
+-    V128 reductionMultiplicands =
+-        V128_Load(reinterpret_cast<const V128*>(k5k6));
+-
+-    V128 low = V128_PMulLow(reductionMultiplicands, partialCRC1);
+-    V128 high = V128_PMulHi(reductionMultiplicands, partialCRC1);
+-
+-    partialCRC1 = V128_Xor(low, high);
+-    partialCRC1 = V128_Xor(partialCRC1, partialCRC2);
+-
+-    low = V128_PMulLow(reductionMultiplicands, partialCRC3);
+-    high = V128_PMulHi(reductionMultiplicands, partialCRC3);
+-
+-    partialCRC3 = V128_Xor(low, high);
+-    partialCRC3 = V128_Xor(partialCRC3, partialCRC4);
+-
+-    reductionMultiplicands = V128_Load(reinterpret_cast<const V128*>(k3k4));
+-
+-    low = V128_PMulLow(reductionMultiplicands, partialCRC1);
+-    high = V128_PMulHi(reductionMultiplicands, partialCRC1);
+-    V128 fullCRC = V128_Xor(low, high);
+-    fullCRC = V128_Xor(fullCRC, partialCRC3);
+-
+-    // Reduce fullCRC into scalar value.
+-    reductionMultiplicands = V128_Load(reinterpret_cast<const V128*>(k5k6));
+-
+-    V128 mask = V128_Load(reinterpret_cast<const V128*>(kMask));
+-
+-    V128 tmp = V128_PMul01(reductionMultiplicands, fullCRC);
+-    fullCRC = V128_ShiftRight<8>(fullCRC);
+-    fullCRC = V128_Xor(fullCRC, tmp);
+-
+-    reductionMultiplicands = V128_Load(reinterpret_cast<const V128*>(k7k0));
+-
+-    tmp = V128_ShiftRight<4>(fullCRC);
+-    fullCRC = V128_And(fullCRC, mask);
+-    fullCRC = V128_PMulLow(reductionMultiplicands, fullCRC);
+-    fullCRC = V128_Xor(tmp, fullCRC);
+-
+-    reductionMultiplicands = V128_Load(reinterpret_cast<const V128*>(kPoly));
+-
+-    tmp = V128_And(fullCRC, mask);
+-    tmp = V128_PMul01(reductionMultiplicands, tmp);
+-    tmp = V128_And(tmp, mask);
+-    tmp = V128_PMulLow(reductionMultiplicands, tmp);
+-
+-    fullCRC = V128_Xor(tmp, fullCRC);
+-
+-    return static_cast<uint64_t>(V128_Extract32<1>(fullCRC));
+-  }
+-
+-  // Update crc with 64 bytes of data from p.
+-  ABSL_ATTRIBUTE_ALWAYS_INLINE uint64_t Process64BytesCRC(const uint8_t* p,
+-                                                          uint64_t crc) const {
+-    for (int i = 0; i < 8; i++) {
+-      crc =
+-          CRC32_u64(static_cast<uint32_t>(crc), absl::little_endian::Load64(p));
+-      p += 8;
+-    }
+-    return crc;
+-  }
+-
+-  // Generated by crc32c_x86_test --crc32c_generate_constants=true
+-  // and verified against constants in linux kernel for S390:
+-  // https://github.com/torvalds/linux/blob/master/arch/s390/crypto/crc32le-vx.S
+-  alignas(16) static constexpr uint64_t k1k2[2] = {0x0740eef02, 0x09e4addf8};
+-  alignas(16) static constexpr uint64_t k3k4[2] = {0x1384aa63a, 0x0ba4fc28e};
+-  alignas(16) static constexpr uint64_t k5k6[2] = {0x0f20c0dfe, 0x14cd00bd6};
+-  alignas(16) static constexpr uint64_t k7k0[2] = {0x0dd45aab8, 0x000000000};
+-  alignas(16) static constexpr uint64_t kPoly[2] = {0x105ec76f0, 0x0dea713f1};
+-  alignas(16) static constexpr uint32_t kMask[4] = {~0u, 0u, ~0u, 0u};
+-
+-  // Medium runs of bytes are broken into groups of kGroupsSmall blocks of same
+-  // size. Each group is CRCed in parallel then combined at the end of the
+-  // block.
+-  static constexpr size_t kGroupsSmall = 3;
+-  // For large runs we use up to kMaxStreams blocks computed with CRC
+-  // instruction, and up to kMaxStreams blocks computed with PCLMULQDQ, which
+-  // are combined in the end.
+-  static constexpr size_t kMaxStreams = 3;
+-};
+-
+-#ifdef ABSL_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL
+-alignas(16) constexpr uint64_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::k1k2[2];
+-alignas(16) constexpr uint64_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::k3k4[2];
+-alignas(16) constexpr uint64_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::k5k6[2];
+-alignas(16) constexpr uint64_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::k7k0[2];
+-alignas(16) constexpr uint64_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::kPoly[2];
+-alignas(16) constexpr uint32_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::kMask[4];
+-constexpr size_t
+-    CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::kGroupsSmall;
+-constexpr size_t CRC32AcceleratedX86ARMCombinedMultipleStreamsBase::kMaxStreams;
+-#endif  // ABSL_INTERNAL_NEED_REDUNDANT_CONSTEXPR_DECL
+-
+-template <size_t num_crc_streams, size_t num_pclmul_streams,
+-          CutoffStrategy strategy>
+-class CRC32AcceleratedX86ARMCombinedMultipleStreams
+-    : public CRC32AcceleratedX86ARMCombinedMultipleStreamsBase {
+-  ABSL_ATTRIBUTE_HOT
+-  void Extend(uint32_t* crc, const void* bytes, size_t length) const override {
+-    static_assert(num_crc_streams >= 1 && num_crc_streams <= kMaxStreams,
+-                  "Invalid number of crc streams");
+-    static_assert(num_pclmul_streams >= 0 && num_pclmul_streams <= kMaxStreams,
+-                  "Invalid number of pclmul streams");
+-    const uint8_t* p = static_cast<const uint8_t*>(bytes);
+-    const uint8_t* e = p + length;
+-    uint32_t l = *crc;
+-    uint64_t l64;
+-
+-    // We have dedicated instruction for 1,2,4 and 8 bytes.
+-    if (length & 8) {
+-      ABSL_INTERNAL_STEP8(l, p);
+-      length &= ~size_t{8};
+-    }
+-    if (length & 4) {
+-      ABSL_INTERNAL_STEP4(l);
+-      length &= ~size_t{4};
+-    }
+-    if (length & 2) {
+-      ABSL_INTERNAL_STEP2(l);
+-      length &= ~size_t{2};
+-    }
+-    if (length & 1) {
+-      ABSL_INTERNAL_STEP1(l);
+-      length &= ~size_t{1};
+-    }
+-    if (length == 0) {
+-      *crc = l;
+-      return;
+-    }
+-    // length is now multiple of 16.
+-
+-    // For small blocks just run simple loop, because cost of combining multiple
+-    // streams is significant.
+-    if (strategy != CutoffStrategy::Unroll64CRC) {
+-      if (length < kSmallCutoff) {
+-        while (length >= 16) {
+-          ABSL_INTERNAL_STEP8(l, p);
+-          ABSL_INTERNAL_STEP8(l, p);
+-          length -= 16;
+-        }
+-        *crc = l;
+-        return;
+-      }
+-    }
+-
+-    // For medium blocks we run 3 crc streams and combine them as described in
+-    // Intel paper above. Running 4th stream doesn't help, because crc
+-    // instruction has latency 3 and throughput 1.
+-    if (length < kMediumCutoff) {
+-      l64 = l;
+-      if (strategy == CutoffStrategy::Fold3) {
+-        uint64_t l641 = 0;
+-        uint64_t l642 = 0;
+-        const size_t blockSize = 32;
+-        size_t bs = static_cast<size_t>(e - p) / kGroupsSmall / blockSize;
+-        const uint8_t* p1 = p + bs * blockSize;
+-        const uint8_t* p2 = p1 + bs * blockSize;
+-
+-        for (size_t i = 0; i + 1 < bs; ++i) {
+-          ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-          ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-          ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-          ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-          base_internal::PrefetchT0(
+-              reinterpret_cast<const char*>(p + kPrefetchHorizonMedium));
+-          base_internal::PrefetchT0(
+-              reinterpret_cast<const char*>(p1 + kPrefetchHorizonMedium));
+-          base_internal::PrefetchT0(
+-              reinterpret_cast<const char*>(p2 + kPrefetchHorizonMedium));
+-        }
+-        // Don't run crc on last 8 bytes.
+-        ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-        ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-        ABSL_INTERNAL_STEP8BY3(l64, l641, l642, p, p1, p2);
+-        ABSL_INTERNAL_STEP8BY2(l64, l641, p, p1);
+-
+-        V128 magic = *(reinterpret_cast<const V128*>(kClmulConstants) + bs - 1);
+-
+-        V128 tmp = V128_From2x64(0, l64);
+-
+-        V128 res1 = V128_PMulLow(tmp, magic);
+-
+-        tmp = V128_From2x64(0, l641);
+-
+-        V128 res2 = V128_PMul10(tmp, magic);
+-        V128 x = V128_Xor(res1, res2);
+-        l64 = static_cast<uint64_t>(V128_Low64(x)) ^
+-              absl::little_endian::Load64(p2);
+-        l64 = CRC32_u64(static_cast<uint32_t>(l642), l64);
+-
+-        p = p2 + 8;
+-      } else if (strategy == CutoffStrategy::Unroll64CRC) {
+-        while ((e - p) >= 64) {
+-          l64 = Process64BytesCRC(p, l64);
+-          p += 64;
+-        }
+-      }
+-    } else {
+-      // There is a lot of data, we can ignore combine costs and run all
+-      // requested streams (num_crc_streams + num_pclmul_streams),
+-      // using prefetch. CRC and PCLMULQDQ use different cpu execution units,
+-      // so on some cpus it makes sense to execute both of them for different
+-      // streams.
+-
+-      // Point x at first 8-byte aligned byte in string.
+-      const uint8_t* x = RoundUp<8>(p);
+-      // Process bytes until p is 8-byte aligned, if that isn't past the end.
+-      while (p != x) {
+-        ABSL_INTERNAL_STEP1(l);
+-      }
+-
+-      size_t bs = static_cast<size_t>(e - p) /
+-                  (num_crc_streams + num_pclmul_streams) / 64;
+-      const uint8_t* crc_streams[kMaxStreams];
+-      const uint8_t* pclmul_streams[kMaxStreams];
+-      // We are guaranteed to have at least one crc stream.
+-      crc_streams[0] = p;
+-      for (size_t i = 1; i < num_crc_streams; i++) {
+-        crc_streams[i] = crc_streams[i - 1] + bs * 64;
+-      }
+-      pclmul_streams[0] = crc_streams[num_crc_streams - 1] + bs * 64;
+-      for (size_t i = 1; i < num_pclmul_streams; i++) {
+-        pclmul_streams[i] = pclmul_streams[i - 1] + bs * 64;
+-      }
+-
+-      // Per stream crc sums.
+-      uint64_t l64_crc[kMaxStreams] = {l};
+-      uint64_t l64_pclmul[kMaxStreams] = {0};
+-
+-      // Peel first iteration, because PCLMULQDQ stream, needs setup.
+-      for (size_t i = 0; i < num_crc_streams; i++) {
+-        l64_crc[i] = Process64BytesCRC(crc_streams[i], l64_crc[i]);
+-        crc_streams[i] += 16 * 4;
+-      }
+-
+-      V128 partialCRC[kMaxStreams][4];
+-      for (size_t i = 0; i < num_pclmul_streams; i++) {
+-        partialCRC[i][0] = V128_LoadU(
+-            reinterpret_cast<const V128*>(pclmul_streams[i] + 16 * 0));
+-        partialCRC[i][1] = V128_LoadU(
+-            reinterpret_cast<const V128*>(pclmul_streams[i] + 16 * 1));
+-        partialCRC[i][2] = V128_LoadU(
+-            reinterpret_cast<const V128*>(pclmul_streams[i] + 16 * 2));
+-        partialCRC[i][3] = V128_LoadU(
+-            reinterpret_cast<const V128*>(pclmul_streams[i] + 16 * 3));
+-        pclmul_streams[i] += 16 * 4;
+-      }
+-
+-      for (size_t i = 1; i < bs; i++) {
+-        // Prefetch data for next itterations.
+-        for (size_t j = 0; j < num_crc_streams; j++) {
+-          base_internal::PrefetchT0(
+-              reinterpret_cast<const char*>(crc_streams[j] + kPrefetchHorizon));
+-        }
+-        for (size_t j = 0; j < num_pclmul_streams; j++) {
+-          base_internal::PrefetchT0(reinterpret_cast<const char*>(
+-              pclmul_streams[j] + kPrefetchHorizon));
+-        }
+-
+-        // We process each stream in 64 byte blocks. This can be written as
+-        // for (int i = 0; i < num_pclmul_streams; i++) {
+-        //   Process64BytesPclmul(pclmul_streams[i], partialCRC[i]);
+-        //   pclmul_streams[i] += 16 * 4;
+-        // }
+-        // for (int i = 0; i < num_crc_streams; i++) {
+-        //   l64_crc[i] = Process64BytesCRC(crc_streams[i], l64_crc[i]);
+-        //   crc_streams[i] += 16*4;
+-        // }
+-        // But unrolling and interleaving PCLMULQDQ and CRC blocks manually
+-        // gives ~2% performance boost.
+-        l64_crc[0] = Process64BytesCRC(crc_streams[0], l64_crc[0]);
+-        crc_streams[0] += 16 * 4;
+-        if (num_pclmul_streams > 0) {
+-          Process64BytesPclmul(pclmul_streams[0], partialCRC[0]);
+-          pclmul_streams[0] += 16 * 4;
+-        }
+-        if (num_crc_streams > 1) {
+-          l64_crc[1] = Process64BytesCRC(crc_streams[1], l64_crc[1]);
+-          crc_streams[1] += 16 * 4;
+-        }
+-        if (num_pclmul_streams > 1) {
+-          Process64BytesPclmul(pclmul_streams[1], partialCRC[1]);
+-          pclmul_streams[1] += 16 * 4;
+-        }
+-        if (num_crc_streams > 2) {
+-          l64_crc[2] = Process64BytesCRC(crc_streams[2], l64_crc[2]);
+-          crc_streams[2] += 16 * 4;
+-        }
+-        if (num_pclmul_streams > 2) {
+-          Process64BytesPclmul(pclmul_streams[2], partialCRC[2]);
+-          pclmul_streams[2] += 16 * 4;
+-        }
+-      }
+-
+-      // PCLMULQDQ based streams require special final step;
+-      // CRC based don't.
+-      for (size_t i = 0; i < num_pclmul_streams; i++) {
+-        l64_pclmul[i] = FinalizePclmulStream(partialCRC[i]);
+-      }
+-
+-      // Combine all streams into single result.
+-      uint32_t magic = ComputeZeroConstant(bs * 64);
+-      l64 = l64_crc[0];
+-      for (size_t i = 1; i < num_crc_streams; i++) {
+-        l64 = multiply(static_cast<uint32_t>(l64), magic);
+-        l64 ^= l64_crc[i];
+-      }
+-      for (size_t i = 0; i < num_pclmul_streams; i++) {
+-        l64 = multiply(static_cast<uint32_t>(l64), magic);
+-        l64 ^= l64_pclmul[i];
+-      }
+-
+-      // Update p.
+-      if (num_pclmul_streams > 0) {
+-        p = pclmul_streams[num_pclmul_streams - 1];
+-      } else {
+-        p = crc_streams[num_crc_streams - 1];
+-      }
+-    }
+-    l = static_cast<uint32_t>(l64);
+-
+-    while ((e - p) >= 16) {
+-      ABSL_INTERNAL_STEP8(l, p);
+-      ABSL_INTERNAL_STEP8(l, p);
+-    }
+-    // Process the last few bytes
+-    while (p != e) {
+-      ABSL_INTERNAL_STEP1(l);
+-    }
+-
+-#undef ABSL_INTERNAL_STEP8BY3
+-#undef ABSL_INTERNAL_STEP8BY2
+-#undef ABSL_INTERNAL_STEP8
+-#undef ABSL_INTERNAL_STEP4
+-#undef ABSL_INTERNAL_STEP2
+-#undef ABSL_INTERNAL_STEP1
+-
+-    *crc = l;
+-  }
+-};
+-
+-}  // namespace
+-
+-// Intel processors with SSE4.2 have an instruction for one particular
+-// 32-bit CRC polynomial:  crc32c
+-CRCImpl* TryNewCRC32AcceleratedX86ARMCombined() {
+-  CpuType type = GetCpuType();
+-  switch (type) {
+-    case CpuType::kIntelHaswell:
+-    case CpuType::kAmdRome:
+-    case CpuType::kAmdNaples:
+-    case CpuType::kAmdMilan:
+-      return new CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-          3, 1, CutoffStrategy::Fold3>();
+-    // PCLMULQDQ is fast, use combined PCLMULQDQ + CRC implementation.
+-    case CpuType::kIntelCascadelakeXeon:
+-    case CpuType::kIntelSkylakeXeon:
+-    case CpuType::kIntelBroadwell:
+-    case CpuType::kIntelSkylake:
+-      return new CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-          3, 2, CutoffStrategy::Fold3>();
+-    // PCLMULQDQ is slow, don't use it.
+-    case CpuType::kIntelIvybridge:
+-    case CpuType::kIntelSandybridge:
+-    case CpuType::kIntelWestmere:
+-      return new CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-          3, 0, CutoffStrategy::Fold3>();
+-    case CpuType::kArmNeoverseN1:
+-      return new CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-          1, 1, CutoffStrategy::Unroll64CRC>();
+-#if defined(__aarch64__)
+-    default:
+-      // Not all ARM processors support the needed instructions, so check here
+-      // before trying to use an accelerated implementation.
+-      if (SupportsArmCRC32PMULL()) {
+-        return new CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-            1, 1, CutoffStrategy::Unroll64CRC>();
+-      } else {
+-        return nullptr;
+-      }
+-#else
+-    default:
+-      // Something else, play it safe and assume slow PCLMULQDQ.
+-      return new CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-          3, 0, CutoffStrategy::Fold3>();
+-#endif
+-  }
+-}
+-
+-std::vector<std::unique_ptr<CRCImpl>> NewCRC32AcceleratedX86ARMCombinedAll() {
+-  auto ret = std::vector<std::unique_ptr<CRCImpl>>();
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 0, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 1, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 2, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 3, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 0, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 1, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 2, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 3, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 0, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 1, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 2, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 3, CutoffStrategy::Fold3>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 0, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 1, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 2, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    1, 3, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 0, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 1, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 2, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    2, 3, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 0, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 1, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 2, CutoffStrategy::Unroll64CRC>>());
+-  ret.push_back(absl::make_unique<CRC32AcceleratedX86ARMCombinedMultipleStreams<
+-                    3, 3, CutoffStrategy::Unroll64CRC>>());
+-
+-  return ret;
+-}
+-
+-#else  // !ABSL_INTERNAL_CAN_USE_SIMD_CRC32C
+-
+-std::vector<std::unique_ptr<CRCImpl>> NewCRC32AcceleratedX86ARMCombinedAll() {
+-  return std::vector<std::unique_ptr<CRCImpl>>();
+-}
+-
+-// no hardware acceleration available
+-CRCImpl* TryNewCRC32AcceleratedX86ARMCombined() { return nullptr; }
+-
+-#endif
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+diff --git a/absl/crc/internal/non_temporal_arm_intrinsics.h b/absl/crc/internal/non_temporal_arm_intrinsics.h
+deleted file mode 100644
+index 9e5ccfc..0000000
+--- a/absl/crc/internal/non_temporal_arm_intrinsics.h
++++ /dev/null
+@@ -1,79 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_NON_TEMPORAL_ARM_INTRINSICS_H_
+-#define ABSL_CRC_INTERNAL_NON_TEMPORAL_ARM_INTRINSICS_H_
+-
+-#include "absl/base/config.h"
+-
+-#ifdef __aarch64__
+-#include <arm_neon.h>
+-
+-typedef int64x2_t __m128i; /* 128-bit vector containing integers */
+-#define vreinterpretq_m128i_s32(x) vreinterpretq_s64_s32(x)
+-#define vreinterpretq_s64_m128i(x) (x)
+-
+-// Guarantees that every preceding store is globally visible before any
+-// subsequent store.
+-// https://msdn.microsoft.com/en-us/library/5h2w73d1%28v=vs.90%29.aspx
+-static inline __attribute__((always_inline)) void _mm_sfence(void) {
+-  __sync_synchronize();
+-}
+-
+-// Load 128-bits of integer data from unaligned memory into dst. This intrinsic
+-// may perform better than _mm_loadu_si128 when the data crosses a cache line
+-// boundary.
+-//
+-//   dst[127:0] := MEM[mem_addr+127:mem_addr]
+-//
+-// https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_lddqu_si128
+-#define _mm_lddqu_si128 _mm_loadu_si128
+-
+-// Loads 128-bit value. :
+-// https://msdn.microsoft.com/zh-cn/library/f4k12ae8(v=vs.90).aspx
+-static inline __attribute__((always_inline)) __m128i _mm_loadu_si128(
+-    const __m128i *p) {
+-  return vreinterpretq_m128i_s32(vld1q_s32((const int32_t *)p));
+-}
+-
+-// Stores the data in a to the address p without polluting the caches.  If the
+-// cache line containing address p is already in the cache, the cache will be
+-// updated.
+-// https://msdn.microsoft.com/en-us/library/ba08y07y%28v=vs.90%29.aspx
+-static inline __attribute__((always_inline)) void _mm_stream_si128(__m128i *p,
+-                                                                   __m128i a) {
+-#if ABSL_HAVE_BUILTIN(__builtin_nontemporal_store)
+-  __builtin_nontemporal_store(a, p);
+-#else
+-  vst1q_s64((int64_t *)p, vreinterpretq_s64_m128i(a));
+-#endif
+-}
+-
+-// Sets the 16 signed 8-bit integer values.
+-// https://msdn.microsoft.com/en-us/library/x0cx8zd3(v=vs.90).aspx
+-static inline __attribute__((always_inline)) __m128i _mm_set_epi8(
+-    signed char b15, signed char b14, signed char b13, signed char b12,
+-    signed char b11, signed char b10, signed char b9, signed char b8,
+-    signed char b7, signed char b6, signed char b5, signed char b4,
+-    signed char b3, signed char b2, signed char b1, signed char b0) {
+-  int8_t __attribute__((aligned(16)))
+-  data[16] = {(int8_t)b0,  (int8_t)b1,  (int8_t)b2,  (int8_t)b3,
+-              (int8_t)b4,  (int8_t)b5,  (int8_t)b6,  (int8_t)b7,
+-              (int8_t)b8,  (int8_t)b9,  (int8_t)b10, (int8_t)b11,
+-              (int8_t)b12, (int8_t)b13, (int8_t)b14, (int8_t)b15};
+-  return (__m128i)vld1q_s8(data);
+-}
+-#endif  // __aarch64__
+-
+-#endif  // ABSL_CRC_INTERNAL_NON_TEMPORAL_ARM_INTRINSICS_H_
+diff --git a/absl/crc/internal/non_temporal_memcpy.h b/absl/crc/internal/non_temporal_memcpy.h
+deleted file mode 100644
+index b3d94ba..0000000
+--- a/absl/crc/internal/non_temporal_memcpy.h
++++ /dev/null
+@@ -1,180 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#ifndef ABSL_CRC_INTERNAL_NON_TEMPORAL_MEMCPY_H_
+-#define ABSL_CRC_INTERNAL_NON_TEMPORAL_MEMCPY_H_
+-
+-#ifdef _MSC_VER
+-#include <intrin.h>
+-#endif
+-
+-#ifdef __SSE__
+-#include <xmmintrin.h>
+-#endif
+-
+-#ifdef __SSE2__
+-#include <emmintrin.h>
+-#endif
+-
+-#ifdef __SSE3__
+-#include <pmmintrin.h>
+-#endif
+-
+-#ifdef __AVX__
+-#include <immintrin.h>
+-#endif
+-
+-#ifdef __aarch64__
+-#include "absl/crc/internal/non_temporal_arm_intrinsics.h"
+-#endif
+-
+-#include <algorithm>
+-#include <cassert>
+-#include <cstdint>
+-#include <cstring>
+-
+-#include "absl/base/config.h"
+-#include "absl/base/optimization.h"
+-
+-namespace absl {
+-ABSL_NAMESPACE_BEGIN
+-namespace crc_internal {
+-
+-// This non-temporal memcpy does regular load and non-temporal store memory
+-// copy. It is compatible to both 16-byte aligned and unaligned addresses. If
+-// data at the destination is not immediately accessed, using non-temporal
+-// memcpy can save 1 DRAM load of the destination cacheline.
+-constexpr size_t kCacheLineSize = ABSL_CACHELINE_SIZE;
+-
+-// If the objects overlap, the behavior is undefined.
+-inline void *non_temporal_store_memcpy(void *__restrict dst,
+-                                       const void *__restrict src, size_t len) {
+-#if defined(__SSE3__) || defined(__aarch64__) || \
+-    (defined(_MSC_VER) && defined(__AVX__))
+-  // This implementation requires SSE3.
+-  // MSVC cannot target SSE3 directly, but when MSVC targets AVX,
+-  // SSE3 support is implied.
+-  uint8_t *d = reinterpret_cast<uint8_t *>(dst);
+-  const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
+-
+-  // memcpy() the misaligned header. At the end of this if block, <d> is
+-  // aligned to a 64-byte cacheline boundary or <len> == 0.
+-  if (reinterpret_cast<uintptr_t>(d) & (kCacheLineSize - 1)) {
+-    uintptr_t bytes_before_alignment_boundary =
+-        kCacheLineSize -
+-        (reinterpret_cast<uintptr_t>(d) & (kCacheLineSize - 1));
+-    size_t header_len = (std::min)(bytes_before_alignment_boundary, len);
+-    assert(bytes_before_alignment_boundary < kCacheLineSize);
+-    memcpy(d, s, header_len);
+-    d += header_len;
+-    s += header_len;
+-    len -= header_len;
+-  }
+-
+-  if (len >= kCacheLineSize) {
+-    _mm_sfence();
+-    __m128i *dst_cacheline = reinterpret_cast<__m128i *>(d);
+-    const __m128i *src_cacheline = reinterpret_cast<const __m128i *>(s);
+-    constexpr int kOpsPerCacheLine = kCacheLineSize / sizeof(__m128i);
+-    size_t loops = len / kCacheLineSize;
+-
+-    while (len >= kCacheLineSize) {
+-      __m128i temp1, temp2, temp3, temp4;
+-      temp1 = _mm_lddqu_si128(src_cacheline + 0);
+-      temp2 = _mm_lddqu_si128(src_cacheline + 1);
+-      temp3 = _mm_lddqu_si128(src_cacheline + 2);
+-      temp4 = _mm_lddqu_si128(src_cacheline + 3);
+-      _mm_stream_si128(dst_cacheline + 0, temp1);
+-      _mm_stream_si128(dst_cacheline + 1, temp2);
+-      _mm_stream_si128(dst_cacheline + 2, temp3);
+-      _mm_stream_si128(dst_cacheline + 3, temp4);
+-      src_cacheline += kOpsPerCacheLine;
+-      dst_cacheline += kOpsPerCacheLine;
+-      len -= kCacheLineSize;
+-    }
+-    d += loops * kCacheLineSize;
+-    s += loops * kCacheLineSize;
+-    _mm_sfence();
+-  }
+-
+-  // memcpy the tail.
+-  if (len) {
+-    memcpy(d, s, len);
+-  }
+-  return dst;
+-#else
+-  // Fallback to regular memcpy.
+-  return memcpy(dst, src, len);
+-#endif  // __SSE3__ || __aarch64__ || (_MSC_VER && __AVX__)
+-}
+-
+-inline void *non_temporal_store_memcpy_avx(void *__restrict dst,
+-                                           const void *__restrict src,
+-                                           size_t len) {
+-#ifdef __AVX__
+-  uint8_t *d = reinterpret_cast<uint8_t *>(dst);
+-  const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
+-
+-  // memcpy() the misaligned header. At the end of this if block, <d> is
+-  // aligned to a 64-byte cacheline boundary or <len> == 0.
+-  if (reinterpret_cast<uintptr_t>(d) & (kCacheLineSize - 1)) {
+-    uintptr_t bytes_before_alignment_boundary =
+-        kCacheLineSize -
+-        (reinterpret_cast<uintptr_t>(d) & (kCacheLineSize - 1));
+-    size_t header_len = (std::min)(bytes_before_alignment_boundary, len);
+-    assert(bytes_before_alignment_boundary < kCacheLineSize);
+-    memcpy(d, s, header_len);
+-    d += header_len;
+-    s += header_len;
+-    len -= header_len;
+-  }
+-
+-  if (len >= kCacheLineSize) {
+-    _mm_sfence();
+-    __m256i *dst_cacheline = reinterpret_cast<__m256i *>(d);
+-    const __m256i *src_cacheline = reinterpret_cast<const __m256i *>(s);
+-    constexpr int kOpsPerCacheLine = kCacheLineSize / sizeof(__m256i);
+-    size_t loops = len / kCacheLineSize;
+-
+-    while (len >= kCacheLineSize) {
+-      __m256i temp1, temp2;
+-      temp1 = _mm256_lddqu_si256(src_cacheline + 0);
+-      temp2 = _mm256_lddqu_si256(src_cacheline + 1);
+-      _mm256_stream_si256(dst_cacheline + 0, temp1);
+-      _mm256_stream_si256(dst_cacheline + 1, temp2);
+-      src_cacheline += kOpsPerCacheLine;
+-      dst_cacheline += kOpsPerCacheLine;
+-      len -= kCacheLineSize;
+-    }
+-    d += loops * kCacheLineSize;
+-    s += loops * kCacheLineSize;
+-    _mm_sfence();
+-  }
+-
+-  // memcpy the tail.
+-  if (len) {
+-    memcpy(d, s, len);
+-  }
+-  return dst;
+-#else
+-  // Fallback to regular memcpy when AVX is not available.
+-  return memcpy(dst, src, len);
+-#endif  // __AVX__
+-}
+-
+-}  // namespace crc_internal
+-ABSL_NAMESPACE_END
+-}  // namespace absl
+-
+-#endif  // ABSL_CRC_INTERNAL_NON_TEMPORAL_MEMCPY_H_
+diff --git a/absl/crc/internal/non_temporal_memcpy_test.cc b/absl/crc/internal/non_temporal_memcpy_test.cc
+deleted file mode 100644
+index eb07a55..0000000
+--- a/absl/crc/internal/non_temporal_memcpy_test.cc
++++ /dev/null
+@@ -1,88 +0,0 @@
+-// Copyright 2022 The Abseil Authors
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     https://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-#include "absl/crc/internal/non_temporal_memcpy.h"
+-
+-#include <algorithm>
+-#include <cstdint>
+-#include <iostream>
+-#include <vector>
+-
+-#include "gtest/gtest.h"
+-
+-namespace {
+-
+-struct TestParam {
+-  size_t copy_size;
+-  uint32_t src_offset;
+-  uint32_t dst_offset;
+-};
+-
+-class NonTemporalMemcpyTest : public testing::TestWithParam<TestParam> {
+- protected:
+-  void SetUp() override {
+-    // Make buf_size multiple of 16 bytes.
+-    size_t buf_size = ((std::max(GetParam().src_offset, GetParam().dst_offset) +
+-                        GetParam().copy_size) +
+-                       15) /
+-                      16 * 16;
+-    a_.resize(buf_size);
+-    b_.resize(buf_size);
+-    for (size_t i = 0; i < buf_size; i++) {
+-      a_[i] = static_cast<uint8_t>(i % 256);
+-      b_[i] = ~a_[i];
+-    }
+-  }
+-
+-  std::vector<uint8_t> a_, b_;
+-};
+-
+-TEST_P(NonTemporalMemcpyTest, SSEEquality) {
+-  uint8_t *src = a_.data() + GetParam().src_offset;
+-  uint8_t *dst = b_.data() + GetParam().dst_offset;
+-  absl::crc_internal::non_temporal_store_memcpy(dst, src, GetParam().copy_size);
+-  for (size_t i = 0; i < GetParam().copy_size; i++) {
+-    EXPECT_EQ(src[i], dst[i]);
+-  }
+-}
+-
+-TEST_P(NonTemporalMemcpyTest, AVXEquality) {
+-  uint8_t* src = a_.data() + GetParam().src_offset;
+-  uint8_t* dst = b_.data() + GetParam().dst_offset;
+-
+-  absl::crc_internal::non_temporal_store_memcpy_avx(dst, src,
+-                                                    GetParam().copy_size);
+-  for (size_t i = 0; i < GetParam().copy_size; i++) {
+-    EXPECT_EQ(src[i], dst[i]);
+-  }
+-}
+-
+-// 63B is smaller than one cacheline operation thus the non-temporal routine
+-// will not be called.
+-// 4352B is sufficient for testing 4092B data copy with room for offsets.
+-constexpr TestParam params[] = {
+-    {63, 0, 0},       {58, 5, 5},    {61, 2, 0},    {61, 0, 2},
+-    {58, 5, 2},       {4096, 0, 0},  {4096, 0, 1},  {4096, 0, 2},
+-    {4096, 0, 3},     {4096, 0, 4},  {4096, 0, 5},  {4096, 0, 6},
+-    {4096, 0, 7},     {4096, 0, 8},  {4096, 0, 9},  {4096, 0, 10},
+-    {4096, 0, 11},    {4096, 0, 12}, {4096, 0, 13}, {4096, 0, 14},
+-    {4096, 0, 15},    {4096, 7, 7},  {4096, 3, 0},  {4096, 1, 0},
+-    {4096, 9, 3},     {4096, 9, 11}, {8192, 0, 0},  {8192, 5, 2},
+-    {1024768, 7, 11}, {1, 0, 0},     {1, 0, 1},     {1, 1, 0},
+-    {1, 1, 1}};
+-
+-INSTANTIATE_TEST_SUITE_P(ParameterizedNonTemporalMemcpyTest,
+-                         NonTemporalMemcpyTest, testing::ValuesIn(params));
+-
+-}  // namespace
+-- 
+2.17.1
+

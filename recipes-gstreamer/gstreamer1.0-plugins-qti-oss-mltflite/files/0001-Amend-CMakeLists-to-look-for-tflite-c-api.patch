@@ -1,0 +1,26 @@
+diff --git a/gst-plugin-mltflite/CMakeLists.txt b/gst-plugin-mltflite/CMakeLists.txt
+index 83ee701e..86e5bb3a 100644
+--- a/gst-plugin-mltflite/CMakeLists.txt
++++ b/gst-plugin-mltflite/CMakeLists.txt
+@@ -27,7 +27,21 @@ check_include_file("tensorflow/lite/delegates/external/external_delegate.h" HAVE
+ 
+ # Check whether the C API header for the TFLITE library is present.
+ check_include_file("tensorflow/lite/core/c/c_api.h" HAVE_CORE_C_API_H)
++check_include_file("tensorflow/lite/core/c/c_api_experimental.h" HAVE_CORE_C_API_EXPERIMENTAL_H)
+ check_include_file("tensorflow/lite/c/c_api.h" HAVE_C_API_H)
++check_include_file("tensorflow/lite/c/c_api_experimental.h" HAVE_C_API_EXPERIMENTAL_H)
++
++if(HAVE_CORE_C_API_H AND HAVE_CORE_C_API_EXPERIMENTAL_H)
++  set(HAVE_CORE_C_API_H ON)
++else()
++  set(HAVE_CORE_C_API_H OFF)
++endif()
++
++if(HAVE_C_API_H AND HAVE_C_API_EXPERIMENTAL_H)
++  set(HAVE_C_API_H ON)
++else()
++  set(HAVE_C_API_H OFF)
++endif()
+ 
+ # Support for the External delegate appears after the tensorflow lite 2.10.0
+ # the reason is to determine if we are on a new or old version of tflite

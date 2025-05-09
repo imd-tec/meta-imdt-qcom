@@ -1,0 +1,119 @@
+From 429c3eca6082cb3f2ce0bbdd34cb178f04c7da28 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Fri, 4 Apr 2025 14:14:07 +0100
+Subject: [PATCH] Add support for AR1335 into CamX (#26)
+
+Added AR1335 Sensor Exposure driver
+to CMake build. Also added the AR1335
+sensor resolution in the different
+image resolution arrays.
+---
+ .../linuxembedded/CMakeLists.txt              | 49 +------------------
+ camx/src/hwl/titan17x/camxtitan17xcontext.cpp |  9 ++--
+ 2 files changed, 5 insertions(+), 53 deletions(-)
+
+diff --git a/camx/build/infrastructure/linuxembedded/CMakeLists.txt b/camx/build/infrastructure/linuxembedded/CMakeLists.txt
+index c4cd085..5847f43 100755
+--- a/camx/build/infrastructure/linuxembedded/CMakeLists.txt
++++ b/camx/build/infrastructure/linuxembedded/CMakeLists.txt
+@@ -131,54 +131,7 @@ add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/node/staticawbalgo/build/linuxemb
+ add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/node/staticpdlibalgo/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/staticpdlibalgo)
+ add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/node/dummyfs/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/dummyfs)
+ add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/node/lt6911uxc/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/lt6911uxc)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx318/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx318)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx334/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx334)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx362/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx362)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx363/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx363)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx376/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx376)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx386/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx386)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx476/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx476)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx481/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx481)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx519/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx519)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx563/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx563)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx576/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx576)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx577/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx577)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx586_aajh5/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx586_aajh5)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx588/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx588)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx686_fajh5/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx686_fajh5)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx766/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx766)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov64b40/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov64b40)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/imx688/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/imx688)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/max7366_6dof/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/max7366_6dof)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/max7366_ov6211/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/max7366_ov6211)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/max7366_ov9282/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/max7366_ov9282)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov9282_master/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov9282_master)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov9282_slave/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov9282_slave)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov9282/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov9282)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov9282_mod/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov9282_mod)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov6211_master/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov6211_master)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov6211_slave/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov6211_slave)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov8856_master/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov8856_master)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov8856_slave/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov8856_slave)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/max7366_eyetrack/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/max7366_eyetrack)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov12a10/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov12a10)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov12a10_front/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov12a10_front)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov13855/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov13855)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov13880/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov13880)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov7251/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov7251)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ov8856/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ov8856)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k2l7/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k2l7)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k2x5sp/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k2x5sp)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k5e9yu05/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k5e9yu05)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k3m5/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k3m5)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k33dxx/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k33dxx)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k3p9/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k3p9)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5k4h7/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5k4h7)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5kjd1sp/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5kjd1sp)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/cmk_imx577/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/cmk_imx577)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/max9296a_ar0231/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/max9296a_ar0231)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/lt6911uxc/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/lt6911uxc)
+-add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/s5kgd2sp03/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/s5kgd2sp03)
++add_subdirectory (${CAMX_CHICDK_OEM_PATH}/qcom/sensor/ar1335/build/linuxembedded ${CAMX_CHICDK_OUT_PATH}/sensor/ar1335)
+ add_subdirectory (${CAMX_CHICDK_PATH}/test/camx-hal3-test/linuxembedded ${CAMX_CHICDK_OUT_PATH}/test/camx-hal3-test)
+ 
+ 
+diff --git a/camx/src/hwl/titan17x/camxtitan17xcontext.cpp b/camx/src/hwl/titan17x/camxtitan17xcontext.cpp
+index 5e5f429..334def8 100755
+--- a/camx/src/hwl/titan17x/camxtitan17xcontext.cpp
++++ b/camx/src/hwl/titan17x/camxtitan17xcontext.cpp
+@@ -428,6 +428,7 @@ static const DimensionCap SensorImageSizes[] =
+     { 5312, 2988 },
+     { 5184, 3880 },
+     { 4624, 3472 }, // 16MP
++    { 4208, 3120 }, // For IMDT AR1335
+     { 4096, 2304 }, // 9.4 MP
+     { 1928, 1208 }, // For GMSL ar0231
+     /// @todo (CAMX-961) This list is not final, can contain more entries
+@@ -437,12 +438,8 @@ static const DimensionCap StandardImageSizes[] =
+ {
+     // This is the pre-defined table, and available image sizes capability
+     // can be modified base on sensor capability
+-    { 8000, 6000 }, // 48 MP
+-    { 7680, 4320 }, // 8K UHD
+-    { 6560, 4936 }, // s5kgd2sp03
+-    { 6560, 4928 }, // 32 MP
+-    { 4608, 3456 }, // 16MP
+     { 4608, 2592 }, // 12MP
++    { 4208, 3120 }, // For IMDT AR1335
+     { 4160, 3120 }, // 13MP
+     { 4096, 2160 }, // 4k DCI
+     { 4000, 3000 },
+@@ -514,6 +511,7 @@ static const DimensionCap SupportedVideoResolutions[] =
+ {
+     // This is the pre-defined table, and supported video resolutions in App
+     { 7680, 4320 }, // 8k
++    { 4208, 3120 }, // For IMDT AR1335
+     { 3840, 2160 }, // 4k
+     { 1928, 1208 }, // For GMSL ar0231
+     { 1920, 1080 }, // 1080p
+@@ -529,6 +527,7 @@ static const DimensionCap SupportedVideoResolutions[] =
+ static const DimensionCap SupportedPreviewResolutions[] =
+ {
+     // This is the pre-defined table and supported preview resolutions in App
++    { 4208, 3120 }, // For IMDT AR1335
+     { 3840, 2160 }, // 4k
+     { 1928, 1208 }, // For GMSL ar0231
+     { 1920, 1080 }, // 1080p
+-- 
+2.34.1
+

@@ -1,0 +1,1541 @@
+From fa07d8484a8f0c380d962395d11d9493e66bdb5e Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Fri, 7 Feb 2025 15:10:06 +0000
+Subject: [PATCH] Initial bringup of IMDT Display (#3)
+
+This PR adds support for the
+IMDT 7inch (TST070WSBE-165C) custom display
+made by Team Source Display (TSD).
+The display controller for this display is the
+EK79007AD which does not need much configuration.
+It already has a gamma table pre-loaded.
+TSD have sent us some configuration settings
+for a few gamma registers but I have not added them
+to the device tree as it didn't seem necessary.
+
+The touch IC for this 7inch display is the GT911.
+I have not yet added support for the touch controller.
+
+The DSI timing register values have been calculated
+using the DSI Timing Paramters User Interactive
+spreadsheet from Qualcomm.
+
+Note that some of the GPIO's we are using
+are incorret. This is because there is a mistake
+in the HW for the display adapter connector.
+
+- GPIO_123 (I2S1_WS) for 10_1PWR_EN
+- GPIO_121 (I2S1_SCK) for 10_Inch_Display_PWM
+
+And we also now need to enable the 5V reg
+which powers the display backlight PMIC.
+This is controlled via GPIO_140.
+---
+ .../dsi-panel-imdt-tst070wsbe165c-video.dtsi  |  87 ++++
+ display/kalama-imdt-sde-common.dtsi           | 452 ++++++++++++++++++
+ display/kalama-imdt-sde-display-common.dtsi   | 118 +++++
+ display/kalama-imdt-sde-display-hdk.dtsi      |  51 ++
+ display/kalama-imdt-sde-display-pinctrl.dtsi  | 168 +++++++
+ display/kalama-imdt-sde-display.dtsi          | 207 ++++++++
+ display/kalama-imdt-sde.dtsi                  | 302 ++++++++++++
+ display/kalama-sde-display-hdk-overlay.dts    |   2 +-
+ display/kalama-sde-display-rb5-gen2.dtsi      |   6 +-
+ display/kalama-sde.dts                        |   2 +-
+ display/kalama-sde.dtsi                       |   4 +-
+ 11 files changed, 1393 insertions(+), 6 deletions(-)
+ create mode 100644 display/dsi-panel-imdt-tst070wsbe165c-video.dtsi
+ create mode 100755 display/kalama-imdt-sde-common.dtsi
+ create mode 100755 display/kalama-imdt-sde-display-common.dtsi
+ create mode 100755 display/kalama-imdt-sde-display-hdk.dtsi
+ create mode 100755 display/kalama-imdt-sde-display-pinctrl.dtsi
+ create mode 100644 display/kalama-imdt-sde-display.dtsi
+ create mode 100755 display/kalama-imdt-sde.dtsi
+
+diff --git a/display/dsi-panel-imdt-tst070wsbe165c-video.dtsi b/display/dsi-panel-imdt-tst070wsbe165c-video.dtsi
+new file mode 100644
+index 0000000..2b8273c
+--- /dev/null
++++ b/display/dsi-panel-imdt-tst070wsbe165c-video.dtsi
+@@ -0,0 +1,87 @@
++&mdss_mdp {
++	dsi_tst070wsbe165c_video: qcom,mdss_dsi_tst070wsbe165c_video {
++		qcom,mdss-dsi-panel-name = "TST070WSBE-165c Video Mode DSI Panel";
++		qcom,mdss-dsi-panel-type = "dsi_video_mode";
++
++		qcom,dsi-ctrl-num = <0>;
++		qcom,dsi-phy-num = <0>;
++		qcom,dsi-select-clocks = "src_byte_clk0", "src_pixel_clk0";
++
++		qcom,mdss-dsi-virtual-channel-id = <0>;
++		qcom,mdss-dsi-stream = <0>;
++
++		/* Specify dimensions of the border in pixels */
++		qcom,mdss-dsi-h-left-border = <0>;
++		qcom,mdss-dsi-h-right-border = <0>;
++		qcom,mdss-dsi-v-top-border = <0>;
++		qcom,mdss-dsi-v-bottom-border = <0>;
++
++		qcom,mdss-dsi-bpp = <24>;
++		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
++		qcom,mdss-dsi-underflow-color = <0xff>;
++		qcom,mdss-dsi-border-color = <0>;
++
++		/* Specifies the pulse mode option for the panel */
++		qcom,mdss-dsi-h-sync-pulse = <0>;
++
++		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
++
++		/* Set MIPI DSI lanes to LP11 mode before initialisation sequence */
++		qcom,mdss-dsi-lp11-init;
++
++		/* Specify the MIPI DSI lane mapping and which lanes are enabled */
++		qcom,mdss-dsi-lane-map = "lane_map_0123";
++		qcom,mdss-dsi-lane-0-state;
++		qcom,mdss-dsi-lane-1-state;
++		qcom,mdss-dsi-lane-2-state;
++		qcom,mdss-dsi-lane-3-state;
++	
++		qcom,mdss-dsi-bllp-eof-power-mode;
++		qcom,mdss-dsi-bllp-power-mode;
++		qcom,mdss-dsi-tx-eot-append;
++
++		qcom,mdss-dsi-dma-trigger = "trigger_sw";
++		qcom,mdss-dsi-mdp-trigger = "none";
++		
++		/* Configures Backlight Control mechansim - Function for PWM backlight control is:
++		 * dsi_panel_update_pwm_backlight(struct dsi_panel *panel, u32 bl_lvl);
++		 * And parsing PWM DT config --> dsi_panel_parse_bl_pwm_config
++		 *                           --> dsi_panel_pwm_register
++		 */
++		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
++		qcom,bl-pmic-pwm-period-usecs = <1000>;
++		qcom,mdss-dsi-bl-min-level = <1>;
++		qcom,mdss-dsi-bl-max-level = <4095>;
++
++		/* Specify GPIO reset sequence an array which element is <RESET_GPIO_STATE DELAY_TIME_MS> */
++                /* Reset sequence action in --> static int dsi_panel_reset(struct dsi_panel *panel) */
++		qcom,mdss-dsi-reset-sequence = <0 200>, <1 20>, <0 30>, <1 60>;
++
++		/* Specify the physical dimensions of the panel in mm */
++		qcom,mdss-pan-physical-width-dimension = <190>;
++		qcom,mdss-pan-physical-height-dimension = <121>;
++
++		qcom,mdss-dsi-display-timings {
++			timing@0 {
++				qcom,mdss-dsi-panel-width = <1024>;
++				qcom,mdss-dsi-panel-height = <600>;
++				qcom,mdss-dsi-panel-framerate = <60>;
++
++				qcom,mdss-dsi-h-front-porch = <160>;
++				qcom,mdss-dsi-h-back-porch = <160>;
++				qcom,mdss-dsi-h-pulse-width = <12>;
++				qcom,mdss-dsi-h-sync-skew = <0>;
++
++                                qcom,mdss-dsi-v-front-porch = <12>;
++				qcom,mdss-dsi-v-back-porch = <23>;
++				qcom,mdss-dsi-v-pulse-width = <10>;
++
++				qcom,mdss-dsi-on-command = [];
++				qcom,mdss-dsi-off-command = [];
++
++				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
++				qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
++			};
++		};
++	};
++};
+diff --git a/display/kalama-imdt-sde-common.dtsi b/display/kalama-imdt-sde-common.dtsi
+new file mode 100755
+index 0000000..7e6083f
+--- /dev/null
++++ b/display/kalama-imdt-sde-common.dtsi
+@@ -0,0 +1,452 @@
++#include <dt-bindings/interrupt-controller/arm-gic.h>
++
++&soc {
++	mdss_mdp: qcom,mdss_mdp@ae00000 {
++		compatible = "qcom,sde-kms";
++		reg = <0x0ae00000 0x84000>,
++		      <0x0aeb0000 0x2008>,
++		      <0x0aeac000 0x800>,
++		      <0x400000 0x1000>;
++		reg-names = "mdp_phys",
++			"vbif_phys",
++			"regdma_phys",
++			"ipcc_reg";
++
++		/* interrupt config */
++		interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-controller;
++		#interrupt-cells = <1>;
++		#cooling-cells = <2>;
++
++		/* hw blocks */
++		qcom,sde-off = <0x1000>;
++		qcom,sde-len = <0x488>;
++
++		qcom,sde-ctl-off = <0x16000 0x17000 0x18000
++					0x19000 0x1a000 0x1b000>;
++		qcom,sde-ctl-size = <0x290>;
++		qcom,sde-ctl-display-pref = "primary", "none", "none",
++			    "none", "none", "none";
++
++		qcom,sde-mixer-off = <0x45000 0x46000 0x47000
++				      0x48000 0x49000 0x4a000
++				      0x0f0f  0x0f0f>;
++		qcom,sde-mixer-size = <0x400>;
++		qcom,sde-mixer-display-pref = "primary", "primary", "none",
++					"none", "none", "none", "none", "none";
++
++		qcom,sde-mixer-dcwb-pref = "none", "none", "none", "none",
++					"none", "none", "dcwb", "dcwb";
++
++		qcom,sde-dspp-top-off = <0x1300>;
++		qcom,sde-dspp-top-size = <0x80>;
++		qcom,sde-dspp-off = <0x55000 0x57000 0x59000 0x5b000>;
++		qcom,sde-dspp-size = <0x1800>;
++
++		qcom,sde-dspp-rc-version = <0x00010001>;
++		qcom,sde-dspp-rc-off = <0x15800 0x14800 0x13800 0x12800>;
++		qcom,sde-dspp-rc-size = <0x38>;
++		qcom,sde-dspp-rc-mem-size = <2720>;
++		qcom,sde-dspp-rc-min-region-width = <20>;
++
++		qcom,sde-dnsc-blur-version = <0x100>;
++		qcom,sde-dnsc-blur-off = <0x7D000>;
++		qcom,sde-dnsc-blur-size = <0x40>;
++		qcom,sde-dnsc-blur-gaus-lut-off = <0x100>;
++		qcom,sde-dnsc-blur-gaus-lut-size = <0x400>;
++		qcom,sde-dnsc-blur-dither-off = <0x5E0>;
++		qcom,sde-dnsc-blur-dither-size = <0x20>;
++
++		qcom,sde-dest-scaler-top-off = <0x00061000>;
++		qcom,sde-dest-scaler-top-size = <0x1c>;
++		qcom,sde-dest-scaler-off = <0x0 0x1000 0x2000 0x3000>;
++		qcom,sde-dest-scaler-size = <0x800>;
++
++		qcom,sde-wb-off = <0x65000 0x66000>;
++		qcom,sde-wb-size = <0x2c8>;
++		qcom,sde-wb-xin-id = <0xa 6>;
++		qcom,sde-wb-id = <1 2>;
++
++		qcom,sde-intf-off = <0x35000 0x36000
++					0x37000 0x38000>;
++		qcom,sde-intf-size = <0x300>;
++		qcom,sde-intf-type = "dp", "dsi", "dsi", "dp";
++		qcom,sde-intf-tear-irq-off = <0 0x36800 0x37800 0>;
++
++		qcom,sde-pp-off = <0x6a000 0x6b000 0x6c000 0x6d000
++					0x6e000 0x6f000 0x67000 0x67400>;
++		qcom,sde-pp-slave = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
++		qcom,sde-pp-size = <0x4>;
++		qcom,sde-pp-merge-3d-id = <0x0 0x0 0x1 0x1 0x2 0x2 0x3 0x3>;
++
++		qcom,sde-merge-3d-off = <0x4f000 0x50000 0x51000 0x67700>;
++		qcom,sde-merge-3d-size = <0x8>;
++		qcom,sde-pp-cwb = <0x0 0x0 0x0 0x0 0x0 0x0 0x1 0x1>;
++
++		qcom,sde-cdm-off = <0x7a200>;
++		qcom,sde-cdm-size = <0x220>;
++
++		qcom,sde-dsc-off = <0x81000 0x81000 0x82000 0x82000>;
++		qcom,sde-dsc-size = <0x4>;
++		qcom,sde-dsc-pair-mask = <2 1 4 3>;
++		qcom,sde-dsc-hw-rev = "dsc_1_2";
++		qcom,sde-dsc-enc = <0x100 0x200 0x100 0x200>;
++		qcom,sde-dsc-enc-size = <0x9c>;
++		qcom,sde-dsc-ctl = <0xF00 0xF80 0xF00 0xF80>;
++		qcom,sde-dsc-ctl-size = <0x24>;
++		qcom,sde-dsc-native422-supp = <0 0 1 1>;
++
++		qcom,sde-dither-off = <0xe0 0xe0 0xe0
++				0xe0 0xe0 0xe0 0xe0 0xe0>;
++		qcom,sde-cwb-dither = <0x0 0x0 0x0 0x0 0x0 0x0 0x1 0x1>;
++		qcom,sde-dither-version = <0x00020000>;
++		qcom,sde-dither-size = <0x20>;
++
++		qcom,sde-sspp-type = "vig", "vig", "vig", "vig",
++					"dma", "dma", "dma", "dma", "dma", "dma";
++		qcom,sde-sspp-off = <0x5000 0x7000 0x9000 0xb000
++					0x25000 0x27000 0x29000 0x2b000 0x2d000 0x2f000>;
++		qcom,sde-sspp-src-size = <0x344>;
++
++		qcom,sde-sspp-xin-id = <0 4 8 12 1 5 9 13 14 15>;
++		qcom,sde-sspp-excl-rect = <1 1 1 1 1 1 1 1 1 1>;
++		qcom,sde-sspp-smart-dma-priority = <7 8 9 10 1 2 3 4 5 6>;
++		qcom,sde-smart-dma-rev = "smart_dma_v2p5";
++
++		qcom,sde-mixer-pair-mask = <2 1 4 3 6 5 8 7>;
++
++		qcom,sde-mixer-blend-op-off = <0x20 0x38 0x50 0x68 0x80 0x98
++						0xb0 0xc8 0xe0 0xf8 0x110>;
++
++		qcom,sde-max-per-pipe-bw-kbps = <4500000 4500000
++						 4500000 4500000
++						 4500000 4500000
++						 4500000 4500000
++						 4500000 4500000>;
++
++		qcom,sde-max-per-pipe-bw-high-kbps = <5200000 5200000
++						      5200000 5200000
++						      5200000 5200000
++						      5200000 5200000
++						      5200000 5200000>;
++
++		/* offsets are relative to "mdp_phys + qcom,sde-off */
++		qcom,sde-sspp-clk-ctrl =
++				<0x4330 0>, <0x6330 0>, <0x8330 0>, <0xa330 0>,
++				<0x24330 0>, <0x26330 0>, <0x28330 0>, <0x2a330 0>,
++				<0x2c330 0>, <0x2e330 0>;
++		qcom,sde-sspp-clk-status =
++				<0x4334 0>, <0x6334 0>, <0x8334 0>, <0xa334 0>,
++				<0x24334 0>, <0x26334 0>, <0x28334 0>, <0x2a334 0>,
++				<0x2c334 0>, <0x2e334 0>;
++		qcom,sde-sspp-csc-off = <0x1a00>;
++		qcom,sde-csc-type = "csc-10bit";
++		qcom,sde-qseed-sw-lib-rev = "qseedv3lite";
++		qcom,sde-qseed-scalar-version = <0x3002>;
++		qcom,sde-sspp-qseed-off = <0xa00>;
++		qcom,sde-mixer-linewidth = <2560>;
++		qcom,sde-sspp-linewidth = <5120>;
++		qcom,sde-wb-linewidth = <4096>;
++		qcom,sde-dsc-linewidth = <2560>;
++		qcom,sde-max-dest-scaler-input-linewidth = <2048>;
++		qcom,sde-max-dest-scaler-output-linewidth = <2560>;
++		qcom,sde-wb-linewidth-linear = <5120>;
++		qcom,sde-mixer-blendstages = <0xb>;
++		qcom,sde-highest-bank-bit = <0x8 0x3>,
++					    <0x7 0x2>;
++		qcom,sde-ubwc-version = <0x40000002>;
++		qcom,sde-ubwc-swizzle = <0x6>;
++		qcom,sde-ubwc-bw-calc-version = <0x1>;
++		qcom,sde-ubwc-static = <0x1>;
++		qcom,sde-macrotile-mode = <0x1>;
++		qcom,sde-smart-panel-align-mode = <0xc>;
++		qcom,sde-panic-per-pipe;
++		qcom,sde-has-cdp;
++		qcom,sde-has-src-split;
++		qcom,sde-pipe-order-version = <0x1>;
++		qcom,sde-has-dim-layer;
++		qcom,sde-has-dest-scaler;
++		qcom,sde-max-trusted-vm-displays = <1>;
++
++		qcom,sde-max-bw-low-kbps = <17300000>;
++		qcom,sde-max-bw-high-kbps = <25000000>;
++		qcom,sde-min-core-ib-kbps = <2500000>;
++		qcom,sde-min-llcc-ib-kbps = <0>;
++		qcom,sde-min-dram-ib-kbps = <800000>;
++		qcom,sde-dram-channels = <4>;
++		qcom,sde-num-nrt-paths = <0>;
++
++		qcom,sde-dspp-spr-off = <0x15400 0x14400>;
++		qcom,sde-dspp-spr-size = <0x100>;
++		qcom,sde-dspp-spr-version = <0x00010000>;
++
++		qcom,sde-dspp-demura-off = <0x15600 0x14600>;
++		qcom,sde-dspp-demura-size = <0xe4>;
++		qcom,sde-dspp-demura-version = <0x00010000>;
++
++		qcom,sde-lm-noise-off = <0x320>;
++		qcom,sde-lm-noise-version = <0x00010000>;
++
++		qcom,sde-uidle-off = <0x80000>;
++		qcom,sde-uidle-size = <0x80>;
++
++		qcom,sde-vbif-off = <0>;
++		qcom,sde-vbif-size = <0x1074>;
++		qcom,sde-vbif-id = <0>;
++		qcom,sde-vbif-memtype-0 = <3 3 3 3 3 3 3 3>;
++		qcom,sde-vbif-memtype-1 = <3 3 3 3 3 3 3 3>;
++
++		qcom,sde-vbif-default-ot-rd-limit = <40>;
++		qcom,sde-vbif-default-ot-wr-limit = <32>;
++		qcom,sde-vbif-dynamic-ot-wr-limit = <62208000 2 124416000 6 497664000 16>;
++
++		qcom,sde-vbif-qos-rt-remap = <3 3 4 4 5 5 6 6 3 3 4 4 5 5 6 6>;
++		qcom,sde-vbif-qos-nrt-remap = <3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3>;
++		qcom,sde-vbif-qos-cwb-remap = <3 3 4 4 5 5 6 6 3 3 4 4 5 5 6 6>;
++		qcom,sde-vbif-qos-lutdma-remap = <3 3 3 3 4 4 4 6 3 3 3 3 4 4 4 6>;
++		qcom,sde-vbif-qos-offline-wb-remap = <3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3>;
++		qcom,sde-vbif-qos-cnoc-remap = <3 3 4 4 5 5 5 5 3 3 3 3 3 3 3 3>;
++
++		qcom,sde-danger-lut = <0xffff 0xffff 0xffff 0xffff 0x0 0x0 0x0 0x0
++				0x0 0x0 0xffff 0xffff 0xffff 0xffff 0x0 0x0>;
++
++		qcom,sde-safe-lut = <0xff00 0xfff0 0xff00 0xfff0 0xffff 0xffff 0x0001 0x0001
++				0x03ff 0x03ff 0xff00 0xfff0 0xff00 0xfff0 0xffff 0xffff>;
++
++		qcom,sde-creq-lut = <0x00112233 0x44556666 0x00112233 0x66666666
++				0x00112233 0x44556666 0x00112233 0x66666666
++				0x0        0x0        0x0        0x0
++				0x77776666 0x66666540 0x77776666 0x66666540
++				0x77776541 0x0        0x77776541 0x0
++				0x00112233 0x44556666 0x00112233 0x66666666
++				0x00112233 0x44556666 0x00112233 0x66666666
++				0x0        0x0        0x0        0x0>;
++
++		qcom,sde-cdp-setting = <1 1>, <1 0>;
++
++		qcom,sde-qos-cpu-mask = <0x3>;
++		qcom,sde-qos-cpu-mask-performance = <0x7>;
++		qcom,sde-qos-cpu-dma-latency = <300>;
++		qcom,sde-qos-cpu-irq-latency = <300>;
++
++		qcom,sde-ipcc-protocol-id = <0x2>;
++
++		/* offsets are relative to "mdp_phys + qcom,sde-off */
++		qcom,sde-reg-dma-off = <0 0x400>;
++		qcom,sde-reg-dma-id = <0 1>;
++		qcom,sde-reg-dma-version = <0x00020000>;
++		qcom,sde-reg-dma-trigger-off = <0x119c>;
++		qcom,sde-reg-dma-xin-id = <7>;
++		qcom,sde-reg-dma-clk-ctrl = <0x2bc 20>;
++
++		qcom,sde-secure-sid-mask = <0x0002801 0x0002c01>;
++
++		qcom,sde-reg-bus,vectors-KBps = <0 0>,
++				<0 57000>,
++				<0 590000>,
++				<0 1190000>;
++
++		qcom,sde-sspp-vig-blocks {
++			vcm@0 {
++				cell-index = <0>;
++				qcom,sde-vig-top-off = <0xa00>;
++				qcom,sde-vig-csc-off = <0x1a00>;
++				qcom,sde-vig-qseed-off = <0xa00>;
++				qcom,sde-vig-qseed-size = <0xe0>;
++				qcom,sde-vig-gamut = <0x1d00 0x00060001>;
++				qcom,sde-vig-igc = <0x1d00 0x00060000>;
++				qcom,sde-vig-inverse-pma;
++				qcom,sde-fp16-igc = <0x200 0x00010000>;
++				qcom,sde-fp16-unmult = <0x200 0x00010000>;
++				qcom,sde-fp16-gc = <0x200 0x00010000>;
++				qcom,sde-fp16-csc = <0x200 0x00010000>;
++			};
++
++			vcm@1 {
++				cell-index = <1>;
++				qcom,sde-fp16-igc = <0x280 0x00010000>;
++				qcom,sde-fp16-unmult = <0x280 0x00010000>;
++				qcom,sde-fp16-gc = <0x280 0x00010000>;
++				qcom,sde-fp16-csc = <0x280 0x00010000>;
++			};
++		};
++
++		qcom,sde-sspp-dma-blocks {
++			dgm@0 {
++				cell-index = <0>;
++				qcom,sde-dma-top-off = <0x800>;
++				qcom,sde-dma-igc = <0xa00 0x00050000>;
++				qcom,sde-dma-gc = <0xc00 0x00050000>;
++				qcom,sde-dma-inverse-pma;
++				qcom,sde-dma-csc-off = <0x800>;
++				qcom,sde-fp16-igc = <0x200 0x00010000>;
++				qcom,sde-fp16-unmult = <0x200 0x00010000>;
++				qcom,sde-fp16-gc = <0x200 0x00010000>;
++				qcom,sde-fp16-csc = <0x200 0x00010000>;
++			};
++
++			dgm@1 {
++				cell-index = <1>;
++				qcom,sde-dma-igc = <0x1a00 0x00050000>;
++				qcom,sde-dma-gc = <0xc00 0x00050000>;
++				qcom,sde-dma-inverse-pma;
++				qcom,sde-dma-csc-off = <0x1800>;
++				qcom,sde-fp16-igc = <0x200 0x00010000>;
++				qcom,sde-fp16-unmult = <0x200 0x00010000>;
++				qcom,sde-fp16-gc = <0x200 0x00010000>;
++				qcom,sde-fp16-csc = <0x200 0x00010000>;
++			};
++		};
++
++		qcom,sde-dspp-blocks {
++			qcom,sde-dspp-igc = <0x1260 0x00040000>;
++			qcom,sde-dspp-hsic = <0x800 0x00010007>;
++			qcom,sde-dspp-memcolor = <0x880 0x00010007>;
++			qcom,sde-dspp-hist = <0x800 0x00010007>;
++			qcom,sde-dspp-sixzone = <0x900 0x00020000>;
++			qcom,sde-dspp-vlut = <0xa00 0x00010008>;
++			qcom,sde-dspp-gamut = <0x1000 0x00040003>;
++			qcom,sde-dspp-pcc = <0x1700 0x00040000>;
++			qcom,sde-dspp-gc = <0x17c0 0x00010008>;
++			qcom,sde-dspp-dither = <0x82c 0x00010007>;
++		};
++
++	};
++
++	mdss_dsi0: qcom,mdss_dsi_ctrl0@ae94000 {
++		compatible = "qcom,dsi-ctrl-hw-v2.7";
++		label = "dsi-ctrl-0";
++		cell-index = <0>;
++		frame-threshold-time-us = <800>;
++		reg = <0xae94000 0x1000>,
++			<0xaf0f000 0x4>,
++			<0x0ae36000 0x300>;
++		reg-names = "dsi_ctrl", "disp_cc_base", "mdp_intf_base";
++		interrupt-parent = <&mdss_mdp>;
++		interrupts = <4 0>;
++
++		qcom,ctrl-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			qcom,ctrl-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdda-1p2";
++				qcom,supply-min-voltage = <1200000>;
++				qcom,supply-max-voltage = <1200000>;
++				qcom,supply-enable-load = <16800>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++	};
++
++	mdss_dsi1: qcom,mdss_dsi_ctrl1@ae96000 {
++		compatible = "qcom,dsi-ctrl-hw-v2.7";
++		label = "dsi-ctrl-1";
++		cell-index = <1>;
++		frame-threshold-time-us = <800>;
++		reg = <0xae96000 0x1000>,
++			<0xaf0f000 0x4>,
++			<0x0ae37000 0x300>;
++		reg-names = "dsi_ctrl", "disp_cc_base", "mdp_intf_base";
++		interrupt-parent = <&mdss_mdp>;
++		interrupts = <5 0>;
++
++		qcom,ctrl-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			qcom,ctrl-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdda-1p2";
++				qcom,supply-min-voltage = <1200000>;
++				qcom,supply-max-voltage = <1200000>;
++				qcom,supply-enable-load = <16800>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++	};
++
++	mdss_dsi_phy0: qcom,mdss_dsi_phy0@ae95500 {
++		compatible = "qcom,dsi-phy-v5.2";
++		label = "dsi-phy-0";
++		cell-index = <0>;
++		#clock-cells = <1>;
++		reg = <0xae95000 0xa00>,
++		      <0xae95500 0x400>,
++		      <0xae94200 0xa0>;
++		reg-names = "dsi_phy", "pll_base", "dyn_refresh_base";
++		pll-label = "dsi_pll_4nm";
++
++		qcom,platform-strength-ctrl = [55 03
++						55 03
++						55 03
++						55 03
++						55 00];
++		qcom,platform-lane-config = [00 00 0a 0a
++						00 00 0a 0a
++						00 00 0a 0a
++						00 00 0a 0a
++						00 00 8a 8a];
++		qcom,platform-regulator-settings = [1d 1d 1d 1d 1d];
++		qcom,phy-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			qcom,phy-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdda-0p9";
++				qcom,supply-min-voltage = <880000>;
++				qcom,supply-max-voltage = <880000>;
++				qcom,supply-enable-load = <98400>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++	};
++
++	mdss_dsi_phy1: qcom,mdss_dsi_phy1@ae97500 {
++		compatible = "qcom,dsi-phy-v5.2";
++		label = "dsi-phy-1";
++		cell-index = <1>;
++		#clock-cells = <1>;
++		reg = <0xae97000 0xa00>,
++		      <0xae97500 0x400>,
++		      <0xae96200 0xa0>;
++		reg-names = "dsi_phy", "pll_base", "dyn_refresh_base";
++		pll-label = "dsi_pll_4nm";
++
++		qcom,platform-strength-ctrl = [55 03
++						55 03
++						55 03
++						55 03
++						55 00];
++		qcom,platform-regulator-settings = [1d 1d 1d 1d 1d];
++		qcom,platform-lane-config = [00 00 0a 0a
++						00 00 0a 0a
++						00 00 0a 0a
++						00 00 0a 0a
++						00 00 8a 8a];
++		qcom,phy-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			qcom,phy-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdda-0p9";
++				qcom,supply-min-voltage = <880000>;
++				qcom,supply-max-voltage = <880000>;
++				qcom,supply-enable-load = <98400>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++	};
++
++	dsi_pll_codes_data:dsi_pll_codes {
++		reg = <0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0
++			0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0>;
++		label = "dsi_pll_codes";
++	};
++};
+diff --git a/display/kalama-imdt-sde-display-common.dtsi b/display/kalama-imdt-sde-display-common.dtsi
+new file mode 100755
+index 0000000..9ec5bd3
+--- /dev/null
++++ b/display/kalama-imdt-sde-display-common.dtsi
+@@ -0,0 +1,118 @@
++#include "dsi-panel-imdt-tst070wsbe165c-video.dtsi"
++
++#include "kalama-imdt-sde-display-pinctrl.dtsi"
++
++&soc {
++	dsi_panel_pwr_supply_sim: dsi_panel_pwr_supply_sim {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		qcom,panel-supply-entry@0 {
++			reg = <0>;
++			qcom,supply-name = "dummy";
++			qcom,supply-min-voltage = <1800000>;
++			qcom,supply-max-voltage = <1800000>;
++			qcom,supply-enable-load = <200000>;
++			qcom,supply-disable-load = <80>;
++			qcom,supply-post-on-sleep = <20>;
++		};
++	};
++
++	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		qcom,panel-supply-entry@0 {
++			reg = <0>;
++			qcom,supply-name = "vddio";
++			qcom,supply-min-voltage = <1800000>;
++			qcom,supply-max-voltage = <1800000>;
++			qcom,supply-enable-load = <200000>;
++			qcom,supply-disable-load = <80>;
++			qcom,supply-post-on-sleep = <20>;
++		};
++
++		qcom,panel-supply-entry@1 {
++			reg = <1>;
++			qcom,supply-name = "vdd";
++			qcom,supply-min-voltage = <1200000>;
++			qcom,supply-max-voltage = <1200000>;
++			qcom,supply-enable-load = <299000>;
++			qcom,supply-disable-load = <0>;
++			qcom,supply-post-on-sleep = <0>;
++		};
++
++		qcom,panel-supply-entry@2 {
++			reg = <2>;
++			qcom,supply-name = "vci";
++			qcom,supply-min-voltage = <3000000>;
++			qcom,supply-max-voltage = <3000000>;
++			qcom,supply-enable-load = <10000>;
++			qcom,supply-disable-load = <0>;
++			qcom,supply-post-on-sleep = <0>;
++		};
++	};
++
++	dsi_panel_pwr_supply_avdd: dsi_panel_pwr_supply_avdd {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		qcom,panel-supply-entry@0 {
++			reg = <0>;
++			qcom,supply-name = "vddio";
++			qcom,supply-min-voltage = <1800000>;
++			qcom,supply-max-voltage = <1800000>;
++			qcom,supply-enable-load = <200000>;
++			qcom,supply-disable-load = <80>;
++			qcom,supply-post-on-sleep = <20>;
++		};
++
++		qcom,panel-supply-entry@1 {
++			reg = <1>;
++			qcom,supply-name = "avdd";
++			qcom,supply-min-voltage = <3300000>;
++			qcom,supply-max-voltage = <3300000>;
++			qcom,supply-enable-load = <100000>;
++			qcom,supply-disable-load = <100>;
++		};
++	};
++
++	sde_dsi: qcom,dsi-display-primary {
++		compatible = "qcom,dsi-display";
++		label = "primary";
++
++		qcom,dsi-ctrl = <&mdss_dsi0 &mdss_dsi1>;
++		qcom,dsi-phy = <&mdss_dsi_phy0 &mdss_dsi_phy1>;
++
++		pinctrl-names = "panel_active", "panel_suspend";
++		pinctrl-0 = <&sde_dsi_active &sde_te_active>;
++		pinctrl-1 = <&sde_dsi_suspend &sde_te_suspend>;
++
++		qcom,platform-reset-gpio = <&tlmm 133 0>;
++		qcom,platform-te-gpio = <&tlmm 86 0>;
++		qcom,panel-te-source = <0>;
++
++		qcom,mdp = <&mdss_mdp>;
++		qcom,dsi-default-panel = <&dsi_tst070wsbe165c_video>;
++		qcom,demura-panel-id = <0x0 0x0>;
++	};
++
++	sde_dsi1: qcom,dsi-display-secondary {
++		compatible = "qcom,dsi-display";
++		label = "secondary";
++
++		qcom,dsi-ctrl = <&mdss_dsi0 &mdss_dsi1>;
++		qcom,dsi-phy = <&mdss_dsi_phy0 &mdss_dsi_phy1>;
++
++		pinctrl-names = "panel_active", "panel_suspend";
++		pinctrl-0 = <&sde_dsi1_active &sde_te1_active>;
++		pinctrl-1 = <&sde_dsi1_suspend &sde_te1_suspend>;
++
++		qcom,platform-te-gpio = <&tlmm 87 0>;
++		qcom,panel-te-source = <1>;
++
++		qcom,mdp = <&mdss_mdp>;
++		qcom,demura-panel-id = <0x0 0x0>;
++	};
++};
++
+diff --git a/display/kalama-imdt-sde-display-hdk.dtsi b/display/kalama-imdt-sde-display-hdk.dtsi
+new file mode 100755
+index 0000000..1493fb5
+--- /dev/null
++++ b/display/kalama-imdt-sde-display-hdk.dtsi
+@@ -0,0 +1,51 @@
++#include "kalama-imdt-sde-display.dtsi"
++
++&dsi_tst070wsbe165c_video {
++	qcom,dsi-select-clocks = "pll_byte_clk0", "pll_dsi_clk0";
++	qcom,dsi-select-sec-clocks = "pll_byte_clk1", "pll_dsi_clk1";
++
++	/* Do we need qcom,esd-check-enabled; ? */
++	/* display0_backlight_default ?? */
++	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_avdd>;
++	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_external";
++	qcom,mdss-dsi-bl-min-level = <1>;
++	qcom,mdss-dsi-bl-max-level = <4095>;
++	qcom,mdss-brightness-max-level = <255>;
++	qcom,platform-bklight-en-gpio = <&pm8550_gpios 6 0>;
++	qcom,platform-reset-gpio = <&tlmm 133 0>;
++
++	qcom,mdss-dsi-display-timings {
++		timing@0 {
++			qcom,display-topology = <1 0 1>;
++			qcom,default-topology-index = <0>;
++			qcom,mdss-dsi-panel-phy-timings = [00 0D 03 03 10 1C 04 03 02 02 04 00 0C 08];
++		};
++	};
++};
++
++&sde_dsi {
++	qcom,dsi-default-panel = <&dsi_tst070wsbe165c_video>;
++};
++
++&sde_dsi1 {
++	status = "disabled";
++};
++
++&sde_wb2 {
++	status = "disabled";
++};
++
++/* 	IMDT NOTE: 	
++	We must remove the connectors/components we are
++	are not using from the list. In our case,
++	we are currently not using DSI1 and the Display Port.
++	So &sde_dsi1 (DSI1) and &sde_dp (Display Port) have not 
++	be included in our list of connectors.
++
++	The display kernel drivers works similarly to the camera
++	kernel drivers where they use the Component Helper
++	subsystem to wait for multiple subdevices to be probed.
++*/
++&mdss_mdp {
++	connectors = <&sde_dsi &smmu_sde_unsec &sde_rscc &sde_wb1>;
++};
+diff --git a/display/kalama-imdt-sde-display-pinctrl.dtsi b/display/kalama-imdt-sde-display-pinctrl.dtsi
+new file mode 100755
+index 0000000..fd55ef1
+--- /dev/null
++++ b/display/kalama-imdt-sde-display-pinctrl.dtsi
+@@ -0,0 +1,168 @@
++&tlmm {
++	pmx_sde: pmx_sde {
++		sde_dsi_active: sde_dsi_active {
++			mux {
++				pins = "gpio133";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio133";
++				drive-strength = <8>;   /* 8 mA */
++				bias-disable = <0>;   /* no pull */
++                                drive-open-drain;
++			};
++		};
++
++		sde_dsi_suspend: sde_dsi_suspend {
++			mux {
++				pins = "gpio133";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio133";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++			};
++		};
++
++		sde_dsi1_active: sde_dsi1_active {
++			mux {
++				pins = "gpio137";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio137";
++				drive-strength = <8>;   /* 8 mA */
++				bias-disable = <0>;   /* no pull */
++			};
++		};
++
++		sde_dsi1_suspend: sde_dsi1_suspend {
++			mux {
++				pins = "gpio137";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio137";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++			};
++		};
++	};
++
++	pmx_sde_te: pmx_sde_te {
++		sde_te_active: sde_te_active {
++			mux {
++				pins = "gpio86";
++				function = "mdp_vsync";
++			};
++
++			config {
++				pins = "gpio86";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++			};
++		};
++
++		sde_te_suspend: sde_te_suspend {
++			mux {
++				pins = "gpio86";
++				function = "mdp_vsync";
++			};
++
++			config {
++				pins = "gpio86";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++			};
++		};
++
++		sde_te1_active: sde_te1_active {
++			mux {
++				pins = "gpio87";
++				function = "mdp_vsync";
++			};
++
++			config {
++				pins = "gpio87";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++			};
++		};
++
++		sde_te1_suspend: sde_te1_suspend {
++			mux {
++				pins = "gpio87";
++				function = "mdp_vsync";
++			};
++
++			config {
++				pins = "gpio87";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++			};
++		};
++	};
++
++	pmx_disp_en: pmx_disp_en {
++		disp_pwr_en_default: disp_pwr_en_default {
++			mux {
++				pins = "gpio91";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio91";
++				drive-strength = <8>;   /* 8 mA */
++				bias-disable;
++			};
++		};
++	};
++
++
++	dsi_5v_en_default: dsi_5v_en_default {
++		mux {
++			pins = "gpio140";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio140";
++			drive-strength = <8>;   /* 8 mA */
++			bias-disable;
++		};
++	};
++
++	dsi_temp_bl_en_default: dsi_temp_bl_en_default {
++		mux {
++			pins = "gpio121";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio121";
++			drive-strength = <8>;   /* 8 mA */
++			bias-disable;
++		};
++	};
++
++
++	dsi_temp_disp_en_default: dsi_temp_disp_en_default {
++		mux {
++			pins = "gpio123";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio123";
++			drive-strength = <8>;   /* 8 mA */
++			bias-disable;
++		};
++	};
++
++};
++
+diff --git a/display/kalama-imdt-sde-display.dtsi b/display/kalama-imdt-sde-display.dtsi
+new file mode 100644
+index 0000000..c649a4c
+--- /dev/null
++++ b/display/kalama-imdt-sde-display.dtsi
+@@ -0,0 +1,207 @@
++#include "kalama-imdt-sde.dtsi"
++#include "kalama-imdt-sde-display-common.dtsi"
++#include <dt-bindings/clock/qcom,dispcc-kalama.h>
++
++&pm8550_gpios {
++	display0_backlight_default: display0_backlight_default {
++		pins = "gpio6";
++		function = "normal";
++		input-disable;
++		output-enable;
++		bias-disable;
++		power-source = <1>;
++		qcom,drive-strength = <3>;
++	};
++};
++
++&soc {
++	sde_wb1: qcom,wb-display@1 {
++		compatible = "qcom,wb-display";
++		cell-index = <0>;
++		label = "wb_display1";
++	};
++	sde_wb2: qcom,wb-display@2 {
++		compatible = "qcom,wb-display";
++		cell-index = <1>;
++		label = "wb_display2";
++	};
++
++	disp_rdump_memory: disp_rdump_region@b8000000 {
++		reg = <0xb8000000 0x00800000>;
++		label = "disp_rdump_region";
++	};
++
++	display_panel_pwr_en: regulator-display-panel-en {
++		compatible = "regulator-fixed";
++		regulator-name = "display_panel_pwr_en";
++		regulator-min-microvolt = <8000000>;
++		regulator-max-microvolt = <8000000>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&disp_pwr_en_default>;
++		
++		gpio = <&tlmm 91 0>;
++		enable-active-high;
++		
++		vin-supply = <&som_vph_pwr>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++
++	// This is used as the VIN to the Backlight LED
++	// Driver.
++	dsi_5v_en: regulator-dsi-5v-en {
++		compatible = "regulator-fixed";
++		regulator-name = "dsi_5v_en";
++		regulator-min-microvolt = <8000000>;
++		regulator-max-microvolt = <8000000>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&dsi_5v_en_default>;
++		
++		gpio = <&tlmm 140 0>;
++		enable-active-high;
++		
++		vin-supply = <&som_vph_pwr>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	/* IMDT NOTE
++	 * Temporary Hack because DSI adapter is actually
++	 * using GPIO_123 (I2S1_WS) for 10_1PWR_EN.
++	 * This should be GPIO_91.
++	 */
++	display_panel_pwr_en_temp: regulator-display-panel-en-temp {
++		compatible = "regulator-fixed";
++		regulator-name = "display_panel_pwr_en_temp";
++		regulator-min-microvolt = <8000000>;
++		regulator-max-microvolt = <8000000>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&dsi_temp_disp_en_default>;
++		
++		gpio = <&tlmm 123 0>;
++		enable-active-high;
++		
++		vin-supply = <&som_vph_pwr>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	/* IMDT NOTE
++	 * Temporary Hack because DSI adapter is actually
++	 * using GPIO_121 (I2S1_SCK) for 10_Inch_Display_PWM.
++	 * This should be PM8550 GPIO6.
++	 * I don't think we can PWM this pin either!
++	 */
++	dsi_temp_bl_en: regulator-dsi-temp-bl-en {
++		compatible = "regulator-fixed";
++		regulator-name = "dsi_temp_bl_en";
++		regulator-min-microvolt = <8000000>;
++		regulator-max-microvolt = <8000000>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&dsi_temp_bl_en_default>;
++		
++		gpio = <&tlmm 121 0>;
++		enable-active-high;
++		
++		vin-supply = <&display_panel_pwr_en_temp>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
++};
++
++&reserved_memory {
++	splash_memory: splash_region {
++		reg = <0x0 0xb8000000 0x0 0x02b00000>;
++		label = "cont_splash_region";
++	};
++
++	/*
++	 * Demura memory regions are to be commented out if
++	 * feature not in use.
++	 */
++	demura_memory_0: demura_region_0 {
++		reg = <0x0 0x0 0x0 0x0>;
++		label = "demura hfc region 0";
++	};
++
++	demura_memory_1: demura_region_1 {
++		reg = <0x0 0x0 0x0 0x0>;
++		label = "demura hfc region 1";
++	};
++};
++
++&sde_dsi {
++	clocks = <&mdss_dsi_phy0 0>,
++		 <&mdss_dsi_phy0 1>,
++		 <&mdss_dsi_phy1 2>,
++		 <&mdss_dsi_phy1 3>,
++		 /*
++		  * Currently the dsi clock handles are under the dsi
++		  * controller DT node. As soon as the controller probe
++		  * finishes, the dispcc sync state can get called before
++		  * the dsi_display probe potentially disturbing the clock
++		  * votes for cont_splash use case. Hence we are no longer
++		  * protected by the component model in this case against the
++		  * disp cc sync state getting triggered after the dsi_ctrl
++		  * probe. To protect against this incorrect sync state trigger
++		  * add this dummy MDP clk vote handle to the dsi_display
++		  * DT node. Since the dsi_display driver does not parse
++		  * MDP clock nodes, no actual vote shall be added and this
++		  * change is done just to satisfy sync state requirements.
++		  */
++		 <&dispcc DISP_CC_MDSS_MDP_CLK>;
++	clock-names = "pll_byte_clk0", "pll_dsi_clk0",
++		      "pll_byte_clk1", "pll_dsi_clk1",
++		      "mdp_core_clk";
++
++	/* IMDT Note - Changed these to use the power supplies on our board 1V8, 3V3 */
++	vddio-supply = <&per_1v8_reg>;
++	vdd-supply = <&per_3v3_reg>;
++};
++
++&sde_dsi1 {
++	clocks = <&mdss_dsi_phy0 0>,
++		 <&mdss_dsi_phy0 1>,
++		 <&mdss_dsi_phy1 2>,
++		 <&mdss_dsi_phy1 3>,
++		 /*
++		  * Currently the dsi clock handles are under the dsi
++		  * controller DT node. As soon as the controller probe
++		  * finishes, the dispcc sync state can get called before
++		  * the dsi_display probe potentially disturbing the clock
++		  * votes for cont_splash use case. Hence we are no longer
++		  * protected by the component model in this case against the
++		  * disp cc sync state getting triggered after the dsi_ctrl
++		  * probe. To protect against this incorrect sync state trigger
++		  * add this dummy MDP clk vote handle to the dsi_display
++		  * DT node. Since the dsi_display driver does not parse
++		  * MDP clock nodes, no actual vote shall be added and this
++		  * change is done just to satisfy sync state requirements.
++		  */
++		 <&dispcc DISP_CC_MDSS_MDP_CLK>;
++	clock-names = "pll_byte_clk0", "pll_dsi_clk0",
++		      "pll_byte_clk1", "pll_dsi_clk1",
++		      "mdp_core_clk";
++
++	/* IMDT Note - Changed these to use the power supplies on our board 1V8, 3V3 */
++	vddio-supply = <&per_1v8_reg>;
++	vdd-supply = <&per_3v3_reg>;
++
++};
++
++/* IMDT NOTE: 	
++ * This node is overrided in another dtsi file.
++ */
++&mdss_mdp {
++	connectors = <&sde_dsi &sde_dsi1 &smmu_sde_unsec &sde_wb1 &sde_wb2 &sde_rscc>;
++};
++
+diff --git a/display/kalama-imdt-sde.dtsi b/display/kalama-imdt-sde.dtsi
+new file mode 100755
+index 0000000..be9ea74
+--- /dev/null
++++ b/display/kalama-imdt-sde.dtsi
+@@ -0,0 +1,302 @@
++#include <dt-bindings/regulator/qcom,rpmh-regulator-levels.h>
++#include <dt-bindings/clock/qcom,dispcc-kalama.h>
++#include <dt-bindings/clock/qcom,gcc-kalama.h>
++#include <dt-bindings/interconnect/qcom,kalama.h>
++#include <dt-bindings/clock/qcom,rpmh.h>
++#include <dt-bindings/clock/qcom,tcsrcc-kalama.h>
++
++#include "kalama-imdt-sde-common.dtsi"
++
++&soc {
++	ext_disp: qcom,msm-ext-disp {
++		compatible = "qcom,msm-ext-disp";
++
++		ext_disp_audio_codec: qcom,msm-ext-disp-audio-codec-rx {
++			compatible = "qcom,msm-ext-disp-audio-codec-rx";
++		};
++	};
++
++	qcom_msmhdcp: qcom,msm_hdcp {
++		compatible = "qcom,msm-hdcp";
++	};
++
++	sde_dp: qcom,dp_display@ae90000 {
++		cell-index = <0>;
++		compatible = "qcom,dp-display";
++                
++		/* TODO: Bringup display port */
++		/* IMDT Note - For now we have disabled display port */
++		status = "disabled";
++
++		usb-phy = <&usb_qmp_dp_phy>;
++
++		/* IMDT Note - fsa4480 not on our board */                
++		// qcom,dp-aux-switch = <&fsa4480>;
++		qcom,ext-disp = <&ext_disp>;
++		qcom,altmode-dev = <&altmode 0>;
++		usb-controller = <&usb0>;
++
++		reg =   <0xae90000 0x0fc>,
++			<0xae90200 0x0c0>,
++			<0xae90400 0x770>,
++			<0xae91000 0x098>,
++			<0x88eaa00 0x200>,
++			<0x88ea200 0x200>,
++			<0x88ea600 0x200>,
++			<0x88ea000 0x200>,
++			<0x88e8000 0x20>,
++			<0x0aee1000 0x034>,
++			<0xae91400 0x098>,
++			<0xaf09000 0x14>;
++		reg-names = "dp_ahb", "dp_aux", "dp_link",
++			"dp_p0", "dp_phy", "dp_ln_tx0", "dp_ln_tx1",
++			"dp_pll", "usb3_dp_com", "hdcp_physical",
++			"dp_p1", "gdsc";
++
++		interrupt-parent = <&mdss_mdp>;
++		interrupts = <12 0>;
++
++		#clock-cells = <1>;
++		clocks =  <&dispcc DISP_CC_MDSS_DPTX0_AUX_CLK>,
++			<&rpmhcc RPMH_CXO_CLK>,
++			<&tcsrcc TCSR_USB3_CLKREF_EN>,
++			<&gcc GCC_USB3_PRIM_PHY_PIPE_CLK>,
++			<&dispcc DISP_CC_MDSS_DPTX0_LINK_CLK>,
++			<&dispcc DISP_CC_MDSS_DPTX0_LINK_CLK_SRC>,
++			<&dispcc DISP_CC_MDSS_DPTX0_LINK_INTF_CLK>,
++			<&sde_dp 0>,
++			<&dispcc DISP_CC_MDSS_DPTX0_PIXEL0_CLK_SRC>,
++			<&sde_dp 1>,
++			<&dispcc DISP_CC_MDSS_DPTX0_PIXEL1_CLK_SRC>,
++			<&dispcc DISP_CC_MDSS_DPTX0_PIXEL0_CLK>,
++			<&dispcc DISP_CC_MDSS_DPTX0_PIXEL1_CLK>;
++		clock-names = "core_aux_clk", "rpmh_cxo_clk", "core_usb_ref_clk_src",
++			"core_usb_pipe_clk", "link_clk", "link_clk_src", "link_iface_clk",
++			"link_parent", "pixel_clk_rcg", "pixel_parent", "pixel1_clk_rcg",
++			"strm0_pixel_clk", "strm1_pixel_clk";
++
++		qcom,pll-revision = "4nm-v1.1";
++		qcom,phy-version = <0x600>;
++		qcom,aux-cfg0-settings = [20 00];
++		qcom,aux-cfg1-settings = [24 13];
++		qcom,aux-cfg2-settings = [28 A4];
++		qcom,aux-cfg3-settings = [2c 00];
++		qcom,aux-cfg4-settings = [30 0a];
++		qcom,aux-cfg5-settings = [34 26];
++		qcom,aux-cfg6-settings = [38 0a];
++		qcom,aux-cfg7-settings = [3c 03];
++		qcom,aux-cfg8-settings = [40 b7];
++		qcom,aux-cfg9-settings = [44 03];
++
++		qcom,max-pclk-frequency-khz = <675000>;
++
++		qcom,widebus-enable;
++		qcom,skip-mst;
++		qcom,dsc-feature-enable;
++		qcom,fec-feature-enable;
++		qcom,dsc-continuous-pps;
++
++		qcom,qos-cpu-mask = <0xf>;
++		qcom,qos-cpu-latency-us = <300>;
++
++		vdda-1p2-supply = <&L3E>;
++		vdda-0p9-supply = <&L3F>;
++		vdda_usb-0p9-supply = <&L1E>;
++		vdd_mx-supply = <&VDD_MXA_LEVEL>;
++		dp_phy_gdsc-supply = <&gcc_usb3_phy_gdsc>;
++
++		qcom,ctrl-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			qcom,ctrl-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdda-1p2";
++				qcom,supply-min-voltage = <1200000>;
++				qcom,supply-max-voltage = <1200000>;
++				qcom,supply-enable-load = <30100>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++
++		qcom,phy-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			qcom,phy-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdda-0p9";
++				qcom,supply-min-voltage = <912000>;
++				qcom,supply-max-voltage = <912000>;
++				qcom,supply-enable-load = <115000>;
++				qcom,supply-disable-load = <0>;
++			};
++
++			qcom,phy-supply-entry@1 {
++				reg = <1>;
++				qcom,supply-name = "vdda_usb-0p9";
++				qcom,supply-min-voltage = <880000>;
++				qcom,supply-max-voltage = <880000>;
++				qcom,supply-enable-load = <323000>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++
++		qcom,pll-supply-entries {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			qcom,pll-supply-entry@0 {
++				reg = <0>;
++				qcom,supply-name = "vdd_mx";
++				qcom,supply-min-voltage =
++						<RPMH_REGULATOR_LEVEL_TURBO>;
++				qcom,supply-max-voltage =
++						<RPMH_REGULATOR_LEVEL_MAX>;
++				qcom,supply-enable-load = <0>;
++				qcom,supply-disable-load = <0>;
++			};
++		};
++	};
++
++	sde_rscc: qcom,sde_rscc@af20000 {
++		cell-index = <0>;
++		compatible = "qcom,sde-rsc";
++		reg = <0xaf20000 0x4d68>,
++			<0xaf30000 0x3fd4>;
++		reg-names = "drv", "wrapper";
++		qcom,sde-rsc-version = <5>;
++		qcom,sde-rsc-need-hw-reinit;
++
++		qcom,sde-dram-channels = <2>;
++
++		vdd-supply = <&disp_cc_mdss_core_gdsc>;
++		clocks = <&dispcc DISP_CC_MDSS_RSCC_VSYNC_CLK>,
++			<&dispcc DISP_CC_MDSS_NON_GDSC_AHB_CLK>,
++			<&dispcc DISP_CC_MDSS_RSCC_AHB_CLK>;
++		clock-names = "vsync_clk", "gdsc_clk", "iface_clk";
++
++		qcom,msm-bus,active-only;
++		interconnects =
++			<&mmss_noc MASTER_MDP_DISP &mc_virt SLAVE_EBI1_DISP>;
++		interconnect-names = "qcom,sde-data-bus0";
++	};
++
++	smmu_sde_unsec: qcom,smmu_sde_unsec_cb {
++		compatible = "qcom,smmu_sde_unsec";
++		iommus = <&apps_smmu 0x1c00 0x2>;
++		qcom,iommu-dma-addr-pool = <0x00020000 0xfffe0000>;
++		qcom,iommu-faults = "non-fatal";
++		qcom,iommu-earlymap; /* for cont-splash */
++		dma-coherent;
++	};
++
++	smmu_sde_sec: qcom,smmu_sde_sec_cb {
++		compatible = "qcom,smmu_sde_sec";
++		iommus = <&apps_smmu 0x1c01 0x0>;
++		qcom,iommu-dma-addr-pool = <0x00020000 0xfffe0000>;
++		qcom,iommu-faults = "non-fatal";
++		qcom,iommu-vmid = <0xa>;
++	};
++};
++
++&mdss_mdp {
++	clocks =
++		<&gcc GCC_DISP_AHB_CLK>,
++		<&gcc GCC_DISP_HF_AXI_CLK>,
++		<&dispcc DISP_CC_MDSS_AHB_CLK>,
++		<&dispcc DISP_CC_MDSS_MDP_CLK>,
++		<&dispcc DISP_CC_MDSS_MDP_CLK_SRC>,
++		<&dispcc DISP_CC_MDSS_VSYNC_CLK>,
++		<&dispcc DISP_CC_MDSS_MDP_LUT_CLK>;
++	clock-names = "gcc_iface", "gcc_bus",
++			"iface_clk", "branch_clk", "core_clk", "vsync_clk",
++			"lut_clk";
++	clock-rate = <0 0 0 514000000 514000000 19200000 514000000>;
++	clock-max-rate = <0 0 0 514000000 514000000 19200000 514000000>;
++
++	clock-mmrm = <0 0 0 0 DISP_CC_MDSS_MDP_CLK_SRC 0 0>;
++
++	mmcx-supply = <&VDD_MMCX_LEVEL>;
++
++	qcom,sde-vm-exclude-reg-names = "ipcc_reg";
++
++	/* data and reg bus scale settings */
++	interconnects = <&mmss_noc MASTER_MDP &gem_noc SLAVE_LLCC>,
++			<&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>,
++			<&gem_noc MASTER_APPSS_PROC
++				&config_noc SLAVE_DISPLAY_CFG>;
++	interconnect-names = "qcom,sde-data-bus0",
++			"qcom,sde-ebi-bus", "qcom,sde-reg-bus";
++
++	qcom,sde-ib-bw-vote = <2500000 0 800000>;
++	qcom,sde-has-idle-pc;
++	qcom,sde-dspp-ltm-version = <0x00010002>;
++	/* offsets are based off dspp 0, 1, 2, and 3 */
++	qcom,sde-dspp-ltm-off = <0x15300 0x14300 0x13300 0x12300>;
++
++	qcom,platform-supply-entries {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		qcom,platform-supply-entry@0 {
++			reg = <0>;
++			qcom,supply-name = "mmcx";
++			qcom,supply-min-voltage = <0>;
++			qcom,supply-max-voltage = <0>;
++			qcom,supply-enable-load = <0>;
++			qcom,supply-disable-load = <0>;
++		};
++	};
++};
++
++&disp_rsc_drv0 {
++	sde_rsc_rpmh {
++		compatible = "qcom,sde-rsc-rpmh";
++		cell-index = <0>;
++	};
++};
++
++&mdss_dsi0 {
++	vdda-1p2-supply = <&L3E>;
++	qcom,split-link-supported;
++	clocks = <&dispcc DISP_CC_MDSS_BYTE0_CLK>,
++		<&dispcc DISP_CC_MDSS_BYTE0_CLK_SRC>,
++		<&dispcc DISP_CC_MDSS_BYTE0_INTF_CLK>,
++		<&dispcc DISP_CC_MDSS_PCLK0_CLK>,
++		<&dispcc DISP_CC_MDSS_PCLK0_CLK_SRC>,
++		<&dispcc DISP_CC_MDSS_ESC0_CLK>,
++		<&rpmhcc RPMH_CXO_CLK>;
++	clock-names = "byte_clk", "byte_clk_rcg", "byte_intf_clk",
++			"pixel_clk", "pixel_clk_rcg", "esc_clk", "xo";
++};
++
++&mdss_dsi1 {
++	vdda-1p2-supply = <&L3E>;
++	qcom,split-link-supported;
++	clocks = <&dispcc DISP_CC_MDSS_BYTE1_CLK>,
++		<&dispcc DISP_CC_MDSS_BYTE1_CLK_SRC>,
++		<&dispcc DISP_CC_MDSS_BYTE1_INTF_CLK>,
++		<&dispcc DISP_CC_MDSS_PCLK1_CLK>,
++		<&dispcc DISP_CC_MDSS_PCLK1_CLK_SRC>,
++		<&dispcc DISP_CC_MDSS_ESC1_CLK>,
++		<&rpmhcc RPMH_CXO_CLK>;
++	clock-names = "byte_clk", "byte_clk_rcg", "byte_intf_clk",
++			"pixel_clk", "pixel_clk_rcg", "esc_clk", "xo";
++};
++
++&mdss_dsi_phy0 {
++	vdda-0p9-supply = <&L1E>;
++	qcom,panel-allow-phy-poweroff;
++	qcom,dsi-pll-ssc-en;
++	qcom,dsi-pll-ssc-mode = "down-spread";
++	pll_codes_region = <&dsi_pll_codes_data>;
++
++};
++
++&mdss_dsi_phy1 {
++	vdda-0p9-supply = <&L1E>;
++	qcom,panel-allow-phy-poweroff;
++	qcom,dsi-pll-ssc-en;
++	qcom,dsi-pll-ssc-mode = "down-spread";
++};
+diff --git a/display/kalama-sde-display-hdk-overlay.dts b/display/kalama-sde-display-hdk-overlay.dts
+index d59f1b5..7074556 100755
+--- a/display/kalama-sde-display-hdk-overlay.dts
++++ b/display/kalama-sde-display-hdk-overlay.dts
+@@ -1,7 +1,7 @@
+ /dts-v1/;
+ /plugin/;
+ 
+-#include "kalama-sde-display-hdk.dtsi"
++#include "kalama-imdt-sde-display-hdk.dtsi"
+ 
+ / {
+ 	model = "Qualcomm Technologies, Inc. Kalama HDK";
+diff --git a/display/kalama-sde-display-rb5-gen2.dtsi b/display/kalama-sde-display-rb5-gen2.dtsi
+index 4185b0f..e6d5ec5 100755
+--- a/display/kalama-sde-display-rb5-gen2.dtsi
++++ b/display/kalama-sde-display-rb5-gen2.dtsi
+@@ -231,9 +231,9 @@
+ 	qcom,dp-aux-switch = <&redriver>;
+ };
+ 
+-&fsa4480 {
+-	status = "disabled";
+-};
++// &fsa4480 {
++// 	status = "disabled";
++// };
+ 
+ &mdss_mdp {
+ 	connectors = <&sde_dsi &smmu_sde_unsec &sde_rscc &sde_dp &sde_wb1>;
+diff --git a/display/kalama-sde.dts b/display/kalama-sde.dts
+index 6f77c1f..a115f07 100755
+--- a/display/kalama-sde.dts
++++ b/display/kalama-sde.dts
+@@ -1,7 +1,7 @@
+ /dts-v1/;
+ /plugin/;
+ 
+-#include "kalama-sde.dtsi"
++#include "kalama-imdt-sde.dtsi"
+ 
+ / {
+ 	qcom,msm-id = <519 0x10000>, <536 0x10000>,
+diff --git a/display/kalama-sde.dtsi b/display/kalama-sde.dtsi
+index ea151d0..f08d022 100755
+--- a/display/kalama-sde.dtsi
++++ b/display/kalama-sde.dtsi
+@@ -24,7 +24,9 @@
+ 		compatible = "qcom,dp-display";
+ 
+ 		usb-phy = <&usb_qmp_dp_phy>;
+-		qcom,dp-aux-switch = <&fsa4480>;
++                
++		/* IMDT Note - fsa4480 not on our board */
++		// qcom,dp-aux-switch = <&fsa4480>;
+ 		qcom,ext-disp = <&ext_disp>;
+ 		qcom,altmode-dev = <&altmode 0>;
+ 		usb-controller = <&usb0>;
+-- 
+2.34.1
+

@@ -1,0 +1,681 @@
+From e63928cbca94707a98d1e97b731cd84e714af47d Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Wed, 8 Feb 2023 09:54:34 +0200
+Subject: [PATCH 4/7] tensorflow-lite: Integrate TFLite Accuracy Tools
+
+- Inference Diff Tool
+- COCO Object Detection Tool
+- Imagenet Image Classification Tool
+
+Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+
+Change-Id: Ib2825f762e356db29ef2776e52f5d8790537b9d4
+---
+ tensorflow/core/CMakeLists.txt                |  21 +++
+ tensorflow/lite/CMakeLists.txt                |  17 +++
+ .../lite/tools/evaluation/CMakeLists.txt      |   5 +
+ .../tools/evaluation/proto/CMakeLists.txt     |  56 ++++++++
+ .../tools/evaluation/stages/CMakeLists.txt    | 131 ++++++++++++++++++
+ .../evaluation/stages/utils/CMakeLists.txt    |  28 ++++
+ .../coco_object_detection/CMakeLists.txt      |  82 +++++++++++
+ .../CMakeLists.txt                            |  82 +++++++++++
+ .../tasks/inference_diff/CMakeLists.txt       |  83 +++++++++++
+ tensorflow/tsl/platform/CMakeLists.txt        |  50 +++++++
+ 10 files changed, 555 insertions(+)
+ create mode 100644 tensorflow/core/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/proto/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/stages/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/stages/utils/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/tasks/coco_object_detection/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/tasks/imagenet_image_classification/CMakeLists.txt
+ create mode 100644 tensorflow/lite/tools/evaluation/tasks/inference_diff/CMakeLists.txt
+ create mode 100644 tensorflow/tsl/platform/CMakeLists.txt
+
+diff --git a/tensorflow/core/CMakeLists.txt b/tensorflow/core/CMakeLists.txt
+new file mode 100644
+index 00000000000..67a6d6dd455
+--- /dev/null
++++ b/tensorflow/core/CMakeLists.txt
+@@ -0,0 +1,21 @@
++set(JPEG_INTERNAL_TARGET_NAME jpeg_internal)
++
++set(JPEG_INTERNAL_SOURCE_FILES
++    lib/jpeg/jpeg_handle.cc
++    lib/jpeg/jpeg_mem.cc
++)
++
++add_library(${JPEG_INTERNAL_TARGET_NAME} SHARED
++    ${JPEG_INTERNAL_SOURCE_FILES}
++)
++
++target_link_libraries(${JPEG_INTERNAL_TARGET_NAME}
++    absl::strings
++    Eigen3::Eigen
++    libjpeg.a
++    tf_logging
++)
++
++install(TARGETS ${JPEG_INTERNAL_TARGET_NAME}
++  LIBRARY
++)
+diff --git a/tensorflow/lite/CMakeLists.txt b/tensorflow/lite/CMakeLists.txt
+index 0b5a2a1cfdd..891f206bc72 100644
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -96,6 +96,7 @@ if(TFLITE_KERNEL_TEST AND ${CMAKE_CROSSCOMPILING})
+                         Please specify it using -DTFLITE_HOST_TOOLS_DIR=<flatc_dir_path> launch argument.")
+   endif()
+ endif()
++option(TFLITE_ENABLE_EVALUATION_TOOLS "Enable Evaluation Tools" OFF)
+ 
+ set(CMAKE_CXX_STANDARD 17)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+@@ -465,6 +466,11 @@ if(TFLITE_ENABLE_XNNPACK)
+   list(APPEND TFLITE_TARGET_DEPENDENCIES
+     XNNPACK
+   )
++  if(CMAKE_SYSTEM_NAME MATCHES "Android")
++    list(APPEND TFLITE_TARGET_DEPENDENCIES
++      ${ANDROID_LOG_LIB}
++    )
++  endif()
+ endif()
+ 
+ if(TFLITE_ENABLE_HEXAGON)
+@@ -724,6 +730,12 @@ if(TFLITE_KERNEL_TEST)
+   add_subdirectory(${TFLITE_SOURCE_DIR}/kernels)
+ endif()
+ 
++# Adding tensorflow/core/
++if (TFLITE_ENABLE_EVALUATION_TOOLS)
++  add_subdirectory(${TFLITE_SOURCE_DIR}/../core ${CMAKE_CURRENT_BINARY_DIR}/core)
++  add_subdirectory(${TFLITE_SOURCE_DIR}/../tsl/platform ${CMAKE_CURRENT_BINARY_DIR}/tsl/platform)
++endif()
++
+ # The benchmark tool.
+ add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark)
+ 
+@@ -733,6 +745,11 @@ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/label_image)
+ # The multimodel_label_image example.
+ add_subdirectory(${TFLITE_SOURCE_DIR}/examples/multimodel_label_image)
+ 
++# The evaluation tools.
++if (TFLITE_ENABLE_EVALUATION_TOOLS)
++  add_subdirectory(${TFLITE_SOURCE_DIR}/tools/evaluation)
++endif()
++
+ # Python interpreter wrapper.
+ add_library(_pywrap_tensorflow_interpreter_wrapper SHARED EXCLUDE_FROM_ALL
+   ${TFLITE_SOURCE_DIR}/python/interpreter_wrapper/interpreter_wrapper.cc
+diff --git a/tensorflow/lite/tools/evaluation/CMakeLists.txt b/tensorflow/lite/tools/evaluation/CMakeLists.txt
+new file mode 100644
+index 00000000000..e99f8c967f1
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/CMakeLists.txt
+@@ -0,0 +1,5 @@
++add_subdirectory(proto)
++add_subdirectory(stages)
++add_subdirectory(tasks/inference_diff)
++add_subdirectory(tasks/imagenet_image_classification)
++add_subdirectory(tasks/coco_object_detection)
+diff --git a/tensorflow/lite/tools/evaluation/proto/CMakeLists.txt b/tensorflow/lite/tools/evaluation/proto/CMakeLists.txt
+new file mode 100644
+index 00000000000..d825f6283e1
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/proto/CMakeLists.txt
+@@ -0,0 +1,56 @@
++# Compilation of Protobuf files
++find_package(Protobuf REQUIRED)
++
++########################### evaluation_process_proto ###########################
++
++set(EVALUATION_PROCESS_PROTO_TARGET evaluation_process_proto)
++
++set(EVALUATION_PROCESS_PROTO_SOURCE
++  ${CMAKE_CURRENT_SOURCE_DIR}/evaluation_stages.proto
++  ${CMAKE_CURRENT_SOURCE_DIR}/evaluation_config.proto
++  ${CMAKE_CURRENT_SOURCE_DIR}/preprocessing_steps.proto
++)
++set(EVALUATION_PROCESS_PROTO_OUTPUT
++  ${CMAKE_CURRENT_SOURCE_DIR}/evaluation_stages.pb.cc
++  ${CMAKE_CURRENT_SOURCE_DIR}/evaluation_config.pb.cc
++  ${CMAKE_CURRENT_SOURCE_DIR}/preprocessing_steps.pb.cc
++)
++
++add_custom_target(
++  ${EVALUATION_PROCESS_PROTO_TARGET} ALL
++  DEPENDS ${EVALUATION_PROCESS_PROTO_OUTPUT}
++)
++
++add_custom_command(
++  OUTPUT ${EVALUATION_PROCESS_PROTO_OUTPUT}
++  COMMAND protobuf::protoc
++      --cpp_out=${TENSORFLOW_SOURCE_DIR}
++      --proto_path=${TENSORFLOW_SOURCE_DIR}
++      ${EVALUATION_PROCESS_PROTO_SOURCE}
++  DEPENDS ${EVALUATION_PROCESS_PROTO_SOURCE} protobuf::protoc
++  COMMENT ""
++)
++
++############################## evaluation_proto ################################
++
++set(EVALUATION_PROTO_TARGET evaluation_proto)
++
++add_library(${EVALUATION_PROTO_TARGET} SHARED
++  ${EVALUATION_PROCESS_PROTO_OUTPUT}
++)
++
++set(EVALUATION_PROTO_DEPENDENCIES libprotobuf.a)
++
++if(CMAKE_SYSTEM_NAME MATCHES "Android")
++  list(APPEND EVALUATION_PROTO_DEPENDENCIES
++    ${ANDROID_LOG_LIB}
++  )
++endif()
++
++target_link_libraries(${EVALUATION_PROTO_TARGET}
++  ${EVALUATION_PROTO_DEPENDENCIES}
++)
++
++install(TARGETS ${EVALUATION_PROTO_TARGET}
++  LIBRARY
++)
+\ No newline at end of file
+diff --git a/tensorflow/lite/tools/evaluation/stages/CMakeLists.txt b/tensorflow/lite/tools/evaluation/stages/CMakeLists.txt
+new file mode 100644
+index 00000000000..146c6cfae11
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/stages/CMakeLists.txt
+@@ -0,0 +1,131 @@
++set(TFLITE_INFERENCE_STAGE_TARGET_NAME tflite_inference_stage)
++
++set(IMAGE_INFERENCE_STAGE_SOURCE_FILES
++    tflite_inference_stage.cc
++)
++
++add_library(${TFLITE_INFERENCE_STAGE_TARGET_NAME}
++    ${IMAGE_INFERENCE_STAGE_SOURCE_FILES}
++)
++
++target_link_libraries(${TFLITE_INFERENCE_STAGE_TARGET_NAME}
++    evaluation_proto
++    tf_logging
++)
++
++if (TFLITE_C_BUILD_SHARED_LIBS)
++    target_link_libraries(${TFLITE_INFERENCE_STAGE_TARGET_NAME}
++        tensorflowlite_c
++    )
++else ()
++    target_link_libraries(${TFLITE_INFERENCE_STAGE_TARGET_NAME}
++        tensorflow-lite
++    )
++endif()
++
++set(IMAGE_PREPROCESSING_STAGE_TARGET_NAME image_preprocessing_stage)
++
++set(IMAGE_PREPROCESSING_STAGE_SOURCE_FILES
++    image_preprocessing_stage.cc
++)
++
++add_library(${IMAGE_PREPROCESSING_STAGE_TARGET_NAME}
++    ${IMAGE_PREPROCESSING_STAGE_SOURCE_FILES}
++)
++
++target_link_libraries(${IMAGE_PREPROCESSING_STAGE_TARGET_NAME}
++    absl::strings
++    evaluation_proto
++    tf_logging
++    gemmlowp
++    ruy
++    jpeg_internal
++)
++
++set(TOPK_ACCURACY_EVAL_STAGE_TARGET_NAME topk_accuracy_eval_stage)
++
++set(TOPK_ACCURACY_EVAL_SOURCE_FILES
++    topk_accuracy_eval_stage.cc
++)
++
++add_library(${TOPK_ACCURACY_EVAL_STAGE_TARGET_NAME}
++    ${TOPK_ACCURACY_EVAL_SOURCE_FILES}
++)
++
++target_link_libraries(${TOPK_ACCURACY_EVAL_STAGE_TARGET_NAME}
++    evaluation_proto
++    absl::strings
++    tf_logging
++)
++
++set(INFERENCE_PROFILER_STAGE_TARGET_NAME inference_profiler_stage)
++
++set(INFERENCE_PROFILER_SOURCE_FILES
++    inference_profiler_stage.cc
++)
++
++add_library(${INFERENCE_PROFILER_STAGE_TARGET_NAME}
++  ${INFERENCE_PROFILER_SOURCE_FILES}
++)
++
++target_link_libraries(${INFERENCE_PROFILER_STAGE_TARGET_NAME}
++    evaluation_proto
++    tf_logging
++    tflite_inference_stage
++    image_preprocessing_stage
++    topk_accuracy_eval_stage
++)
++
++set(IMAGE_CLASSIFICATION_STAGE_TARGET_NAME image_classification_stage)
++
++set(IMAGE_CLASSIFICATION_STAGE_SOURCE_FILES
++    image_classification_stage.cc
++)
++
++add_library(${IMAGE_CLASSIFICATION_STAGE_TARGET_NAME}
++  ${IMAGE_CLASSIFICATION_STAGE_SOURCE_FILES}
++)
++
++target_link_libraries(${IMAGE_CLASSIFICATION_STAGE_TARGET_NAME}
++    evaluation_proto
++    tf_logging
++    tflite_inference_stage
++    image_preprocessing_stage
++    topk_accuracy_eval_stage
++)
++
++set(OBJECT_DETECTION_AVERAGE_PRECISION_STAGE_TARGET_NAME object_detection_average_precision_stage)
++
++set(OBJECT_DETECTION_AVERAGE_PRECISION_SOURCE_FILES
++    object_detection_average_precision_stage.cc
++)
++
++add_library(${OBJECT_DETECTION_AVERAGE_PRECISION_STAGE_TARGET_NAME}
++  ${OBJECT_DETECTION_AVERAGE_PRECISION_SOURCE_FILES}
++)
++
++target_link_libraries(${OBJECT_DETECTION_AVERAGE_PRECISION_STAGE_TARGET_NAME}
++    evaluation_proto
++    tf_logging
++    image_metrics
++)
++
++set(OBJECT_DETECTION_STAGE_TARGET_NAME object_detection_stage)
++
++set(OBJECT_DETECTION_STAGE_SOURCE_FILES
++    object_detection_stage.cc
++)
++
++add_library(${OBJECT_DETECTION_STAGE_TARGET_NAME}
++  ${OBJECT_DETECTION_STAGE_SOURCE_FILES}
++)
++
++target_link_libraries(${OBJECT_DETECTION_STAGE_TARGET_NAME}
++    image_preprocessing_stage
++    evaluation_proto
++    tf_logging
++    tflite_inference_stage
++    object_detection_average_precision_stage
++)
++
++add_subdirectory(utils)
+\ No newline at end of file
+diff --git a/tensorflow/lite/tools/evaluation/stages/utils/CMakeLists.txt b/tensorflow/lite/tools/evaluation/stages/utils/CMakeLists.txt
+new file mode 100644
+index 00000000000..9adcc88ee2f
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/stages/utils/CMakeLists.txt
+@@ -0,0 +1,28 @@
++set(IMAGE_METRICS_TARGET_NAME image_metrics)
++
++set(IMAGE_METRICS_SOURCE_FILES
++    image_metrics.cc
++)
++
++add_library(${IMAGE_METRICS_TARGET_NAME} SHARED
++    ${IMAGE_METRICS_SOURCE_FILES}
++)
++
++target_link_libraries(${IMAGE_METRICS_TARGET_NAME}
++    tf_logging
++    absl::flat_hash_map
++)
++
++if (TFLITE_C_BUILD_SHARED_LIBS)
++    target_link_libraries(${IMAGE_METRICS_TARGET_NAME}
++        tensorflowlite_c
++    )
++else ()
++    target_link_libraries(${IMAGE_METRICS_TARGET_NAME}
++        tensorflow-lite
++    )
++endif()
++
++install(TARGETS ${IMAGE_METRICS_TARGET_NAME}
++  LIBRARY
++)
+\ No newline at end of file
+diff --git a/tensorflow/lite/tools/evaluation/tasks/coco_object_detection/CMakeLists.txt b/tensorflow/lite/tools/evaluation/tasks/coco_object_detection/CMakeLists.txt
+new file mode 100644
+index 00000000000..88438061d9f
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/tasks/coco_object_detection/CMakeLists.txt
+@@ -0,0 +1,82 @@
++# The Object Detection tool for Tensorflow Lite.
++
++populate_source_vars("${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/coco_object_detection"
++  TFLITE_OBJECT_DETECTION_SRCS
++)
++list(APPEND TFLITE_OBJECT_DETECTION_SRCS
++  ${TF_SOURCE_DIR}/tsl/util/stats_calculator.cc
++  ${TFLITE_SOURCE_DIR}/profiling/memory_info.cc
++  ${TFLITE_SOURCE_DIR}/profiling/profile_summarizer.cc
++  ${TFLITE_SOURCE_DIR}/profiling/profile_summary_formatter.cc
++  ${TFLITE_SOURCE_DIR}/profiling/time.cc
++  ${TFLITE_SOURCE_DIR}/tools/command_line_flags.cc
++  ${TFLITE_SOURCE_DIR}/tools/delegates/default_execution_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/delegates/delegate_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/task_executor_main.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/task_executor.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/utils.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/evaluation_delegate_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/tool_params.cc
++  ${TFLITE_SOURCE_DIR}/delegates/utils/simple_delegate.cc
++)
++
++if(TFLITE_ENABLE_XNNPACK)
++  list(APPEND TFLITE_OBJECT_DETECTION_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/xnnpack_delegate_provider.cc
++  )
++else()
++  set(TFLITE_OBJECT_DETECTION_CC_OPTIONS "-DTFLITE_WITHOUT_XNNPACK")
++endif()  # TFLITE_ENABLE_XNNPACK
++
++if(CMAKE_SYSTEM_NAME MATCHES "Android" OR CMAKE_SYSTEM_NAME MATCHES "Linux")
++  if(_TFLITE_ENABLE_NNAPI)
++    list(APPEND TFLITE_OBJECT_DETECTION_SRCS
++      ${TFLITE_SOURCE_DIR}/tools/delegates/nnapi_delegate_provider.cc
++    )
++  endif()  # _TFLITE_ENABLE_NNAPI
++endif()  # Android
++
++if(TFLITE_ENABLE_GPU)
++  list(APPEND TFLITE_OBJECT_DETECTION_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/gpu_delegate_provider.cc
++  )
++endif()  # TFLITE_ENABLE_GPU
++
++if(TFLITE_ENABLE_HEXAGON)
++  list(APPEND TFLITE_OBJECT_DETECTION_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/hexagon_delegate_provider.cc
++  )
++endif()  # TFLITE_ENABLE_HEXAGON
++
++add_executable(object_detect_run_eval
++  EXCLUDE_FROM_ALL
++  ${TFLITE_OBJECT_DETECTION_SRCS}
++)
++
++install(TARGETS object_detect_run_eval
++  RUNTIME
++)
++
++target_compile_options(object_detect_run_eval
++  PRIVATE
++    ${TFLITE_OBJECT_DETECTION_CC_OPTIONS}
++)
++
++target_link_libraries(object_detect_run_eval
++  PUBLIC
++    evaluation_proto
++    object_detection_stage
++    ${CMAKE_DL_LIBS}
++)
++
++if (TFLITE_C_BUILD_SHARED_LIBS)
++    target_link_libraries(object_detect_run_eval
++      PUBLIC
++        tensorflowlite_c
++    )
++else ()
++    target_link_libraries(object_detect_run_eval
++      PUBLIC
++        tensorflow-lite
++    )
++endif()
+diff --git a/tensorflow/lite/tools/evaluation/tasks/imagenet_image_classification/CMakeLists.txt b/tensorflow/lite/tools/evaluation/tasks/imagenet_image_classification/CMakeLists.txt
+new file mode 100644
+index 00000000000..6018ad73def
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/tasks/imagenet_image_classification/CMakeLists.txt
+@@ -0,0 +1,82 @@
++# The Image Classification tool for Tensorflow Lite.
++
++populate_source_vars("${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/imagenet_image_classification"
++  TFLITE_IMAGE_CLASSIFICATION_SRCS
++)
++list(APPEND TFLITE_IMAGE_CLASSIFICATION_SRCS
++  ${TF_SOURCE_DIR}/tsl/util/stats_calculator.cc
++  ${TFLITE_SOURCE_DIR}/profiling/memory_info.cc
++  ${TFLITE_SOURCE_DIR}/profiling/profile_summarizer.cc
++  ${TFLITE_SOURCE_DIR}/profiling/profile_summary_formatter.cc
++  ${TFLITE_SOURCE_DIR}/profiling/time.cc
++  ${TFLITE_SOURCE_DIR}/tools/command_line_flags.cc
++  ${TFLITE_SOURCE_DIR}/tools/delegates/default_execution_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/delegates/delegate_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/task_executor_main.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/task_executor.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/utils.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/evaluation_delegate_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/tool_params.cc
++  ${TFLITE_SOURCE_DIR}/delegates/utils/simple_delegate.cc
++)
++
++if(TFLITE_ENABLE_XNNPACK)
++  list(APPEND TFLITE_IMAGE_CLASSIFICATION_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/xnnpack_delegate_provider.cc
++  )
++else()
++  set(TFLITE_IMAGE_CLASSIFICATION_CC_OPTIONS "-DTFLITE_WITHOUT_XNNPACK")
++endif()  # TFLITE_ENABLE_XNNPACK
++
++if(CMAKE_SYSTEM_NAME MATCHES "Android" OR CMAKE_SYSTEM_NAME MATCHES "Linux")
++  if(_TFLITE_ENABLE_NNAPI)
++    list(APPEND TFLITE_IMAGE_CLASSIFICATION_SRCS
++      ${TFLITE_SOURCE_DIR}/tools/delegates/nnapi_delegate_provider.cc
++    )
++  endif()  # _TFLITE_ENABLE_NNAPI
++endif()  # Android
++
++if(TFLITE_ENABLE_GPU)
++  list(APPEND TFLITE_IMAGE_CLASSIFICATION_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/gpu_delegate_provider.cc
++  )
++endif()  # TFLITE_ENABLE_GPU
++
++if(TFLITE_ENABLE_HEXAGON)
++  list(APPEND TFLITE_IMAGE_CLASSIFICATION_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/hexagon_delegate_provider.cc
++  )
++endif()  # TFLITE_ENABLE_HEXAGON
++
++add_executable(image_classify_run_eval
++  EXCLUDE_FROM_ALL
++  ${TFLITE_IMAGE_CLASSIFICATION_SRCS}
++)
++
++install(TARGETS image_classify_run_eval
++  RUNTIME
++)
++
++target_compile_options(image_classify_run_eval
++  PRIVATE
++    ${TFLITE_IMAGE_CLASSIFICATION_CC_OPTIONS}
++)
++
++target_link_libraries(image_classify_run_eval
++  PUBLIC
++    evaluation_proto
++    image_classification_stage
++    ${CMAKE_DL_LIBS}
++)
++
++if (TFLITE_C_BUILD_SHARED_LIBS)
++    target_link_libraries(image_classify_run_eval
++      PUBLIC
++        tensorflowlite_c
++    )
++else ()
++    target_link_libraries(image_classify_run_eval
++      PUBLIC
++        tensorflow-lite
++    )
++endif()
+diff --git a/tensorflow/lite/tools/evaluation/tasks/inference_diff/CMakeLists.txt b/tensorflow/lite/tools/evaluation/tasks/inference_diff/CMakeLists.txt
+new file mode 100644
+index 00000000000..bfb879f396b
+--- /dev/null
++++ b/tensorflow/lite/tools/evaluation/tasks/inference_diff/CMakeLists.txt
+@@ -0,0 +1,83 @@
++# The Inference Diff tool for Tensorflow Lite.
++
++populate_source_vars("${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/inference_diff"
++  TFLITE_INFERENCE_DIFF_SRCS
++)
++list(APPEND TFLITE_INFERENCE_DIFF_SRCS
++  ${TF_SOURCE_DIR}/tsl/util/stats_calculator.cc
++  ${TFLITE_SOURCE_DIR}/profiling/memory_info.cc
++  ${TFLITE_SOURCE_DIR}/profiling/profile_summarizer.cc
++  ${TFLITE_SOURCE_DIR}/profiling/profile_summary_formatter.cc
++  ${TFLITE_SOURCE_DIR}/profiling/time.cc
++  ${TFLITE_SOURCE_DIR}/tools/command_line_flags.cc
++  ${TFLITE_SOURCE_DIR}/tools/delegates/default_execution_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/delegates/delegate_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/task_executor_main.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/tasks/task_executor.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/utils.cc
++  ${TFLITE_SOURCE_DIR}/tools/evaluation/evaluation_delegate_provider.cc
++  ${TFLITE_SOURCE_DIR}/tools/tool_params.cc
++  ${TFLITE_SOURCE_DIR}/delegates/utils/simple_delegate.cc
++)
++
++if(TFLITE_ENABLE_XNNPACK)
++  list(APPEND TFLITE_INFERENCE_DIFF_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/xnnpack_delegate_provider.cc
++  )
++else()
++  set(TFLITE_INFERENCE_DIFF_CC_OPTIONS "-DTFLITE_WITHOUT_XNNPACK")
++endif()  # TFLITE_ENABLE_XNNPACK
++
++if(CMAKE_SYSTEM_NAME MATCHES "Android" OR CMAKE_SYSTEM_NAME MATCHES "Linux")
++  if(_TFLITE_ENABLE_NNAPI)
++    list(APPEND TFLITE_INFERENCE_DIFF_SRCS
++      ${TFLITE_SOURCE_DIR}/tools/delegates/nnapi_delegate_provider.cc
++    )
++  endif()  # _TFLITE_ENABLE_NNAPI
++endif()  # Android
++
++if(TFLITE_ENABLE_GPU)
++  list(APPEND TFLITE_INFERENCE_DIFF_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/gpu_delegate_provider.cc
++  )
++endif()  # TFLITE_ENABLE_GPU
++
++if(TFLITE_ENABLE_HEXAGON)
++  list(APPEND TFLITE_INFERENCE_DIFF_SRCS
++    ${TFLITE_SOURCE_DIR}/tools/delegates/hexagon_delegate_provider.cc
++  )
++endif()  # TFLITE_ENABLE_HEXAGON
++
++add_executable(inf_diff_run_eval
++  EXCLUDE_FROM_ALL
++  ${TFLITE_INFERENCE_DIFF_SRCS}
++)
++
++install(TARGETS inf_diff_run_eval
++  RUNTIME
++)
++
++target_compile_options(inf_diff_run_eval
++  PRIVATE
++    ${TFLITE_INFERENCE_DIFF_CC_OPTIONS}
++)
++
++target_link_libraries(inf_diff_run_eval
++  PUBLIC
++    evaluation_proto
++    inference_profiler_stage
++    tflite_inference_stage
++    ${CMAKE_DL_LIBS}
++)
++
++if (TFLITE_C_BUILD_SHARED_LIBS)
++    target_link_libraries(inf_diff_run_eval
++      PUBLIC
++        tensorflowlite_c
++    )
++else ()
++    target_link_libraries(inf_diff_run_eval
++      PUBLIC
++        tensorflow-lite
++    )
++endif()
+diff --git a/tensorflow/tsl/platform/CMakeLists.txt b/tensorflow/tsl/platform/CMakeLists.txt
+new file mode 100644
+index 00000000000..092bffa086f
+--- /dev/null
++++ b/tensorflow/tsl/platform/CMakeLists.txt
+@@ -0,0 +1,50 @@
++set(ENV_TIME_TARGET_NAME env_time)
++
++set(ENV_TIME_SOURCE_FILES
++  default/env_time.cc
++)
++
++add_library(${ENV_TIME_TARGET_NAME} SHARED ${ENV_TIME_SOURCE_FILES})
++
++target_include_directories(${ENV_TIME_TARGET_NAME}
++  PUBLIC
++    ${TFLITE_INCLUDE_DIRS}
++)
++
++set(ENV_TIME_DEPENDENCIES
++  absl::strings
++  Eigen3::Eigen
++)
++
++if(CMAKE_SYSTEM_NAME MATCHES "Android")
++  list(APPEND ENV_TIME_DEPENDENCIES
++    ${ANDROID_LOG_LIB}
++  )
++endif()
++
++target_link_libraries(${ENV_TIME_TARGET_NAME}
++  ${ENV_TIME_DEPENDENCIES}
++)
++
++install(TARGETS ${ENV_TIME_TARGET_NAME}
++  LIBRARY
++)
++
++set(TF_LOGGING_TARGET_NAME tf_logging)
++
++set(TF_LOGGING_SOURCE_FILES
++  default/logging.cc
++  default/mutex.cc
++)
++
++add_library(${TF_LOGGING_TARGET_NAME} SHARED ${TF_LOGGING_SOURCE_FILES})
++
++target_link_libraries(${TF_LOGGING_TARGET_NAME}
++  absl::base
++  nsync_cpp
++  ${ENV_TIME_TARGET_NAME}
++)
++
++install(TARGETS ${TF_LOGGING_TARGET_NAME}
++  LIBRARY
++)
+-- 
+2.17.1
+

@@ -1,0 +1,84 @@
+From fd7edd10b63f5647146da289ed4849e71383c9b2 Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Wed, 8 Feb 2023 09:54:31 +0200
+Subject: [PATCH 3/7] tensorflow-lite: Extend inf_diff_run_eval tool to handle
+ int32
+
+Extend inf_diff_run_eval tool to handle int32 input and output tensors
+
+Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+
+Change-Id: I801d632d60064f1970b7502470c4f0826c81ebb7
+---
+ .../evaluation/stages/inference_profiler_stage.cc | 15 +++++++++++++--
+ .../evaluation/stages/inference_profiler_stage.h  |  1 +
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.cc b/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.cc
+index c79a97f2bc2..03f36d7a478 100644
+--- a/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.cc
++++ b/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.cc
+@@ -99,6 +99,7 @@ TfLiteStatus InferenceProfilerStage::Init(
+     const TfLiteType model_input_type = model_info_->inputs[i]->type;
+     if (model_input_type == kTfLiteUInt8 || model_input_type == kTfLiteInt8 ||
+         model_input_type == kTfLiteInt64 ||
++        model_input_type == kTfLiteInt32 ||
+         model_input_type == kTfLiteFloat32 ||
+         model_input_type == kTfLiteFloat16) {
+     } else {
+@@ -118,14 +119,15 @@ TfLiteStatus InferenceProfilerStage::Init(
+     int8_tensors_.emplace_back();
+     float16_tensors_.emplace_back();
+     int64_tensors_.emplace_back();
++    int32_tensors_.emplace_back();
+   }
+   // Preprocess output metadata for calculating diffs later.
+   for (int i = 0; i < model_info_->outputs.size(); ++i) {
+     const TfLiteType model_output_type = model_info_->outputs[i]->type;
+     if (model_output_type == kTfLiteUInt8 || model_output_type == kTfLiteInt8 ||
+-        model_output_type == kTfLiteFloat32) {
++        model_output_type == kTfLiteFloat32 || model_output_type == kTfLiteInt32) {
+     } else {
+-      LOG(ERROR) << "InferenceProfilerStage only supports float32/int8/uint8 "
++      LOG(ERROR) << "InferenceProfilerStage only supports float32/int8/uint8/int32 "
+                     "output types";
+       return kTfLiteError;
+     }
+@@ -162,6 +164,11 @@ TfLiteStatus InferenceProfilerStage::Run() {
+           input_num_elements_[i], std::numeric_limits<int64_t>::min(),
+           std::numeric_limits<int64_t>::max(), &int64_tensors_[i]);
+       input_ptrs.push_back(int64_tensors_[i].data());
++    } else if (model_input_type == kTfLiteInt32) {
++      GenerateRandomGaussianData(
++          input_num_elements_[i], std::numeric_limits<int32_t>::min(),
++          std::numeric_limits<int32_t>::max(), &int32_tensors_[i]);
++      input_ptrs.push_back(int32_tensors_[i].data());
+     } else if (model_input_type == kTfLiteFloat32) {
+       GenerateRandomGaussianData(input_num_elements_[i], -1, 1,
+                                  &(float_tensors_[i]));
+@@ -202,6 +209,10 @@ TfLiteStatus InferenceProfilerStage::Run() {
+       output_diff = CalculateAverageError(static_cast<int8_t*>(reference_ptr),
+                                           static_cast<int8_t*>(test_ptr),
+                                           output_num_elements_[i]);
++    } else if (model_output_type == kTfLiteInt32) {
++      output_diff = CalculateAverageError(static_cast<int32_t*>(reference_ptr),
++                                          static_cast<int32_t*>(test_ptr),
++                                          output_num_elements_[i]);
+     } else if (model_output_type == kTfLiteFloat32) {
+       output_diff = CalculateAverageError(static_cast<float*>(reference_ptr),
+                                           static_cast<float*>(test_ptr),
+diff --git a/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.h b/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.h
+index 2c2a5d30f2a..287dc0886e9 100644
+--- a/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.h
++++ b/tensorflow/lite/tools/evaluation/stages/inference_profiler_stage.h
+@@ -66,6 +66,7 @@ class InferenceProfilerStage : public EvaluationStage {
+   std::vector<std::vector<uint8_t>> uint8_tensors_;
+   std::vector<std::vector<uint16_t>> float16_tensors_;
+   std::vector<std::vector<int64_t>> int64_tensors_;
++  std::vector<std::vector<int32_t>> int32_tensors_;
+ };
+ 
+ }  // namespace evaluation
+-- 
+2.17.1
+

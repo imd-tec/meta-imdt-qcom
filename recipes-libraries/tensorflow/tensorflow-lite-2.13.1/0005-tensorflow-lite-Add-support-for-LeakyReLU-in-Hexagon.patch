@@ -1,0 +1,77 @@
+From 9bfb068a4c083142088e9bb98a4b41eb3d95308d Mon Sep 17 00:00:00 2001
+From: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+Date: Wed, 8 Feb 2023 09:54:46 +0200
+Subject: [PATCH 5/7] tensorflow-lite: Add support for LeakyReLU in Hexagon
+ Delegate
+
+- Add support for quantized LeakyReLU in Hexagon Delegate,
+by invoking PReLU with same alpha value
+
+Signed-off-by: Ivan Evlogiev <quic_ievlogie@quicinc.com>
+
+Change-Id: I54762aaadf9be6d2596895cbfd94bfd80f81aedb
+---
+ .../hexagon/builders/activation_builder.cc    | 20 +++++++++++++++++++
+ .../delegates/hexagon/builders/op_builder.cc  |  2 ++
+ tensorflow/lite/delegates/hexagon/utils.cc    |  1 +
+ 3 files changed, 23 insertions(+)
+
+diff --git a/tensorflow/lite/delegates/hexagon/builders/activation_builder.cc b/tensorflow/lite/delegates/hexagon/builders/activation_builder.cc
+index 97202338826..9ee0e48fa52 100644
+--- a/tensorflow/lite/delegates/hexagon/builders/activation_builder.cc
++++ b/tensorflow/lite/delegates/hexagon/builders/activation_builder.cc
+@@ -35,6 +35,26 @@ TfLiteStatus ActivationOpBuilder::PopulateSubGraph(
+   AddInput(graph_builder_->GetHexagonTensorId(tensor_id));
+   TF_LITE_ENSURE_STATUS(ComputeAndAddMinAndMax(context, input_tensor));
+ 
++  if (OP_QuantizedPRelu_8 == op_node_.op_type) {
++    TfLiteLeakyReluParams* params =
++      reinterpret_cast<TfLiteLeakyReluParams*>(builtin_data_);
++
++    float alpha[input_tensor.bytes];
++    for (auto i=0; i<input_tensor.bytes; i++) {
++      alpha[i] = params->alpha;
++    }
++
++    int shape[] = {1, 1, 1, 1};
++    for (auto i=0; i<input_tensor.dims->size; i++) {
++      shape[4 - input_tensor.dims->size + i] = input_tensor.dims->data[i];
++    }
++
++    auto* alpha_value_const = graph_builder_->AddConstNodeWithData(
++      shape, reinterpret_cast<char*>(alpha),
++      input_tensor.bytes * sizeof(alpha[0]));
++    AddInput(TensorID(alpha_value_const->GetID(), 0));
++  }
++
+   if (op_node_.op_type == OP_QuantizedReluX_8) {
+     auto* relu_value_const = graph_builder_->AddConstNodeWithData(
+         kScalarShape, reinterpret_cast<char*>(&relu_value_),
+diff --git a/tensorflow/lite/delegates/hexagon/builders/op_builder.cc b/tensorflow/lite/delegates/hexagon/builders/op_builder.cc
+index 91258a418fd..8d263f661f4 100644
+--- a/tensorflow/lite/delegates/hexagon/builders/op_builder.cc
++++ b/tensorflow/lite/delegates/hexagon/builders/op_builder.cc
+@@ -129,6 +129,8 @@ OpBuilder* GraphBuilder::CreateOpBuilderFromTfLiteOp(int op_type,
+       return CreateActivationBuilder(this, OP_QuantizedRelu_8);
+     case kTfLiteBuiltinRelu6:
+       return CreateActivationBuilder(this, OP_QuantizedReluX_8);
++    case kTfLiteBuiltinLeakyRelu:
++      return CreateActivationBuilder(this, OP_QuantizedPRelu_8);
+     case kTfLiteBuiltinTanh:
+       return CreateActivationBuilder(this, OP_QuantizedTanh_8);
+     case kTfLiteBuiltinLogistic:
+diff --git a/tensorflow/lite/delegates/hexagon/utils.cc b/tensorflow/lite/delegates/hexagon/utils.cc
+index 6d4cedf2e04..00962557ce7 100644
+--- a/tensorflow/lite/delegates/hexagon/utils.cc
++++ b/tensorflow/lite/delegates/hexagon/utils.cc
+@@ -342,6 +342,7 @@ bool IsNodeSupportedByHexagon(const TfLiteRegistration* registration,
+     case kTfLiteBuiltinHardSwish:
+     case kTfLiteBuiltinRelu:
+     case kTfLiteBuiltinRelu6:
++    case kTfLiteBuiltinLeakyRelu:
+     case kTfLiteBuiltinTanh:
+     case kTfLiteBuiltinLogistic: {
+       return InputsWithCorrectTypes(node, context,
+-- 
+2.17.1
+
