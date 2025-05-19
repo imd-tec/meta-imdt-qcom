@@ -22,6 +22,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     i2c-tools \
     libgpiod \
     libgpiod-tools \
+    lsb-release \
     camxoverridesettings \
     packagegroup-qti-core \
     packagegroup-qti-core-prop \
@@ -55,10 +56,9 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     tensorflow-lite \
     qnn \
     snpe \
+    nano \
+    opencv \
 "
-
-CORE_IMAGE_EXTRA_INSTALL:append = " nano"
-CORE_IMAGE_EXTRA_INSTALL:append = " opencv"
 
 # To speed up the build we don't bother creating OTA Recovery image 
 do_recovery_ext4[noexec] = "1"

@@ -1,2 +1,3 @@
 halBufferMgrMode=2
 enableNCSService=FALSE
+multiCameraLogicalXMLFile=kailua_imdt_all_ar1335.xml

@@ -1,0 +1,1423 @@
+From 955e90d35403c85d494587ef48e19f14bb284c7f Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Fri, 4 Apr 2025 11:06:41 +0100
+Subject: [PATCH] Initial board bringup of IMDT SBC8550 (#14)
+
+This device tree manages to boot the
+IMDT SBC8550 successfully with the
+regulators enabled. The DT also bring up
+the USB so that we have access to adb.
+Therefore, this is now a good starting
+point for bringing up the rest of the peripherals
+on the board.
+
+At some point we also need to investigate
+how to make the USB-C with role-switching
+so we can plug USB Video Cameras into
+the SBC.
+---
+ qcom/kalama-imdt-pmic-overlay.dtsi    | 359 ++++++++++++++
+ qcom/kalama-imdt-thermal-overlay.dtsi | 215 ++++++++
+ qcom/kalama-usb.dtsi                  |   2 +-
+ qcom/kalama.dtsi                      |  49 +-
+ qcom/kalamap-hdk-overlay.dts          |   2 +-
+ qcom/kalamap-imdt-sbc8550.dtsi        | 674 ++++++++++++++++++++++++++
+ qcom/pm8550b.dtsi                     |   2 +-
+ 7 files changed, 1291 insertions(+), 12 deletions(-)
+ create mode 100644 qcom/kalama-imdt-pmic-overlay.dtsi
+ create mode 100644 qcom/kalama-imdt-thermal-overlay.dtsi
+ create mode 100644 qcom/kalamap-imdt-sbc8550.dtsi
+
+diff --git a/qcom/kalama-imdt-pmic-overlay.dtsi b/qcom/kalama-imdt-pmic-overlay.dtsi
+new file mode 100644
+index 0000000..45f2b7a
+--- /dev/null
++++ b/qcom/kalama-imdt-pmic-overlay.dtsi
+@@ -0,0 +1,359 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
++#include <dt-bindings/iio/qcom,spmi-adc5-gen3-smb139x.h>
++
++#include "pm8550.dtsi"
++#include "pm8550b.dtsi"
++#include "pm8550ve.dtsi"
++#include "pm8550vs.dtsi"
++#include "pmk8550.dtsi"
++#include "pmr735d.dtsi"
++
++&pm8550b {
++	status = "disabled";
++};
++
++&pmk8550_vadc {
++	/delete-node/ pm8550b_offset_ref;
++	/delete-node/ pm8550b_vref_1p25;
++	/delete-node/ pm8550b_die_temp;
++	/delete-node/ pm8550b_lite_die_temp;
++	/delete-node/ pm8550b_vph_pwr;
++	/delete-node/ pm8550b_vbat_sns_qbg;
++};
++
++&pmr735d_k {
++	status = "disabled";
++};
++
++&pmr735d_l {
++	status = "disabled";
++};
++
++&pmr735d_k_temp_alarm {
++	status = "disabled";
++};
++
++&pmr735d_l_temp_alarm {
++	status = "disabled";
++};
++
++&pm8550vs_d {
++	status = "okay";
++};
++
++&pm8550vs_e {
++	status = "okay";
++};
++
++&pm8550vs_g {
++	status = "okay";
++};
++
++&pm8550vs_d_temp_alarm {
++	status = "okay";
++};
++
++&pm8550vs_e_temp_alarm {
++	status = "okay";
++};
++
++&pm8550vs_g_temp_alarm {
++	status = "okay";
++};
++
++&pm8550_tz {
++	io-channels = <&pmk8550_vadc PM8550_ADC5_GEN3_DIE_TEMP>;
++	io-channel-names = "thermal";
++};
++
++&pm8550vs_c_tz {
++	io-channels = <&pmk8550_vadc PM8550VS_C_ADC5_GEN3_DIE_TEMP>;
++	io-channel-names = "thermal";
++};
++
++&pm8550vs_d_tz {
++	io-channels = <&pmk8550_vadc PM8550VS_D_ADC5_GEN3_DIE_TEMP>;
++	io-channel-names = "thermal";
++};
++
++&pm8550vs_e_tz {
++	io-channels = <&pmk8550_vadc PM8550VS_E_ADC5_GEN3_DIE_TEMP>;
++	io-channel-names = "thermal";
++};
++
++&pm8550vs_g_tz {
++	io-channels = <&pmk8550_vadc PM8550VS_G_ADC5_GEN3_DIE_TEMP>;
++	io-channel-names = "thermal";
++};
++
++&pm8550ve_f_tz {
++	io-channels = <&pmk8550_vadc PM8550VE_ADC5_GEN3_DIE_TEMP>;
++	io-channel-names = "thermal";
++};
++
++&pmk8550_vadc {
++	pm8550_sys_therm1 {
++		reg = <PM8550_ADC5_GEN3_AMUX_THM1_100K_PU>;
++		label = "pm8550_sys_therm1";
++		qcom,ratiometric;
++		qcom,hw-settle-time = <200>;
++		qcom,pre-scaling = <1 1>;
++		qcom,adc-tm-type = <1>;
++	};
++
++	pm8550_amux2_therm {
++		reg = <PM8550_ADC5_GEN3_AMUX_THM2_100K_PU>;
++		label = "pm8550_amux2_therm";
++		qcom,ratiometric;
++		qcom,hw-settle-time = <200>;
++		qcom,pre-scaling = <1 1>;
++		qcom,adc-tm-type = <1>;
++	};
++
++	pm8550_sys_therm6 {
++		reg = <PM8550_ADC5_GEN3_AMUX_THM3_100K_PU>;
++		label = "pm8550_sys_therm6";
++		qcom,ratiometric;
++		qcom,hw-settle-time = <200>;
++		qcom,pre-scaling = <1 1>;
++		qcom,adc-tm-type = <1>;
++	};
++
++	pm8550_amux4_therm {
++		reg = <PM8550_ADC5_GEN3_AMUX_THM4_100K_PU>;
++		label = "pm8550_amux4_therm";
++		qcom,ratiometric;
++		qcom,hw-settle-time = <200>;
++		qcom,pre-scaling = <1 1>;
++		qcom,adc-tm-type = <1>;
++	};
++
++	pm8550_amux5_therm {
++		reg = <PM8550_ADC5_GEN3_AMUX_THM5_100K_PU>;
++		label = "pm8550_amux5_therm";
++		qcom,ratiometric;
++		qcom,hw-settle-time = <200>;
++		qcom,pre-scaling = <1 1>;
++		qcom,adc-tm-type = <1>;
++	};
++};
++
++&thermal_zones {
++	sys-therm1 {
++		polling-delay-passive = <0>;
++		polling-delay = <0>;
++		thermal-sensors = <&pmk8550_vadc PM8550_ADC5_GEN3_AMUX_THM1_100K_PU>;
++		trips {
++			active-config0 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			active-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++		};
++	};
++
++	amux2-therm {
++		polling-delay-passive = <0>;
++		polling-delay = <0>;
++		thermal-sensors = <&pmk8550_vadc PM8550_ADC5_GEN3_AMUX_THM2_100K_PU>;
++		trips {
++			active-config0 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			active-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++		};
++	};
++
++	sys-therm6 {
++		polling-delay-passive = <0>;
++		polling-delay = <0>;
++		thermal-sensors = <&pmk8550_vadc PM8550_ADC5_GEN3_AMUX_THM3_100K_PU>;
++		trips {
++			active-config0 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			active-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++		};
++	};
++
++	amux4-therm {
++		polling-delay-passive = <0>;
++		polling-delay = <0>;
++		thermal-sensors = <&pmk8550_vadc PM8550_ADC5_GEN3_AMUX_THM4_100K_PU>;
++		trips {
++			active-config0 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			active-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++		};
++	};
++
++	amux5-therm {
++		polling-delay-passive = <0>;
++		polling-delay = <0>;
++		thermal-sensors = <&pmk8550_vadc PM8550_ADC5_GEN3_AMUX_THM5_100K_PU>;
++		trips {
++			active-config0 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			active-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++		};
++	};
++
++	xo-therm {
++		polling-delay-passive = <0>;
++		polling-delay = <0>;
++		thermal-sensors = <&pmk8550_vadc PMK8550_ADC5_GEN3_AMUX_THM1_XO_THERM_100K_PU>;
++		trips {
++			active-config0 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			active-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			xo_config0: xo-config0 {
++				temperature = <78000>;
++				hysteresis = <8000>;
++				type = "passive";
++			};
++
++			xo_config1: xo-config1 {
++				temperature = <80000>;
++				hysteresis = <10000>;
++				type = "passive";
++			};
++
++			display_test_config1: display-test-config1 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			display_test_config2: display-test-config2 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			display_test_config3: display-test-config3 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++
++			display_test_config4: display-test-config4 {
++				temperature = <125000>;
++				hysteresis = <1000>;
++				type = "passive";
++			};
++		};
++	};
++};
++
++&spmi0_debug_bus {
++	/* 	
++	 * IMDT Workaround
++	 * For now we have disabled the SPMI Debug bus as we don't need it.
++	 * We may want to add this back in later as it could potentially be useful
++	 * for debugging the Qualcomm PMIC's on the SPMI bus.
++	 */
++	status = "disabled";
++
++	qcom,pm8550b-debug@7 {
++		/*
++		 * We don't have this PMIC on the IMDT SOM-8550
++		 */
++		status = "disabled";
++	};
++
++	qcom,pmr735d-debug@a {
++		/*
++		 * We don't have this PMIC on the IMDT SOM-8550
++		 */
++		status = "disabled";
++	};
++
++	qcom,pmr735d-debug@b {
++		/*
++		 * We don't have this PMIC on the IMDT SOM-8550
++		 */
++		status = "disabled";
++	};
++
++	qcom,pm8010-debug@c {
++		/*
++		 * We don't have this PMIC on the IMDT SOM-8550
++		 */
++		status = "disabled";
++	};
++
++	qcom,pm8010-debug@d {
++		/*
++		 * We don't have this PMIC on the IMDT SOM-8550
++		 */
++		status = "disabled";
++	};
++};
++
++&soc {
++	reboot_reason {
++		compatible = "qcom,reboot-reason";
++		nvmem-cells = <&restart_reason>;
++		nvmem-cell-names = "restart_reason";
++	};
++
++	pmic-pon-log {
++		compatible = "qcom,pmic-pon-log";
++		nvmem = <&pmk8550_sdam_5>, <&pmk8550_sdam_6>;
++		nvmem-names = "pon_log0", "pon_log1";
++	};
++
++	regulator_ocp_notifier: regulator-ocp-notifier {
++		compatible = "qcom,regulator-ocp-notifier";
++		interrupt-parent = <&spmi_bus>;
++		interrupts = <0x0 0x71 0x1 IRQ_TYPE_EDGE_RISING>;
++		nvmem-cells = <&ocp_log>;
++		nvmem-cell-names = "ocp_log";
++	};
++};
+diff --git a/qcom/kalama-imdt-thermal-overlay.dtsi b/qcom/kalama-imdt-thermal-overlay.dtsi
+new file mode 100644
+index 0000000..81dd3f7
+--- /dev/null
++++ b/qcom/kalama-imdt-thermal-overlay.dtsi
+@@ -0,0 +1,215 @@
++#include <dt-bindings/thermal/thermal_qti.h>
++
++&thermal_zones {
++	socd {
++		cooling-maps {
++			socd_apc1 {
++				trip = <&socd_trip>;
++				cooling-device = <&APC1_pause 1 1>;
++			};
++
++			socd_cdsp1 {
++				trip = <&socd_trip>;
++				cooling-device = <&cdsp_sw 4 4>;
++			};
++
++			socd_gpu0 {
++				trip = <&socd_trip>;
++				cooling-device = <&msm_gpu 4 4>;
++			};
++		};
++	};
++
++	pm8550-bcl-lvl0 {
++		cooling-maps {
++			vph_lte0 {
++				trip = <&bcl_lvl0>;
++				cooling-device = <&modem_lte_dsc 8 8>;
++			};
++
++			vph_nr0_scg {
++				trip = <&bcl_lvl0>;
++				cooling-device = <&modem_nr_scg_dsc 3 3>;
++			};
++
++			vph_nr0 {
++				trip = <&bcl_lvl0>;
++				cooling-device = <&modem_nr_dsc 6 6>;
++			};
++
++			vph_cpu_3_4_5 {
++				trip = <&bcl_lvl0>;
++				cooling-device = <&cpu_3_4_5_pause 1 1>;
++			};
++
++			vph_cdsp0 {
++				trip = <&bcl_lvl0>;
++				cooling-device = <&cdsp_sw 2 2>;
++			};
++
++			vph_gpu0 {
++				trip = <&bcl_lvl0>;
++				cooling-device = <&msm_gpu 2 2>;
++			};
++		};
++	};
++
++	pm8550-bcl-lvl1 {
++		cooling-maps {
++			vph_lte1 {
++				trip = <&bcl_lvl1>;
++				cooling-device = <&modem_lte_dsc 10 10>;
++			};
++
++			vph_nr1_scg {
++				trip = <&bcl_lvl1>;
++				cooling-device = <&modem_nr_scg_dsc 10 10>;
++			};
++
++			vph_nr1 {
++				trip = <&bcl_lvl1>;
++				cooling-device = <&modem_nr_dsc 9 9>;
++			};
++
++			vph_cpu_6_7 {
++				trip = <&bcl_lvl1>;
++				cooling-device = <&cpu_6_7_pause 1 1>;
++			};
++
++			vph_cdsp1 {
++				trip = <&bcl_lvl1>;
++				cooling-device = <&cdsp_sw 4 4>;
++			};
++
++			vph_gpu1 {
++				trip = <&bcl_lvl1>;
++				cooling-device = <&msm_gpu 4 4>;
++			};
++		};
++	};
++
++	pm8550-bcl-lvl2 {
++		cooling-maps {
++			vph_cdsp2 {
++				trip = <&bcl_lvl2>;
++				cooling-device = <&cdsp_sw 5 THERMAL_NO_LIMIT>;
++			};
++
++			vph_gpu2 {
++				trip = <&bcl_lvl2>;
++				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
++			};
++		};
++	};
++
++	pm8550vs_c_tz {
++		cooling-maps {
++			pm8550vs_c_apc1 {
++				trip = <&pm8550vs_c_trip0>;
++				cooling-device = <&APC1_pause 1 1>;
++			};
++		};
++	};
++
++	pm8550vs_d_tz {
++		cooling-maps {
++			pm8550vs_d_gpu {
++				trip = <&pm8550vs_d_trip0>;
++				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
++			};
++		};
++	};
++
++	pm8550ve_f_tz {
++		cooling-maps {
++			pm8550vs_e_nsp {
++				trip = <&pm8550ve_f_trip0>;
++				cooling-device = <&cdsp_sw 5 THERMAL_NO_LIMIT>;
++			};
++
++			pm8550vs_e_lte {
++				trip = <&pm8550ve_f_trip0>;
++				cooling-device = <&modem_lte_dsc 255 255>;
++			};
++
++			pm8550vs_e_nr {
++				trip = <&pm8550ve_f_trip0>;
++				cooling-device = <&modem_nr_scg_dsc 255 255>;
++			};
++		};
++	};
++
++	xo-therm {
++		cooling-maps {
++			apc1_cdev {
++				trip = <&xo_config0>;
++				cooling-device = <&APC1_pause 1 1>;
++			};
++
++			cdsp_cdev {
++				trip = <&xo_config0>;
++				cooling-device = <&cdsp_sw 5 THERMAL_NO_LIMIT>;
++			};
++
++			gpu_cdev {
++				trip = <&xo_config0>;
++				cooling-device = <&msm_gpu 5 THERMAL_NO_LIMIT>;
++			};
++
++			cpu3_hot_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&cpu3_hotplug 1 1>;
++			};
++
++			cpu4_hot_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&cpu4_hotplug 1 1>;
++			};
++
++			cpu5_hot_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&cpu5_hotplug 1 1>;
++			};
++
++			cpu6_hot_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&cpu6_hotplug 1 1>;
++			};
++
++			cpu7_hot_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&cpu7_hotplug 1 1>;
++			};
++
++			lte_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&modem_lte_dsc 255 255>;
++			};
++
++			nr_cdev {
++				trip = <&xo_config1>;
++				cooling-device = <&modem_nr_scg_dsc 255 255>;
++			};
++
++			display_cdev1 {
++				trip = <&display_test_config1>;
++				cooling-device = <&display_fps 1 1>;
++			};
++
++			display_cdev2 {
++				trip = <&display_test_config2>;
++				cooling-device = <&display_fps 2 2>;
++			};
++
++			display_cdev3 {
++				trip = <&display_test_config3>;
++				cooling-device = <&display_fps 3 3>;
++			};
++
++			display_cdev4 {
++				trip = <&display_test_config4>;
++				cooling-device = <&display_fps 4 4>;
++			};
++		};
++	};
++};
+diff --git a/qcom/kalama-usb.dtsi b/qcom/kalama-usb.dtsi
+index a7632b0..e8adbd7 100755
+--- a/qcom/kalama-usb.dtsi
++++ b/qcom/kalama-usb.dtsi
+@@ -63,7 +63,7 @@
+ 			<0 2400>,
+ 			<0 40000>;
+ 
+-		dwc3@a600000 {
++		dwc3: dwc3@a600000 {
+ 			compatible = "snps,dwc3";
+ 			reg = <0xa600000 0xd93c>;
+ 
+diff --git a/qcom/kalama.dtsi b/qcom/kalama.dtsi
+index 5b5afa9..b0b0925 100755
+--- a/qcom/kalama.dtsi
++++ b/qcom/kalama.dtsi
+@@ -3584,7 +3584,7 @@
+ 		qcom,primary;
+ 	};
+ 
+-	qcom,pmic_glink {
++	qcom_pmic_glink: qcom,pmic_glink {
+ 		compatible = "qcom,pmic-glink";
+ 		qcom,pmic-glink-channel = "PMIC_RTR_ADSP_APPS";
+ 		qcom,subsys-name = "lpass";
+@@ -3605,7 +3605,7 @@
+ 		};
+ 	};
+ 
+-	qcom,pmic_glink_log {
++	qcom_pmic_glink_log: qcom,pmic_glink_log {
+ 		compatible = "qcom,pmic-glink";
+ 		qcom,pmic-glink-channel = "PMIC_LOGS_ADSP_APPS";
+ 
+@@ -3633,6 +3633,14 @@
+ 					compatible = "qcom,spmi-pmic";
+ 					reg = <0x7 SPMI_USID>;
+ 					qcom,can-sleep;
++
++					/* 	
++					 * IMDT Workaround
++					 * We don't have this PMIC on the IMDT SOM-8550
++					 * so we disable it to avoid the kernel trying
++					 * to initialsie it.
++					 */
++					status = "disabled";
+ 				};
+ 			};
+ 
+@@ -3726,13 +3734,6 @@
+ 	status = "ok";
+ };
+ 
+-&qupv3_hub_i2c2 {
+-	status = "ok";
+-	fsa4480: fsa4480@42 {
+-		compatible = "qcom,fsa4480-i2c";
+-		reg = <0x42>;
+-	};
+-};
+ &cam_cc_bps_gdsc {
+ 	clocks = <&gcc GCC_CAMERA_AHB_CLK>;
+ 	clock-names = "ahb_clk";
+@@ -3897,3 +3898,33 @@
+ 	parent-supply = <&VDD_MM_MXC_VOTER_LEVEL>;
+ 	status = "ok";
+ };
++
++&usb0 {
++	/* IMDT Workaround
++	 * The PM8550B PMIC can also act as an EUSB2 Repeater.
++	 * When it is being used as an EUSB2 Repeater (aswell as a PMIC),
++	 * it can detect VBUS events. And if we provide this EUD phandle
++	 * to extcon, it will route the VBUS events to our USB driver.
++	 *
++	 * On the IMDT SOM-8550, we don't have PM8550B PMIC.
++	 * And our EUSB2 Repeater does not do any VBUS detection.
++	 * So we must delete the property.
++	 */
++	/delete-property/ extcon;
++};
++
++&dwc3 {
++	/* IMDT Workaround
++	 * We currently disable role-switch as we haven't
++	 * properly set up VBUS detection. With the HDK,
++	 * the VBUS detection is done with PM8550B,
++	 * but we don't have this PMIC on our board.
++	 * So we'll have to investigate how we can
++	 * get VBUS detection with our current HW.
++	 * Our current HW has a GPIO which we can
++	 * read which tells us the state of VBUS.
++	 * We also need to make that role switching
++	 * works with our configuration of the TUSB321 IC.
++	 */
++	/delete-property/ usb-role-switch;
++};
+diff --git a/qcom/kalamap-hdk-overlay.dts b/qcom/kalamap-hdk-overlay.dts
+index d5a4cf0..9d9dcec 100755
+--- a/qcom/kalamap-hdk-overlay.dts
++++ b/qcom/kalamap-hdk-overlay.dts
+@@ -2,7 +2,7 @@
+ /plugin/;
+ 
+ #include <dt-bindings/interconnect/qcom,kalama.h>
+-#include "kalamap-hdk.dtsi"
++#include "kalamap-imdt-sbc8550.dtsi"
+ 
+ / {
+ 	model = "Qualcomm Technologies, Inc. KalamaP HDK";
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+new file mode 100644
+index 0000000..06ee1a0
+--- /dev/null
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -0,0 +1,674 @@
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/clock/qcom,gcc-kalama.h>
++#include <dt-bindings/phy/qcom,usb3-4nm-qmp-combo.h>
++
++#include "kalama-imdt-pmic-overlay.dtsi"
++#include "kalama-imdt-thermal-overlay.dtsi"
++
++&apps_rsc_drv2 {
++	/* IMDT SOM-8550 - PM8550 LDO's which are not connected to anything */
++	rpmh-regulator-ldob1 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob2 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob6 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob7 {
++		status = "disabled";
++	};
++	
++	rpmh-regulator-ldob8 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob9 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob10 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob12 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob13 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob14 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldob16 {
++		status = "disabled";
++	};
++
++	/* 
++	 * IMDT Workaround
++	 * Disable L11B (VREG_L11B_1P2) as it was causing the board to warm reset.
++	 * We don't understand why, but the XBL log said it was resetting
++	 * the board due to an Overcurrent Protection (OCP) error. 
++	 */
++	rpmh-regulator-ldob11 {
++		status = "disabled";
++	};
++
++	/* IMDT SOM-8550 - PM8550VS_C LDO 1 (LDO1C) not connected to anything */
++	rpmh-regulator-ldoc1 {
++		status = "disabled";
++	};
++	/* IMDT SOM-8550 - PMIC_K (PMR735D) not on our board */
++	rpmh-regulator-ldok1 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldok2 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldok3 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldok4 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldok5 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldok6 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldok7 {
++		status = "disabled";
++	};
++	
++
++	/* IMDT SOM-8550 - PMIC_L (PMR735D) not on board */
++	rpmh-regulator-ldol3 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldol4 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldol5 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldol6 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldol7 {
++		status = "disabled";
++	};
++
++	/* IMDT SOM-8550 - PMIC_M (PM8010_M) not on board */
++	rpmh-regulator-ldom1 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldom2 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldom3 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldom4 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldom5 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldom6 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldom7 {
++		status = "disabled";
++	};
++
++	/* IMDT SOM-8550 - PMIC_N (PM8010_N) not on board */
++	rpmh-regulator-ldon1 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldon2 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldon3 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldon4 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldon5 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldon6 {
++		status = "disabled";
++	};
++
++	rpmh-regulator-ldon7 {
++		status = "disabled";
++	};
++};
++
++&sdhc_2 {
++	status = "disabled";
++};
++
++&battery_charger {
++	status = "disabled";
++};
++
++&ufsphy_mem {
++	compatible = "qcom,ufs-phy-qmp-v4-kalama";
++
++	/* VDDA_UFS_CORE */
++	vdda-phy-supply = <&pm_v6d_l1>;
++	vdda-phy-max-microamp = <188000>;
++
++	/* VDDA_UFS_0_1P2 */
++	vdda-pll-supply = <&pm_v6e_l3>;
++	vdda-pll-max-microamp = <18300>;
++
++	/* Phy GDSC for VDD_MX, always on */
++	vdd-phy-gdsc-supply = <&gcc_ufs_mem_phy_gdsc>;
++
++	/* Qref power supply, Refer Qref diagram */
++	vdda-qref-supply = <&pm_v6e_l1>;
++	vdda-qref-max-microamp = <30000>;
++
++	status = "okay";
++};
++
++&ufshc_mem {
++	vdd-hba-supply = <&gcc_ufs_phy_gdsc>;
++
++	vcc-supply = <&pm_humu_l17>;
++	vcc-max-microamp = <1300000>;
++
++	vccq-supply = <&pm_v6g_l1>;
++	vccq-max-microamp = <1200000>;
++
++	/* VDD_PX10 is voted for the ufs_reset_n */
++	qcom,vddp-ref-clk-supply = <&pm_v6g_l3>;
++	qcom,vddp-ref-clk-max-microamp = <100>;
++
++	qcom,vccq-parent-supply = <&pm_v6g_s4>;
++	qcom,vccq-parent-max-microamp = <210000>;
++
++	qcom,vccq-shutdown-supply = <&pm_v6g_l1>;
++	qcom,vccq-shutdown-max-microamp = <1200000>;
++
++	reset-gpios = <&tlmm 210 GPIO_ACTIVE_LOW>;
++	resets = <&gcc GCC_UFS_PHY_BCR>;
++	reset-names = "rst";
++
++	status = "okay";
++};
++
++&pm8550_switch0 {
++	qcom,led-mask = <9>; /* Channels 1 & 4 */
++	qcom,symmetry-en;
++};
++
++&pm8550_switch1 {
++	qcom,led-mask = <6>; /* Channels 2 & 3 */
++	qcom,symmetry-en;
++};
++
++&pm8550_switch2 {
++	qcom,led-mask = <15>; /* All Channels */
++	qcom,symmetry-en;
++};
++
++&pm8550_flash {
++	status = "okay";
++};
++
++
++&regulator_ocp_notifier {
++	periph-1c5-supply = <&L5B>;
++	periph-1cf-supply = <&L15B>;
++	periph-1d1-supply = <&L17B>;
++
++	periph-2c1-supply = <&L1C>;
++	periph-2c3-supply = <&L3C>;
++
++	periph-3c1-supply = <&L1D>;
++	periph-3c2-supply = <&L2D_LEVEL>;
++
++	periph-4c1-supply = <&L1E>;
++	periph-4c2-supply = <&L2E>;
++	periph-4c3-supply = <&L3E>;
++
++	periph-5c1-supply = <&L1F>;
++	periph-5c2-supply = <&L2F>;
++	periph-5c3-supply = <&L3F>;
++	periph-6c1-supply = <&L1G>;
++	periph-6c2-supply = <&L2G>;
++	periph-6c3-supply = <&L3G>;
++};
++
++&pcie0 {
++	status = "disabled";
++	qcom,pcie-phy-ver = <102>;
++	qcom,phy-sequence = <0x0240 0x03 0x0
++				0x00c0 0x01 0x0
++				0x00cc 0x62 0x0
++				0x00d0 0x02 0x0
++				0x0060 0xf8 0x0
++				0x0064 0x01 0x0
++				0x0000 0x93 0x0
++				0x0004 0x01 0x0
++				0x00e0 0x90 0x0
++				0x00e4 0x82 0x0
++				0x00f4 0x07 0x0
++				0x0070 0x02 0x0
++				0x0010 0x02 0x0
++				0x0074 0x16 0x0
++				0x0014 0x16 0x0
++				0x0078 0x36 0x0
++				0x0018 0x36 0x0
++				0x0110 0x08 0x0
++				0x00bc 0x0a 0x0
++				0x0120 0x40 0x0
++				0x0080 0x0a 0x0
++				0x0084 0x1a 0x0
++				0x0020 0x14 0x0
++				0x0024 0x34 0x0
++				0x0088 0x41 0x0
++				0x0028 0x34 0x0
++				0x0090 0xab 0x0
++				0x0094 0xaa 0x0
++				0x0098 0x01 0x0
++				0x0030 0x55 0x0
++				0x0034 0x55 0x0
++				0x0038 0x01 0x0
++				0x0140 0x14 0x0
++				0x0164 0x34 0x0
++				0x003c 0x01 0x0
++				0x001c 0x04 0x0
++				0x0174 0x16 0x0
++				0x01bc 0x0f 0x0
++				0x0170 0xa0 0x0
++				0x11a4 0x38 0x0
++				0x10dc 0x11 0x0
++				0x1160 0xbf 0x0
++				0x1164 0xbf 0x0
++				0x1168 0xb7 0x0
++				0x116c 0xea 0x0
++				0x115c 0x3f 0x0
++				0x1174 0x5c 0x0
++				0x1178 0x9c 0x0
++				0x117c 0x1a 0x0
++				0x1180 0x8f 0x0
++				0x1170 0xdc 0x0
++				0x1188 0x94 0x0
++				0x118c 0x5b 0x0
++				0x1190 0x1a 0x0
++				0x1194 0x89 0x0
++				0x10cc 0x00 0x0
++				0x1008 0x09 0x0
++				0x1014 0x05 0x0
++				0x104c 0x08 0x0
++				0x1050 0x08 0x0
++				0x10d8 0x0f 0x0
++				0x1118 0x1c 0x0
++				0x10f8 0x07 0x0
++				0x11f8 0x08 0x0
++				0x0e84 0x15 0x0
++				0x0e90 0x3f 0x0
++				0x0ee4 0x02 0x0
++				0x0e40 0x06 0x0
++				0x0e3c 0x18 0x0
++				0x19a4 0x38 0x0
++				0x18dc 0x11 0x0
++				0x1960 0xbf 0x0
++				0x1964 0xbf 0x0
++				0x1968 0xb7 0x0
++				0x196c 0xea 0x0
++				0x195c 0x3f 0x0
++				0x1974 0x5c 0x0
++				0x1978 0x9c 0x0
++				0x197c 0x1a 0x0
++				0x1980 0x8f 0x0
++				0x1970 0xdc 0x0
++				0x1988 0x94 0x0
++				0x198c 0x5b 0x0
++				0x1990 0x1a 0x0
++				0x1994 0x89 0x0
++				0x18cc 0x00 0x0
++				0x1808 0x09 0x0
++				0x1814 0x05 0x0
++				0x184c 0x08 0x0
++				0x1850 0x08 0x0
++				0x18d8 0x0f 0x0
++				0x1918 0x1c 0x0
++				0x18f8 0x07 0x0
++				0x19f8 0x08 0x0
++				0x1684 0x15 0x0
++				0x1690 0x3f 0x0
++				0x16e4 0x02 0x0
++				0x1640 0x06 0x0
++				0x163c 0x18 0x0
++				0x02dc 0x05 0x0
++				0x0388 0x77 0x0
++				0x0398 0x0b 0x0
++				0x06a4 0x1e 0x0
++				0x03e0 0x0f 0x0
++				0x060c 0x1d 0x0
++				0x0614 0x07 0x0
++				0x0620 0xc1 0x0
++				0x0694 0x00 0x0
++				0x03d0 0x8c 0x0
++				0x0368 0x0f 0x0
++				0x1424 0x00 0x0
++				0x1428 0x00 0x0
++				0x0200 0x00 0x0
++				0x0244 0x03 0x0>;
++
++};
++
++&pcie1 {
++	status = "disabled";
++	qcom,boot-option = <0x2>;
++	qcom,apss-based-l1ss-sleep;
++	qcom,no-client-based-bw-voting;
++};
++
++&pcie1_rp {
++	status = "disabled";
++};
++
++
++&qcom_qbt {
++	status = "disabled";
++};
++
++
++&qcom_pmic_glink {
++	status = "disabled";	
++};
++
++&qcom_pmic_glink_log {
++	status = "disabled";	
++};
++
++&ucsi {
++	status = "disabled";
++};
++
++
++&pm8550vs_d_gpios {
++	status = "okay";
++
++	eusb2_repeater_reset_default: eusb2_repeater_reset_default {
++		pins = "gpio4";
++		function = "normal";
++
++		input-enable;
++		output-enable;
++		bias-disable;
++
++		drive-push-pull;			
++		power-source = <1>; /* 1.8V */
++		qcom,drive-strength = <3>;
++	};
++	
++};
++
++&qupv3_hub_i2c2 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++	qcom,clk-freq-out = <400000>;
++
++	imdt_eusb2_repeater: imdt_eusb2_repeater@43 {
++		compatible = "imdt,eusb2-repeater";
++		status = "okay";
++		reg = <0x43 0xff>;
++		vdd18-supply = <&pm_humu_l15>;
++		vdd3-supply = <&pm_humu_l5>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&eusb2_repeater_reset_default>;
++
++		/* The RESET line is ACTIVE LOW but the kernel driver has inverted logic.
++		 * The driver for the I2C eusb2 repeater calls:
++		 * gpiod_set_value_cansleep(er->reset_gpiod, bring_out_of_reset=true);
++		 * Technically this is ASSERTING the reset line. (ie holding the device in reset...)
++		 * When it really should be DE-ASSERTING (ie taking the device out of reset).
++		 * So we must set the reset GPIO to be ACTIVE HIGH in the device tree
++		 * so that the driver set's this pin HIGH to bring out of reset.
++		 */
++		reset-gpio = <&pm8550vs_d_gpios 4 GPIO_ACTIVE_HIGH>;
++	};
++};
++
++&usb_qmp_dp_phy {
++	pinctrl-names = "default";
++	status = "okay";
++	qcom,qmp-phy-override-seq =
++		/* <reg_offset,		value> */
++		<USB3_DP_QSERDES_RXA_RX_MODE_00_HIGH4		0xEE
++		USB3_DP_QSERDES_RXA_RX_MODE_01_HIGH4		0x0D
++		USB3_DP_QSERDES_RXB_RX_MODE_00_LOW			0x3F
++		USB3_DP_QSERDES_RXB_RX_MODE_01_HIGH4		0x0E>;
++};
++
++&usb0 {
++	status = "okay";
++};
++
++&dwc3 {
++	snps,usb2-gadget-lpm-disable;
++};
++
++&eusb2_phy0 {
++	dummy-supply = <&imdt_eusb2_repeater>;
++	usb-repeater = <&imdt_eusb2_repeater>;
++
++	/* Our EUSB2 Repeater succesfully works without any
++	 * register configuration. So qcom,param-override-seq
++	 * can be an empty list (ie no register writes).
++	 */
++	qcom,param-override-seq = <>;
++	status = "okay";
++};
++
++&tlmm {
++	// TODO:
++	// Need to override qcom,gpios-reserved property 
++	// as we have repurposed some of the GPIOS reserved on the HDK
++	// At the moment it is set to:
++	// qcom,gpios-reserved property = <32 33 34 35 36 37 38 39>;
++	pwr_per_en_default: pwr_per_en_default {
++		mux {
++			pins = "gpio142";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio142";
++			drive-strength = <16>;
++		};
++	};
++
++	hr_cam_en_default: hr_cam_en_default {
++		mux {
++			pins = "gpio146";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio146";
++			drive-strength = <16>;
++		};
++	};
++
++	m2_pd_en_default: m2_pd_en_default {
++		mux {
++			pins = "gpio144";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio144";
++			drive-strength = <16>;
++			drive-open-drain;
++		};
++	};
++};
++
++&soc {
++	som_vph_pwr: regulator-vph-pwr {
++		compatible = "regulator-fixed";
++		regulator-name = "som_vph_pwr";
++		regulator-min-microvolt = <3900000>;
++		regulator-max-microvolt = <3900000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	// Enables 1V2, 1V8_CAM and 3V3_CAM
++	hr_cam_pwr: regulator-hr-cam-pwr {
++		compatible = "regulator-fixed";
++		regulator-name = "hr_cam_pwr";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&hr_cam_en_default>;
++		
++		gpio = <&tlmm 146 GPIO_ACTIVE_LOW>;
++		
++		vin-supply = <&som_vph_pwr>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	cam_1v2_reg: regulator-cam-1v2 {
++		compatible = "regulator-fixed";
++		regulator-name = "cam_1v2_reg";
++		regulator-min-microvolt = <1200000>;
++		regulator-max-microvolt = <1200000>;
++		vin-supply = <&hr_cam_pwr>;
++	};
++
++	cam_1v8_reg: regulator-cam-1v8 {
++		compatible = "regulator-fixed";
++		regulator-name = "cam_1v8_reg";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		vin-supply = <&hr_cam_pwr>;
++	};
++
++	cam_2v8_reg: regulator-cam-2v8 {
++		compatible = "regulator-fixed";
++		regulator-name = "cam_2v8_reg";
++		regulator-min-microvolt = <2800000>;
++		regulator-max-microvolt = <2800000>;
++		vin-supply = <&hr_cam_pwr>;
++	};
++
++	cam_3v3_reg: regulator-cam-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "cam_3v3_reg";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&hr_cam_pwr>;
++	};
++
++	// Enables 5V_PER, 3V3_PER and 1V8_PER
++	per_pwr: regulator-per-pwr {
++		compatible = "regulator-fixed";
++		regulator-name = "per_pwr";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&pwr_per_en_default>;
++
++		gpio = <&tlmm 142 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		vin-supply = <&som_vph_pwr>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	per_1v8_reg: regulator-per-1v8 {
++		compatible = "regulator-fixed";
++		regulator-name = "per_1v8_reg";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		vin-supply = <&per_pwr>;
++	};
++
++	per_3v3_reg: regulator-per-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "per_3v3_reg";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&per_pwr>;
++	};
++
++	per_5v_reg: regulator-per-5v {
++		compatible = "regulator-fixed";
++		regulator-name = "per_5v_reg";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		vin-supply = <&per_pwr>;
++	};
++
++	// TODO - PCIE Bringup
++	// Enables V2MB_3V8 and V2ME_3V3
++	// Make sure to review this DT node before
++	// enabling it.
++	// m2_pd_pwr: regulator-m2-pd-pwr {
++	// 	compatible = "regulator-fixed";
++	// 	regulator-name = "m2_pd_pwr";
++	// 	regulator-min-microvolt = <1800000>;
++	// 	regulator-max-microvolt = <1800000>;
++
++	// 	pinctrl-names = "default";
++	// 	pinctrl-0 = <&m2_pd_en_default>;
++
++	// 	gpio = <&tlmm 144 GPIO_ACTIVE_LOW>;
++
++	// 	vin-supply = <&som_vph_pwr>;
++
++	// 	regulator-always-on;
++	// 	regulator-boot-on;
++
++	// 	gpio-open-drain;
++	// };
++};
++
+diff --git a/qcom/pm8550b.dtsi b/qcom/pm8550b.dtsi
+index 7b61174..091fc02 100755
+--- a/qcom/pm8550b.dtsi
++++ b/qcom/pm8550b.dtsi
+@@ -8,7 +8,7 @@
+ 	interrupt-controller;
+ 	#interrupt-cells = <4>;
+ 
+-	qcom,pm8550b@7 {
++	pm8550b: qcom,pm8550b@7 {
+ 		compatible = "qcom,spmi-pmic";
+ 		reg = <0x7 SPMI_USID>;
+ 		#address-cells = <1>;
+-- 
+2.34.1
+

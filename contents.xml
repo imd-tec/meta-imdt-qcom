@@ -1,0 +1,1340 @@
+<?xml version='1.0' encoding='us-ascii'?>
+<contents>
+  <product_flavors cmm_pf_var="PRODUCT_FLAVORS">
+    <pf>
+      <name>asic</name>
+      <component>
+        <name>common</name>
+        <flavor>asic</flavor>
+      </component>
+    </pf>
+    <pf>
+      <name>core</name>
+      <component>
+        <name>common</name>
+        <flavor>core</flavor>
+      </component>
+    </pf>
+  </product_flavors>
+  <product_info>
+    <product_name>QCS8550.LE.1.0</product_name>
+    <hlos_type cmm_var="HLOS_TYPE">LE</hlos_type>
+    <chipid cmm_var="CHIPID">KAILUA</chipid>
+    <meta_type cmm_var="META_VARIANT">FULL_STACK</meta_type>
+    <default flavor="asic" storage_type="ufs" />
+    <adb_permissions>root,remount,reboot,root,remount</adb_permissions>
+    <release_test_config>SRC</release_test_config>
+  </product_info>
+  <partition_info>
+    <partition fastboot_erase="true">modemst1</partition>
+    <partition fastboot_erase="true">modemst2</partition>
+    <partition fastboot_erase="true">fsg</partition>
+  </partition_info>
+  <builds_flat>
+    <build>
+      <name>common</name>
+      <role>common</role>
+      <chipset>KAILUA</chipset>
+      <build_id>QCS8550.LE.1.0.r1-00087-STD.PROD-1</build_id>
+      <windows_root_path>.\</windows_root_path>
+      <linux_root_path>./</linux_root_path>
+      <image_dir>common</image_dir>
+      <release_path />
+      <download_file gen_by_wflow_filter="non_hlos" storage_type="ufs" backup_partition="modem_b" fastboot="modem_a" minimized="true">
+        <file_name>NON-HLOS.bin</file_name>
+        <file_path>common/build/ufs/bin/asic/</file_path>
+      </download_file>
+      <download_file gen_by_wflow_filter="btfm" storage_type="ufs" backup_partition="bluetooth_b" fastboot="bluetooth_a" minimized="true">
+        <file_name>BTFM.bin</file_name>
+        <file_path>common/build/ufs/bin/</file_path>
+      </download_file>
+      <download_file gen_by_wflow_filter="dspso" backup_partition="dsp_b" fastboot="dsp_a" minimized="true">
+        <file_name>dspso.bin</file_name>
+        <file_path>common/build/bin/</file_path>
+      </download_file>
+      <download_file cmm_file_var="QUP_BINARY" minimized="true" backup_partition="qupfw_b" fastboot_complete="qupfw_a" oem_imageid="QUPV3" qti_imageid="QUPV3">
+        <file_name>qupv3fw.elf</file_name>
+        <file_path>common/core_qupv3fw/kailua/</file_path>
+      </download_file>
+      <download_file cmm_file_var="MULTIIMGQTI_BINARY" minimized="true" backup_partition="multiimgqti_b" fastboot_complete="multiimgqti_a" qti_imageid="QTI-MISC">
+        <file_name>multi_image_qti.mbn</file_name>
+        <file_path>common/config/qti_misc/</file_path>
+      </download_file>
+      <download_file cmm_file_var="MULTIIMGOEM_BINARY" gen_by_wflow_filter="multi_image" minimized="true" backup_partition="multiimgoem_b" fastboot_complete="multiimgoem_a" oem_imageid="OEM-MISC">
+        <file_name>multi_image.mbn</file_name>
+        <file_path>common/build/bin/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true" fastboot="ddr">
+        <file_name>zeros_5sectors.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file gen_by_wflow_filter="hlos" storage_type="ufs" minimized="true">
+        <file_name>*.img</file_name>
+        <file_path>common/build/ufs/bin/asic/sparse_images/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>*.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_main0.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_main1.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_main2.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_main3.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_main4.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_main5.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" gpt_file="partition:0" minimized="true">
+        <file_name>gpt_both0.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" gpt_file="partition:1" minimized="true">
+        <file_name>gpt_both1.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" gpt_file="partition:2" minimized="true">
+        <file_name>gpt_both2.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" minimized="true">
+        <file_name>gpt_both3.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" gpt_file="partition:4" minimized="true">
+        <file_name>gpt_both4.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <download_file storage_type="ufs" gpt_file="partition:5" minimized="true">
+        <file_name>gpt_both5.bin</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </download_file>
+      <partition_file storage_type="ufs">
+        <file_name>rawprogram_unsparse0.xml</file_name>
+        <file_path>common/build/ufs/bin/asic/sparse_images/</file_path>
+      </partition_file>
+      <partition_patch_file storage_type="ufs">
+        <file_name>patch0.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_patch_file>
+      <partition_file storage_type="ufs">
+        <file_name>rawprogram1.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_file>
+      <partition_patch_file storage_type="ufs">
+        <file_name>patch1.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_patch_file>
+      <partition_file storage_type="ufs">
+        <file_name>rawprogram2.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_file>
+      <partition_patch_file storage_type="ufs">
+        <file_name>patch2.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_patch_file>
+      <partition_file storage_type="ufs">
+        <file_name>rawprogram3.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_file>
+      <partition_patch_file storage_type="ufs">
+        <file_name>patch3.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_patch_file>
+      <partition_file storage_type="ufs">
+        <file_name>rawprogram4.xml</file_name>
+        <file_path flavor="asic">common/build/ufs/</file_path>
+      </partition_file>
+      <partition_patch_file storage_type="ufs">
+        <file_name>patch4.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_patch_file>
+      <partition_file storage_type="ufs">
+        <file_name>rawprogram5.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_file>
+      <partition_patch_file storage_type="ufs">
+        <file_name>patch5.xml</file_name>
+        <file_path>common/build/ufs/</file_path>
+      </partition_patch_file>
+      <file_ref cmm_file_var="IPA_FWS_ELF" fat_file="true" minimized="true" oem_imageid="IPA-FW" pil_split="ipa_fws">
+        <file_name>fw_ipa_gsi_5.5_w.elf</file_name>
+        <file_path>common/dataipa.gsifw/fw_15.0/</file_path>
+      </file_ref>
+      <file_ref raw_partition="true" storage_type="ufs">
+        <file_name>partition_ext.xml</file_name>
+        <file_path>common/config/ufs/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="modem_pr/..." gen_by_wflow_filter="non_hlos">
+        <file_name>*</file_name>
+        <file_path>common/build/bin/modem_pr/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" ignore="true" gen_by_wflow_filter="non_hlos">
+        <file_name>*.*</file_name>
+        <file_path>common/build/bin/modem_oem/</file_path>
+      </file_ref>
+      <file_ref storage_type="ufs" fat_file="true" gen_by_wflow_filter="non_hlos">
+        <file_name>*</file_name>
+        <file_path>common/build/ufs/bin/asic/pil_split_bins/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="PARTITION_XML_ROOT" storage_type="ufs">
+        <file_name>.</file_name>
+        <file_path flavor="asic">common/build/ufs/</file_path>
+        <file_path flavor="core">common/build/ufs/</file_path>
+      </file_ref>
+      <file_ref minimized="true" security_profile="KAILUA" secboot_xml="true">
+        <file_name>kailua_security_profile.xml</file_name>
+        <file_path>common/sectoolsv2</file_path>
+      </file_ref>
+      <wf_step_filter>partition,non_hlos,core_non_hlos,multi_image,multi_image_qti,btfm,cmm_scripts</wf_step_filter>
+    </build>
+    <build>
+      <name>boot</name>
+      <role>boot</role>
+      <chipset>KAILUA</chipset>
+      <build_id>BOOT.MXF.2.1.1.c1-00019-KAILUA-1</build_id>
+      <windows_root_path cmm_root_path_var="BOOT_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="BOOT_BUILDROOT">./</linux_root_path>
+      <image_dir>boot_images</image_dir>
+      <release_path type="src">SP_compiletest</release_path>
+      <release_path type="src-le-vm">SP_compiletest</release_path>
+      <release_path type="bin">BIN_Kailua_LAA</release_path>
+      <release_path type="bin_meta_apq">BIN_Kailua_LAA</release_path>
+      <release_path type="bin_meta_apqgps">BIN_Kailua_LAA</release_path>
+      <release_path type="bin_ddm">BIN_Kailua_LAA</release_path>
+      <release_path type="bin_ddm_apq">BIN_Kailua_LAA</release_path>
+      <release_path type="bin_ddm_apqgps">BIN_Kailua_LAA</release_path>
+      <download_file cmm_file_var="BOOT_UEFI" minimized="true" backup_partition="uefi_b" fastboot_complete="uefi_a" oem_imageid="UEFI">
+        <file_name>uefi.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </download_file>
+      <download_file cmm_file_var="BOOT_BINARY" minimized="true" backup_partition="xbl_b" fastboot_complete="xbl_a">
+        <file_name>xbl_s.melf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </download_file>
+      <download_file cmm_file_var="BOOT_CONFIG" minimized="true" backup_partition="xbl_config_b" fastboot_complete="xbl_config_a" oem_imageid="XBL-CONFIG">
+        <file_name>xbl_config.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </download_file>
+      <download_file cmm_file_var="DDRFW_BINARY" minimized="true" backup_partition="shrm_b" fastboot_complete="shrm_a" oem_imageid="SHRM" qti_imageid="SHRM">
+        <file_name>shrm.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </download_file>
+      <download_file cmm_file_var="IMAGEFV_BINARY" minimized="true" backup_partition="imagefv_b" fastboot="imagefv_a" oem_imageid="UEFIFV">
+        <file_name>imagefv.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </download_file>
+      <download_file cmm_file_var="XBLRAMDUMP_BINARY" minimized="true" backup_partition="xbl_ramdump_b" fastboot_complete="xbl_ramdump_a" oem_imageid="XBL-RAM-DUMP">
+        <file_name>XblRamdump.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </download_file>
+      <download_file cmm_file_var="LOGFS_BINARY" fastboot_complete="logfs" minimized="true">
+        <file_name>logfs_ufs_8mb.bin</file_name>
+        <file_path>boot_images/boot/QcomPkg/Tools/binaries/</file_path>
+      </download_file>
+      <download_file cmm_file_var="TOOLSFV_BINARY" fastboot="toolsfv" minimized="true">
+        <file_name>tools.fv</file_name>
+        <file_path>boot_images/boot/QcomPkg/QcomToolsPkg/Bin/QcomTools/RELEASE/</file_path>
+      </download_file>
+      <device_programmer cmm_file_var="FIREHOSE_DDR_ELF" minimized="true" minimized_bin="true">
+        <file_name>xbl_s_devprg_ns.melf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE</file_path>
+      </device_programmer>
+      <file_ref minimized="true" oem_imageid="DEVICE-PROGRAMMER">
+        <file_name>prog_firehose_ddr.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE</file_path>
+      </file_ref>
+      <file_ref minimized="true" ignore="true" oem_imageid="TME-FW" qti_imageid="TME-FW">
+        <file_name>signed_firmware_soc_view.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin_ext/LAA/QC_sign</file_path>
+      </file_ref>
+      <file_ref minimized="true" ignore="true" oem_imageid="XBL-SC" qti_imageid="XBL-SC">
+        <file_name>xbl_sc.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin_ext/LAA/QC_sign</file_path>
+      </file_ref>
+      <file_ref minimized="true" ignore="true">
+        <file_name>sequencer_ram.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin_ext/LAA</file_path>
+      </file_ref>
+      <file_ref minimized="true" minimized_bin="true">
+        <file_name>*.*</file_name>
+        <file_path>boot_images/boot/QcomPkg/Tools/storage/fh_loader/</file_path>
+      </file_ref>
+      <file_ref minimized="true" minimized_bin="true">
+        <file_name>*.*</file_name>
+        <file_path>boot_images/boot_tools/QSaharaServer/</file_path>
+      </file_ref>
+      <file_ref storage_type="ufs" minimized="true">
+        <file_name>JtagProgrammer.cmm</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Tools/storage/UFS/</file_path>
+      </file_ref>
+      <file_ref storage_type="ufs" minimized="true">
+        <file_name>JtagProgrammer.elf</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Bin/LAA/RELEASE/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="BOOT_RAMDUMP_ELF" minimized="true">
+        <file_name>XBLRamDump.dll</file_name>
+        <file_path>boot_images/Build/KailuaLAA/RamDump/RELEASE_CLANG*LINUX/AARCH64/QcomPkg/XBLRamDump/XBLRamDump/DEBUG/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="BOOT_SEC_ELF" minimized="true">
+        <file_name>Sec.dll</file_name>
+        <file_path>boot_images/Build/KailuaLAA/Core/RELEASE_CLANG*LINUX/AARCH64/QcomPkg/XBLCore/XBLCore/DEBUG/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>*.cmm</file_name>
+        <file_path>boot_images/boot/QcomPkg/Tools/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>.</file_name>
+        <file_path>boot_images/boot/QcomPkg/Tools/cmm</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>*.cmm</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Tools/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>*.cmm</file_name>
+        <file_path>boot_images/boot/QcomPkg/SocPkg/Kailua/Tools/</file_path>
+      </file_ref>
+      <wf_step_filter />
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>aop</name>
+      <role>aop</role>
+      <chipset>KAILUA</chipset>
+      <build_id>AOP.HO.5.0-00597-KAILUA_E-1</build_id>
+      <windows_root_path cmm_root_path_var="AOP_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="AOP_BUILDROOT">./</linux_root_path>
+      <image_dir>aop_proc</image_dir>
+      <release_path type="src">HY11_CompileTest</release_path>
+      <release_path type="src-le-vm">SRV-LE-VM_CompileTest</release_path>
+      <release_path type="bin">HK11</release_path>
+      <release_path type="bin_meta_apq">HK11</release_path>
+      <release_path type="bin_meta_apqgps">HK11</release_path>
+      <release_path type="bin_ddm">HK11</release_path>
+      <release_path type="bin_ddm_apq">HK11</release_path>
+      <release_path type="bin_ddm_apqgps">HK11</release_path>
+      <download_file cmm_file_var="AOP_BINARY" minimized="true" backup_partition="aop_b" fastboot_complete="aop_a" oem_imageid="AOP" qti_imageid="AOP">
+        <file_name>aop.mbn</file_name>
+        <file_path>aop_proc/build/ms/bin/AAAAANAZO/kailua/</file_path>
+      </download_file>
+      <download_file cmm_file_var="AOP_DEVCFG_BINARY" minimized="true" backup_partition="aop_config_b" fastboot_complete="aop_config_a" oem_imageid="AOP-CONFIG">
+        <file_name>aop_devcfg.mbn</file_name>
+        <file_path>aop_proc/build/ms/bin/AAAAANAZO/kailua/</file_path>
+      </download_file>
+      <file_ref cmm_file_var="AOP_ELF" minimized="true">
+        <file_name>AOP_AAAAANAZO.elf</file_name>
+        <file_path>aop_proc/core/bsp/aop/build/kailua</file_path>
+      </file_ref>
+      <wf_step_filter />
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>tz</name>
+      <role>tz</role>
+      <chipset>KAILUA</chipset>
+      <build_id>TZ.XF.5.24-00337-ADJKAILUAAANAZT-1</build_id>
+      <short_build_path cmm_var="TZ_BUILDID">KALIONAA</short_build_path>
+      <windows_root_path cmm_root_path_var="TZ_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="TZ_BUILDROOT">./</linux_root_path>
+      <image_dir>trustzone_images</image_dir>
+      <release_path type="src">HK11</release_path>
+      <release_path type="src-le-vm">HK11</release_path>
+      <release_path type="bin">HK11</release_path>
+      <release_path type="bin_meta_apq">HK11</release_path>
+      <release_path type="bin_meta_apqgps">HK11</release_path>
+      <release_path type="bin_ddm">HK11</release_path>
+      <release_path type="bin_ddm_apq">HK11</release_path>
+      <release_path type="bin_ddm_apqgps">HK11</release_path>
+      <download_file cmm_file_var="TZ_BINARY" minimized="true" backup_partition="tz_b" fastboot_complete="tz_a" oem_imageid="TZ" qti_imageid="TZ">
+        <file_name>tz.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="HYP_BINARY" minimized="true" backup_partition="hyp_b" fastboot_complete="hyp_a" oem_imageid="QHEE" qti_imageid="QHEE">
+        <file_name>hypvm.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="TZDEVCFG_BINARY" minimized="true" backup_partition="devcfg_b" fastboot_complete="devcfg_a" oem_imageid="TZ-DEVCFG">
+        <file_name>devcfg.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <file_ref pil_split="smplap32" ignore="true" oem_imageid="TZ-APP-OEM">
+        <file_name>smplap32.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="smplap64" ignore="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>smplap64.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos</wf_step_filter>
+      <mount_path>/vendor/firmware_mnt</mount_path>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>tz_apps</name>
+      <role>tz_apps</role>
+      <chipset>KAILUA</chipset>
+      <build_id>TZ.APPS.1.24-00102-KAILUAAAAAANAZT-2</build_id>
+      <short_build_path cmm_var="TZAPPS_BUILDID">KALIONAA</short_build_path>
+      <windows_root_path cmm_root_path_var="TZAPPS_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="TZAPSS_BUILDROOT">./</linux_root_path>
+      <image_dir>qtee_tas</image_dir>
+      <release_path type="src">HK11</release_path>
+      <release_path type="src-le-vm">HK11</release_path>
+      <release_path type="bin">HK11</release_path>
+      <release_path type="bin_meta_apq">HK11</release_path>
+      <release_path type="bin_meta_apqgps">HK11</release_path>
+      <release_path type="bin_ddm">HK11</release_path>
+      <release_path type="bin_ddm_apq">HK11</release_path>
+      <release_path type="bin_ddm_apqgps">HK11</release_path>
+      <download_file pil_split="featenabler" minimized="true" backup_partition="featenabler_b" fastboot_complete="featenabler_a" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>featenabler.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="UEFISEC_BINARY" minimized="true" backup_partition="uefisecapp_b" fastboot_complete="uefisecapp_a" oem_imageid="TZ-APP-OEM">
+        <file_name>uefi_sec.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="STORESEC_BINARY" fastboot_complete="true" ignore="true" minimized="true" oem_imageid="TZ-APP-OEM">
+        <file_name>storsec.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="KEYMASTER_BINARY" minimized="true" backup_partition="keymaster_b" fastboot_complete="keymaster_a" oem_imageid="TZ-APP-OEM">
+        <file_name>km41.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </download_file>
+      <file_ref pil_split="32552B22-89FE-42B4-8A45-A0C4E2DB0326" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>32552B22-89FE-42B4-8A45-A0C4E2DB0326.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA</file_path>
+      </file_ref>
+      <file_ref pil_split="05B04A44-BF30-42DF-9E2F-B366B980ED19" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>05B04A44-BF30-42DF-9E2F-B366B980ED19.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA</file_path>
+      </file_ref>
+      <file_ref pil_split="FD719D50-FFFB-11EB-9A03-0242AC130003" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>FD719D50-FFFB-11EB-9A03-0242AC130003.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>gptauuid.xml</file_name>
+        <file_path>qtee_tas/apps/bsp/trustzone/build</file_path>
+      </file_ref>
+      <file_ref pil_split="mldapta" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>mldapta.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA</file_path>
+      </file_ref>
+      <file_ref pil_split="loadalgota64" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>loadalgota64.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA</file_path>
+      </file_ref>
+      <file_ref pil_split="fingerpr" ignore="true" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>fingerpr.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA</file_path>
+      </file_ref>
+      <file_ref pil_split="hdcp1" ignore="true" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>hdcp1.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="hdcp2p2" ignore="true" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>hdcp2p2.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="hdcpsrm" ignore="true" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>hdcpsrm.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>widevine.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>sp_license.*</file_name>
+        <file_path>qtee_tas/build/ms/bin/PIL_IMAGES/SPLITBINS_KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="securemm" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>securemm.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="gptest" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>gptest.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="voicepri" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>voiceprint.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="hdcptest" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>hdcptest.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="soter64" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>soter64.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="aptcryptotestapp" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>aptcryptotestapp.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="aptcryptotestapp64" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>aptcryptotestapp64.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="apttestapp" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>apttestapp.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" pil_split="apttestapp64" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>apttestapp64.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="iris" minimized="true" ignore="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>iris.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="winsecap" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>winsecap.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="evautil64" oem_imageid="TZ-APP-OEM" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>evautil64.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="ic3" oem_imageid="TZ-APP-OEM" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>ic3.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="ic4" oem_imageid="TZ-APP-OEM" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>ic4.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref pil_split="ops" minimized="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>ops.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" oem_imageid="TZ-APP-QTI" qti_imageid="TZ-APP-QTI" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>3e333862-b71e-11ea-b3de-0242ac130004.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" ignore="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>897c089a-3cbd-461f-83eb-31bfb5a8b553.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>mdcompress.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" ignore="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>connsec.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" ignore="true" oem_imageid="TZ-APP-OEM" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>tzsc.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>face3d.b*</file_name>
+        <file_path>qtee_tas/build/ms/bin/PIL_IMAGES/SPLITBINS_KALIONAA/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>face3d.mdt</file_name>
+        <file_path>qtee_tas/build/ms/bin/PIL_IMAGES/SPLITBINS_KALIONAA/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>tuiauthapp.mbn</file_name>
+        <file_path>qtee_tas/build/ms/bin/KALIONAA/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos</wf_step_filter>
+      <mount_path>/vendor/firmware_mnt</mount_path>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>modem</name>
+      <role>modem</role>
+      <chipset>KAILUA</chipset>
+      <build_id>MPSS.DE.3.0.c3-00031-KAILUA_GEN_PACK-1</build_id>
+      <short_build_path cmm_var="MODEM_BUILDID">kailua.gps.prod</short_build_path>
+      <windows_root_path cmm_root_path_var="MPSS_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="MPSS_BUILDROOT">./</linux_root_path>
+      <image_dir>modem_proc</image_dir>
+      <release_path type="src">BIN-APQ</release_path>
+      <release_path type="src-le-vm">BIN-APQ</release_path>
+      <release_path type="bin">BIN-APQ</release_path>
+      <release_path type="bin_meta_apq">BIN-APQ</release_path>
+      <release_path type="bin_meta_apqgps">BIN-APQ</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN-APQ</release_path>
+      <release_path type="bin_ddm_apqgps">BIN-APQ</release_path>
+      <file_ref cmm_file_var="MPSS_BINARY" pil_split="modem" minimized="true" oem_imageid="MPSS" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>qdsp6sw.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="MPSS_QDB_BINARY" fat_file="true" minimized="true" sub_dir="kailua" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>qdsp6m.qdb</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>modemr.jsn</file_name>
+        <file_path>modem_proc/build/ms/servreg/kailua.gps.prodQ/</file_path>
+      </file_ref>
+      <file_ref oem_imageid="RFC" minimized="true" target_file_path="/vendor/firmware_mnt/image/modem_pr/so">
+        <file_name>*.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/so/</file_path>
+      </file_ref>
+      <file_ref oem_imageid="MPSS-OEM-PD" minimized="true" ignore="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>*.*</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/oem/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="MPSS_DTB" pil_split="modem_dtb" minimized="true" oem_imageid="Q6-MPSS-DTB" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>qdsp6sw_dtbs.elf</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>efs1.bin</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>efs2.bin</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>efs3.bin</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>*</file_name>
+        <file_path>modem_proc/mcfg/configs/mcfg_sw/</file_path>
+      </file_ref>
+      <file_ref oem_imageid="MCFG" ignore="true" minimized="true">
+        <file_name>*.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/configs/mcfg_sw/**/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>*</file_name>
+        <file_path>modem_proc/mcfg/configs/mcfg_hw/</file_path>
+      </file_ref>
+      <file_ref oem_imageid="MCFG" ignore="true" minimized="true">
+        <file_name>*.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/kailua.gps.prod/configs/mcfg_hw/**/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>*</file_name>
+        <file_path>modem_proc/rf/rftarget_denali/mtp/qcn/</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_ulog_dumps" ignore="true">
+        <file_name>PowerDebugDump.cmm</file_name>
+        <file_path>modem_proc/core/power/scripts/</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_sleepctl_logs" minimized="true" ignore="true">
+        <file_name>SleepDump.cmm</file_name>
+        <file_path>modem_proc/core/power/sleep/scripts/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>*.*</file_name>
+        <file_path>modem_proc/build/myps/qshrink/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="MPSS_ELF" minimized="true" ignore="true">
+        <file_name>Mkailuakailua.gps.prodQ*.elf</file_name>
+        <file_path>modem_proc/build/ms/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos,core_non_hlos,quest_non_hlos</wf_step_filter>
+      <mount_path>/vendor/firmware_mnt</mount_path>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>adsp</name>
+      <role>adsp</role>
+      <chipset>KAILUA</chipset>
+      <build_id>ADSP.HT.5.8-01377-KAILUA_IOT-1</build_id>
+      <windows_root_path cmm_root_path_var="ADSP_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="ADSP_BUILDROOT">./</linux_root_path>
+      <image_dir>adsp_proc</image_dir>
+      <release_path type="src">PCT/SRC</release_path>
+      <release_path type="src-le-vm">PCT/SRC</release_path>
+      <release_path type="bin">BIN</release_path>
+      <release_path type="bin_meta_apq">BIN</release_path>
+      <release_path type="bin_meta_apqgps">BIN</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN</release_path>
+      <release_path type="bin_ddm_apqgps">BIN</release_path>
+      <file_ref cmm_file_var="ADSP_BINARY" pil_split="adsp" minimized="true" oem_imageid="ADSP" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>adsp.mbn</file_name>
+        <file_path>adsp_proc/build/ms/bin/kailua.adsp_iot.prod/signed/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="ADSP_DTB" pil_split="adsp_dtb" minimized="true" oem_imageid="Q6-ADSP-DTB" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>adsp_dtbs.elf</file_name>
+        <file_path>adsp_proc/build/ms/bin/kailua.adsp_iot.prod/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>adspr.jsn</file_name>
+        <file_path>adsp_proc/build/ms/servreg/kailua.adsp_iot.prodQ/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>adsps.jsn</file_name>
+        <file_path>adsp_proc/build/ms/servreg/kailua.adsp_iot.prodQ/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>adspua.jsn</file_name>
+        <file_path>adsp_proc/build/ms/servreg/kailua.adsp_iot.prodQ/</file_path>
+      </file_ref>
+      <file_ref adspso_signed="true" minimized="true" target_file_path="/vendor/dsp/adsp">
+        <file_name>*</file_name>
+        <file_path>adsp_proc/build/ms/dynamic_modules/kailua.adsp_iot.prod/</file_path>
+      </file_ref>
+      <file_ref minimized="true" adspso_signed="true" target_file_path="/vendor/dsp/adsp">
+        <file_name>*</file_name>
+        <file_path>adsp_proc/avs/build/dynamic_modules/kailua.adsp_iot.prod/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos,dspso,core_non_hlos,quest_non_hlos</wf_step_filter>
+      <mount_path>/vendor/firmware_mnt,/vendor/dsp</mount_path>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>cdsp</name>
+      <role>cdsp</role>
+      <chipset>KAILUA</chipset>
+      <build_id>CDSP.HT.2.8-00944-KAILUA-1</build_id>
+      <windows_root_path cmm_root_path_var="CDSP_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="CDSP_BUILDROOT">./</linux_root_path>
+      <image_dir>cdsp_proc</image_dir>
+      <release_path type="src">PCT/SRC</release_path>
+      <release_path type="src-le-vm">PCT/SRC</release_path>
+      <release_path type="bin">BIN</release_path>
+      <release_path type="bin_meta_apq">BIN</release_path>
+      <release_path type="bin_meta_apqgps">BIN</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN</release_path>
+      <release_path type="bin_ddm_apqgps">BIN</release_path>
+      <file_ref cmm_file_var="CDSP_BINARY" pil_split="cdsp" minimized="true" oem_imageid="CDSP" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>cdsp.mbn</file_name>
+        <file_path>cdsp_proc/build/ms/bin/kailua.cdsp.prod/signed/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="CDSP_DTB" pil_split="cdsp_dtb" minimized="true" oem_imageid="Q6-CDSP-DTB" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>cdsp_dtbs.elf</file_name>
+        <file_path>cdsp_proc/build/ms/bin/kailua.cdsp.prod/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" target_file_path="/vendor/firmware_mnt/image">
+        <file_name>cdspr.jsn</file_name>
+        <file_path>cdsp_proc/build/ms/servreg/kailua.cdsp.prodQ/</file_path>
+      </file_ref>
+      <file_ref cdspso_signed="true" minimized="true" target_file_path="/vendor/dsp/cdsp">
+        <file_name>*</file_name>
+        <file_path>cdsp_proc/build/ms/dynamic_modules/kailua.cdsp.prod/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos,dspso,core_non_hlos,quest_non_hlos</wf_step_filter>
+      <mount_path>/vendor/firmware_mnt,/vendor/dsp</mount_path>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>cpucp</name>
+      <role>cpucp</role>
+      <chipset>KAILUA</chipset>
+      <build_id>CPUCP.FW.1.0-00085-KAILUA.EXT-1</build_id>
+      <windows_root_path cmm_root_path_var="CPUCP_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="CPUCP_BUILDROOT">./</linux_root_path>
+      <image_dir>cpucp_proc</image_dir>
+      <release_path type="src">BIN</release_path>
+      <release_path type="src-le-vm">BIN</release_path>
+      <release_path type="bin">BIN</release_path>
+      <release_path type="bin_meta_apq">BIN</release_path>
+      <release_path type="bin_meta_apqgps">BIN</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN</release_path>
+      <release_path type="bin_ddm_apqgps">BIN</release_path>
+      <download_file cmm_file_var="CPUCP_BINARY" minimized="true" backup_partition="cpucp_b" fastboot_complete="cpucp_a" oem_imageid="CPUCP" qti_imageid="CPUCP">
+        <file_name>cpucp.elf</file_name>
+        <file_path>cpucp_proc/kailua/cpucp</file_path>
+      </download_file>
+      <wf_step_filter />
+      <buildfile_path>make/</buildfile_path>
+      <build_command>make CHIPSET=kailua target_sign_v2_qti_test &amp;&amp; make CHIPSET=camano target_sign_v2_qti_test &amp;&amp; rm -rf .git*</build_command>
+    </build>
+    <build>
+      <name>cpuss_vm</name>
+      <role>cpuss_vm</role>
+      <chipset>KAILUA</chipset>
+      <build_id>CPUSS.CPUSYS.VM.1.0-00013-KAILUA.EXT-2</build_id>
+      <windows_root_path cmm_root_path_var="CPUSS_VM_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="CPUSS_VM_BUILDROOT">./</linux_root_path>
+      <image_dir>cpusys_vm_proc</image_dir>
+      <release_path type="src">BIN</release_path>
+      <release_path type="src-le-vm">BIN</release_path>
+      <release_path type="bin">BIN</release_path>
+      <release_path type="bin_meta_apq">BIN</release_path>
+      <release_path type="bin_meta_apqgps">BIN</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN</release_path>
+      <release_path type="bin_ddm_apqgps">BIN</release_path>
+      <file_ref oem_imageid="CPUSYS-VM" qti_imageid="CPUSYS-VM" minimized="true" pil_split="cpusys_vm">
+        <file_name>cpusys_vm.mbn</file_name>
+        <file_path>cpusys_vm_proc/kailua/cpusys_vm</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos</wf_step_filter>
+      <buildfile_path>export/</buildfile_path>
+      <build_command>export PATH=/pkg/qct/software/gnu/make/4.1/bin:$PATH &amp;&amp; make SOC_FAMILY=kailua release &amp;&amp; make SOC_FAMILY=camano release &amp;&amp; rm -rf .git* README.md</build_command>
+    </build>
+    <build>
+      <name>spss</name>
+      <role>spss</role>
+      <chipset>KAILUA</chipset>
+      <build_id>SPSS.A1.1.7-00072-KAILUA-1</build_id>
+      <windows_root_path cmm_root_path_var="SPSS_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="SPSS_BUILDROOT">./</linux_root_path>
+      <image_dir>spss_proc</image_dir>
+      <release_path type="src">BIN</release_path>
+      <release_path type="src-le-vm">BIN</release_path>
+      <release_path type="bin">BIN</release_path>
+      <release_path type="bin_meta_apq">BIN</release_path>
+      <release_path type="bin_meta_apqgps">BIN</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN</release_path>
+      <release_path type="bin_ddm_apqgps">BIN</release_path>
+      <file_ref fat_file="true" minimized="true">
+        <file_name>spss1t.b00</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true">
+        <file_name>spss1t.b01</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true">
+        <file_name>spss1t.b02</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true">
+        <file_name>spss1t.mdt</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true">
+        <file_name>*1t.sig</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" minimized="true" oem_imageid="MCP-OEM">
+        <file_name>spss1t.mbn</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true">
+        <file_name>spss1p.b00</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true">
+        <file_name>spss1p.b01</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true">
+        <file_name>spss1p.b02</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true">
+        <file_name>spss1p.mdt</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true">
+        <file_name>*1p.sig</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" minimized="true" oem_imageid="MCP-OEM">
+        <file_name>spss1p.mbn</file_name>
+        <file_path>spss_proc/release/crm/sm8550v1/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos</wf_step_filter>
+      <buildfile_path>Dir/</buildfile_path>
+      <build_command>Dir Dir</build_command>
+    </build>
+    <build>
+      <name>wlan_hmt</name>
+      <role>wlan_hmt</role>
+      <chipset>KAILUA</chipset>
+      <build_id>WLAN.IOE_HMT.1.0.2-00261-QCAHMTSWPL_V1.0_V2.0_SILICONZ-1</build_id>
+      <windows_root_path cmm_root_path_var="WLAN_HMT_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="WLAN_HMT_BUILDROOT">./</linux_root_path>
+      <image_dir>wlan_proc</image_dir>
+      <release_path type="src">BIN</release_path>
+      <release_path type="src-le-vm">BIN</release_path>
+      <release_path type="bin">BIN</release_path>
+      <release_path type="bin_meta_apq">BIN</release_path>
+      <release_path type="bin_meta_apqgps">BIN</release_path>
+      <release_path type="bin_ddm">BIN</release_path>
+      <release_path type="bin_ddm_apq">BIN</release_path>
+      <release_path type="bin_ddm_apqgps">BIN</release_path>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>amss.bin</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v1_TO_link_patched/build/7850.wlanfw.eval_v1_TO/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>amss20.bin</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v2_TO_link_patched/build/7850.wlanfw.eval_v2_TO/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>Data.msc</file_name>
+        <file_path>wlan_proc/build/ms/wlan_diag_v1/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>Data20.msc</file_name>
+        <file_path>wlan_proc/build/ms/wlan_diag_v2/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>phy_ucode.elf</file_name>
+        <file_path>wlan_proc/wlan/subsys/phyucode_binary/hmt/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>phy_ucode20.elf</file_name>
+        <file_path>wlan_proc/wlan/subsys/phyucode_binary/hmtv2/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>bdwlan.e*</file_name>
+        <file_path>wlan_proc/wlan/bdf/bin/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="kiwi">
+        <file_name>regdb.bin</file_name>
+        <file_path>wlan_proc/wlan/bdf/bin/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="QDSS_CONFIG" fat_file="true" minimized="true" sub_dir="kiwi">
+        <file_name>qdss_trace_config_v1.cfg</file_name>
+        <file_path>wlan_proc/wlan/wlanhw_debug/default_config_file/</file_path>
+      </file_ref>
+      <file_ref cmm_file_var="QDSS_CONFIG" fat_file="true" minimized="true" sub_dir="kiwi">
+        <file_name>qdss_trace_config_v2.cfg</file_name>
+        <file_path>wlan_proc/wlan/wlanhw_debug/default_config_file/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>CNSS_RAM_V1_TO_LINK_PATCHED_7850.wlanfw.eval_v1_TOQ_link.elf</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v1_TO_link_patched/build/7850.wlanfw.eval_v1_TO/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>CNSS_RAM_V2_TO_LINK_PATCHED_7850.wlanfw.eval_v2_TOQ_link.elf</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v2_TO_link_patched/build/7850.wlanfw.eval_v2_TO/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos</wf_step_filter>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>wlan_pine</name>
+      <role>wlan_pine</role>
+      <chipset>KAILUA</chipset>
+      <build_id>WLAN.IOE_PN.1.3.1-00068-QCAHKSWPL_SILICONZ-1</build_id>
+      <windows_root_path cmm_root_path_var="WLAN_BUILDROOT">.\WLAN.IOE_PN\</windows_root_path>
+      <linux_root_path cmm_root_path_var="WLAN_BUILDROOT">./WLAN.IOE_PN/</linux_root_path>
+      <image_dir>wlan_proc</image_dir>
+      <release_path type="src">BIN-WLAN-PINE</release_path>
+      <release_path type="src-le-vm">BIN-WLAN-PINE</release_path>
+      <release_path type="bin">BIN-WLAN-PINE</release_path>
+      <release_path type="bin_meta_apq">BIN-WLAN-PINE</release_path>
+      <release_path type="bin_meta_apqgps">BIN-WLAN-PINE</release_path>
+      <release_path type="bin_ddm">BIN-WLAN-PINE</release_path>
+      <release_path type="bin_ddm_apq">BIN-WLAN-PINE</release_path>
+      <release_path type="bin_ddm_apqgps">BIN-WLAN-PINE</release_path>
+      <file_ref ignore="true" fat_file="true" sub_dir="qcn9000" minimized="true">
+        <file_name>pcss_m3_tx_rx.elf</file_name>
+        <file_path>wlan_proc/wlan/subsys/phyucode_binary/pine/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" sub_dir="qcn9000" minimized="true">
+        <file_name>m3.bin</file_name>
+        <file_path>wlan_proc/build/ms/bin/9000.wlanfw.eval_v1/FW_IMAGES/qcn9000/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>pcss_m3_tx_rx.axf</file_name>
+        <file_path>wlan_proc/wlan/subsys/phyucode_binary/pine/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="qcn9000">
+        <file_name>bdwlan.*</file_name>
+        <file_path>wlan_proc/wlan/phyrf_svc/tools/bdfUtil/device/bdf/qcn90xx/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="qcn9000">
+        <file_name>bdwlan_olpc.*</file_name>
+        <file_path>wlan_proc/wlan/phyrf_svc/tools/bdfUtil/device/bdf/qcn90xx/</file_path>
+      </file_ref>
+      <file_ref fat_file="true" sub_dir="qcn9000">
+        <file_name>amss.bin</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v1_TO_link_patched/build/9000.wlanfw.eval_v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" fat_file="true" sub_dir="qcn9000" minimized="true">
+        <file_name>Data.msc</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v1_TO_link_patched/build/9000.wlanfw.eval_v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>CORE_ROM_V1_LINK_PATCHED_9000.wlanfw.evalQ_link.elf</file_name>
+        <file_path>wlan_proc/core_9000/rombin/v1/core_rom_v1_link_patched/build/9000.wlanfw.eval/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>CNSS_RAM_V1_TO_LINK_PATCHED_9000.wlanfw.eval_v1Q_link.elf</file_name>
+        <file_path>wlan_proc/config/bsp/cnss_ram_v1_TO_link_patched\build/9000.wlanfw.eval_v1/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>msg_hash_pine.txt</file_name>
+        <file_path>wlan_proc/scripts/myps/qshrink/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>*.*</file_name>
+        <file_path>wlan_proc/core_9000/v1rom/rom/kernel/qurt/osam/build/T32/generic/</file_path>
+      </file_ref>
+      <wf_step_filter>non_hlos</wf_step_filter>
+      <buildfile_path>export/</buildfile_path>
+      <build_command>export CRM_BUILDID=${CRM_BUILDID}; export PATH=$PATH:/pkg/qct/software/ubuntu/mksquashfs/; cd ./wlan_proc/build/ms; sh build_v1_v2_Maple_Pine.sh; cd ../../../; /pkg/qct/qctss/linux/ubuntu/16.04/python279/bin/python wlan_proc/wlan/mac_core/syssw/src/platform/debug/scripts/memory_analysis/memory_report_pine.py  --output ./static_mem_data_pine; pwd; mkdir -p ./BIN-WLAN-HWV2; mkdir -p ./SRC-WLAN-HKV2;</build_command>
+    </build>
+    <build>
+      <name>btfm_hmt</name>
+      <role>btfm_hmt</role>
+      <chipset>KAILUA</chipset>
+      <build_id>BTFW.HAMILTON.2.0.1-00388-PATCHZ-1</build_id>
+      <windows_root_path cmm_root_path_var="BTFM_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="BTFM_BUILDROOT">./</linux_root_path>
+      <image_dir>btfw_proc</image_dir>
+      <release_path type="src">HK11</release_path>
+      <release_path type="src-le-vm">HK11</release_path>
+      <release_path type="bin">HK11</release_path>
+      <release_path type="bin_meta_apq">HK11</release_path>
+      <release_path type="bin_meta_apqgps">HK11</release_path>
+      <release_path type="bin_ddm">HK11</release_path>
+      <release_path type="bin_ddm_apq">HK11</release_path>
+      <release_path type="bin_ddm_apqgps">HK11</release_path>
+      <file_ref fat_file_btfm="true">
+        <file_name>hmtbtfw10.tlv</file_name>
+        <file_path>btfw_proc/out/hmt/SCAMBDFM_UART_DEF/bin/</file_path>
+      </file_ref>
+      <file_ref fat_file_btfm="true">
+        <file_name>hmtbtfw10.ver</file_name>
+        <file_path>btfw_proc/out/hmt/SCAMBDFM_UART_DEF/bin/</file_path>
+      </file_ref>
+      <file_ref fat_file_btfm="true">
+        <file_name>hmtnv10.b*</file_name>
+        <file_path>btfw_proc/out/hmt/SCAMBDFM_UART_DEF/bin/</file_path>
+      </file_ref>
+      <file_ref fat_file_btfm="true">
+        <file_name>hmtbtfw20.tlv</file_name>
+        <file_path>btfw_proc/out/hmt/SCAMBDFM_UART_DEF/bin/</file_path>
+      </file_ref>
+      <file_ref fat_file_btfm="true">
+        <file_name>hmtbtfw20.ver</file_name>
+        <file_path>btfw_proc/out/hmt/SCAMBDFM_UART_DEF/bin/</file_path>
+      </file_ref>
+      <file_ref fat_file_btfm="true">
+        <file_name>hmtnv20.b*</file_name>
+        <file_path>btfw_proc/out/hmt/SCAMBDFM_UART_DEF/bin/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>HMT_SCAMBDFM.elf</file_name>
+        <file_path>btfw_proc/out/hmt/</file_path>
+      </file_ref>
+      <file_ref ignore="true" minimized="true">
+        <file_name>HMT_SCAQBAFM.elf</file_name>
+        <file_path>btfw_proc/out/hmt/</file_path>
+      </file_ref>
+      <wf_step_filter>btfm</wf_step_filter>
+      <buildfile_path>cd/</buildfile_path>
+      <build_command>cd ./btfw_proc/hamilton/build/ms; sh ./build_patch.sh hmt --uniqueid --romimage</build_command>
+    </build>
+    <build>
+      <name>apps</name>
+      <role>apps</role>
+      <chipset>KAILUA</chipset>
+      <build_id>LE.PRODUCT.2.1.r1-13100-KAILUA.0-1</build_id>
+      <windows_root_path cmm_root_path_var="APPSVENDOR_BUILDROOT">.\LE.PRODUCT.2.1.r1\</windows_root_path>
+      <linux_root_path cmm_root_path_var="APPSVENDOR_BUILDROOT">./LE.PRODUCT.2.1.r1/</linux_root_path>
+      <image_dir>apps_proc</image_dir>
+      <release_path type="src" />
+      <release_path type="src-le-vm" />
+      <release_path type="bin" />
+      <release_path type="bin_meta_apq" />
+      <release_path type="bin_meta_apqgps" />
+      <release_path type="bin_ddm">HK33</release_path>
+      <release_path type="bin_ddm_apq">HK33</release_path>
+      <release_path type="bin_ddm_apqgps">HK33</release_path>
+      <download_file cmm_file_var="APPSBOOT_BINARY" backup_partition="abl_b" fastboot="abl_a" minimized="true" oem_imageid="ABL">
+        <file_name>abl.elf</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </download_file>
+      <download_file cmm_file_var="APPS_BINARY" backup_partition="boot_b" fastboot="boot_a" minimized="true">
+        <file_name>boot.img</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </download_file>
+      <download_file cmm_file_var="APPS_DTBO_BINARY" backup_partition="dtbo_b" fastboot="dtbo_a" minimized="true">
+        <file_name>dtbo.img</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </download_file>
+      <download_file minimized="true" fastboot="persist">
+        <file_name>persist.img</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </download_file>
+      <download_file minimized="true" backup_partition="system_b" fastboot="system_a">
+        <file_name>system.img</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </download_file>
+      <download_file minimized="true" fastboot="true">
+        <file_name>userdata.img</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </download_file>
+      <file_ref cmm_file_var="APPS_ELF" minimized="true">
+        <file_name>vmlinux</file_name>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+      </file_ref>
+      <wf_step_filter>hlos</wf_step_filter>
+      <buildfile_path>./</buildfile_path>
+      <build_command>create_BuildProducts ./create_BuildProducts</build_command>
+    </build>
+    <build>
+      <name>apps_kernel</name>
+      <role>apps_kernel</role>
+      <chipset>KAILUA</chipset>
+      <build_id>KERNEL.PLATFORM.2.0.r11-04900-kernel.0-1</build_id>
+      <windows_root_path cmm_root_path_var="APPSKERNEL_BUILDROOT">.\KERNEL.PLATFORM.2.0.r11\</windows_root_path>
+      <linux_root_path cmm_root_path_var="APPSKERNEL_BUILDROOT">./KERNEL.PLATFORM.2.0.r11/</linux_root_path>
+      <image_dir>kernel_platform</image_dir>
+      <release_path />
+      <wf_step_filter />
+      <buildfile_path>./</buildfile_path>
+      <build_command>create_BuildProducts ./create_BuildProducts</build_command>
+    </build>
+    <build>
+      <name>apps_le_framework</name>
+      <role>apps_le_framework</role>
+      <chipset>KAILUA</chipset>
+      <build_id>LE.FRAMEWORK.2.0.r1-11300-KAILUA.0-1</build_id>
+      <windows_root_path cmm_root_path_var="APPSLEFRAMEWORK_BUILDROOT">.\LE.FRAMEWORK.2.0.r1\</windows_root_path>
+      <linux_root_path cmm_root_path_var="APPSLEFRAMEWORK_BUILDROOT">./LE.FRAMEWORK.2.0.r1/</linux_root_path>
+      <image_dir>apps_proc</image_dir>
+      <release_path />
+      <wf_step_filter />
+      <buildfile_path>./</buildfile_path>
+      <build_command>create_BuildProducts ./create_BuildProducts</build_command>
+    </build>
+    <build>
+      <name>glue</name>
+      <role>glue</role>
+      <chipset>KAILUA</chipset>
+      <build_id>GLUE.KAILUA_LE.1.0-00070-NOOP_TEST_KAILUA-1</build_id>
+      <windows_root_path>.\</windows_root_path>
+      <linux_root_path>./</linux_root_path>
+      <release_path />
+      <image_dir>common</image_dir>
+      <wf_step_filter>partition,non_hlos,cmm_scripts</wf_step_filter>
+      <buildfile_path>common/build/</buildfile_path>
+      <build_command>build.sh common/build/build.sh</build_command>
+    </build>
+  </builds_flat>
+  <build_tools>
+   
+  </build_tools>
+  <external_tools>
+    <tool>
+      <name>python</name>
+      <version>3.X</version>
+    </tool>
+    <tool>
+      <name>trace32</name>
+      <version cmm_var="T32_VER">N.2021.08.000138680</version>
+    </tool>
+    <tool>
+      <name>QUTS</name>
+      <version>QUTS 1.35.3.1</version>
+    </tool>
+    <tool>
+      <name>QXDM</name>
+      <version>QXDM 5.1.211.1</version>
+    </tool>
+  </external_tools>
+  <workflow>
+    <tool>
+      <name>fatgen.py</name>
+      <build>common</build>
+      <path>./common/config/storage/</path>
+    </tool>
+    <tool>
+      <name>fatadd.py</name>
+      <build>common</build>
+      <path>./common/config/storage/</path>
+    </tool>
+    <tool>
+      <name>checksparse.py</name>
+      <build>common</build>
+      <path>./common/config/storage/</path>
+    </tool>
+    <tool>
+      <name>pil-splitter.py</name>
+      <build>common</build>
+      <path>./common/config/storage/</path>
+    </tool>
+    <tool>
+      <name>ptool.py</name>
+      <build>common</build>
+      <path>./common/config/storage/</path>
+    </tool>
+    <tool>
+      <name>sectools_executor.py</name>
+      <build>common</build>
+      <path>./common/config/storage</path>
+    </tool>
+    <tool>
+      <name>fat_creation.py</name>
+      <build>common</build>
+      <path>./common/build/app</path>
+    </tool>
+    <tool>
+      <name>make_ext4fs_win.exe</name>
+      <build>common</build>
+      <path>./common/config/ext4fs_tools/windows/</path>
+    </tool>
+    <tool>
+      <name>simg2img_win.exe</name>
+      <build>common</build>
+      <path>./common/config/ext4fs_tools/windows/</path>
+    </tool>
+    <tool>
+      <name>mkuserimg_mke2fs</name>
+      <build>common</build>
+      <path>./common/config/ext4fs_tools/linux</path>
+    </tool>
+    <tool>
+      <name>make_ext4fs</name>
+      <build>common</build>
+      <path>./common/config/ext4fs_tools/ubuntu</path>
+    </tool>
+    <tool>
+      <name>simg2img</name>
+      <build>common</build>
+      <path>./common/config/ext4fs_tools/ubuntu</path>
+    </tool>
+    <tool>
+      <name>mcfg_meta.py</name>
+      <build>modem</build>
+      <path>./modem_proc/mcfg/mcfg_gen/scripts/</path>
+    </tool>
+    <step filter="partition" type="exec" flavor="asic">
+      <params>python @tool_name -x @partition_file</params>
+      <exec_dir>./ufs</exec_dir>
+      <partition_file>./../../config/ufs/partition_ext.xml</partition_file>
+      <tool_name>ptool.py</tool_name>
+    </step>
+    <step filter="non_hlos" storage_type="ufs" type="exec">
+      <params>python @tool_name @src_file @destn_dir + @src_file_var</params>
+      <tool_name>pil-splitter.py</tool_name>
+      <src_file_vars>$[attribute:pil_split]</src_file_vars>
+      <destn_dir>./ufs/bin/asic/pil_split_bins</destn_dir>
+    </step>
+    <step filter="non_hlos" type="delete">
+      <destn_dir>./bin/modem_pr</destn_dir>
+    </step>
+    <step filter="non_hlos" type="delete">
+      <destn_dir>./bin/modem_oem</destn_dir>
+    </step>
+    <step filter="non_hlos" type="exec">
+      <params>python @tool_name -cx @contents -mb @modem_bin -mr @root_dir -bf @build_flavor -ch @chipid </params>
+      <tool_name>mcfg_meta.py</tool_name>
+      <contents>@root_dir + contents.xml</contents>
+      <modem_bin>@root_dir + common/build/bin</modem_bin>
+      <build_flavor>kailua.gps.prod</build_flavor>
+      <chipid>KAILUA</chipid>
+      <root_dir>$[build:common]</root_dir>
+      <abort_on_error />
+    </step>
+    <step filter="non_hlos" storage_type="ufs" type="delete">
+      <destn>./ufs/bin/asic/NON-HLOS.bin</destn>
+    </step>
+    <step filter="non_hlos" storage_type="ufs" type="exec">
+      <params>python @tool_name -a @attributes -c @destn --ps @partition_size --ss 4096 -f asic --fatgen @fatgen_loc --fatadd @fatadd_loc</params>
+      <tool_name>fat_creation.py</tool_name>
+      <attributes>fat_file</attributes>
+      <destn>./ufs/bin/asic/NON-HLOS.bin</destn>
+      <partition_size>@getPartitionSize("./../config/ufs/partition_ext.xml","modem_a")</partition_size>
+      <fatgen_loc>@root_dir + common/config/storage/fatgen.py</fatgen_loc>
+      <fatadd_loc>@root_dir + common/config/storage/fatadd.py</fatadd_loc>
+      <root_dir>$[build:common]</root_dir>
+    </step>
+    <step filter="btfm" storage_type="ufs" type="delete">
+      <destn>./ufs/bin/BTFM.bin</destn>
+    </step>
+    <step filter="btfm" storage_type="ufs" type="exec">
+      <params>python @tool_name -a @attributes -c @destn --ps 64 --ss 4096 -f asic --fatgen @fatgen_loc --fatadd @fatadd_loc</params>
+      <tool_name>fat_creation.py</tool_name>
+      <attributes>fat_file_btfm</attributes>
+      <destn>./ufs/bin/BTFM.bin</destn>
+      <fatgen_loc>@root_dir + common/config/storage/fatgen.py</fatgen_loc>
+      <fatadd_loc>@root_dir + common/config/storage/fatadd.py</fatadd_loc>
+      <root_dir>$[build:common]</root_dir>
+    </step>
+    <step filter="multi_image" type="delete">
+      <destn>./bin/multi_image.mbn</destn>
+    </step>
+    <step filter="multi_image" type="exec">
+      <params>python @tool_name sectools metabuild-secure-image --vouch-for --image-id QUPV3 AOP SHRM XBL-CONFIG UEFI XBL-RAM-DUMP CPUCP TZ QHEE TZ-DEVCFG MPSS ADSP CDSP MCP-OEM CPUSYS-VM --outfile @out_file --chipset KAILUA --hash --signing-mode TEST --sign --flavor asic -vv</params>
+      <tool_name>sectools_executor.py</tool_name>
+      <out_file>./bin/multi_image.mbn</out_file>
+      <root_dir>$[build:common]</root_dir>
+      <abort_on_error>1</abort_on_error>
+    </step>
+    <step filter="hlos" storage_type="ufs" type="exec">
+      <exec_dir>./ufs/bin/asic/sparse_images</exec_dir>
+      <params>python @tool_name -i @rawprogram_xml -s @root_dir + @sparse_dir -o rawprogram_unsparse0.xml</params>
+      <tool_name>checksparse.py</tool_name>
+      <root_dir>$[build:apps]</root_dir>
+      <sparse_dir>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</sparse_dir>
+      <rawprogram_xml>./../../../rawprogram0.xml</rawprogram_xml>
+    </step>
+    <step filter="dspso" type="delete">
+      <destn>./bin/dspso_sparse.bin</destn>
+    </step>
+    <step filter="dspso" type="copy">
+      <destn_dir>./bin/dspso/adsp</destn_dir>
+      <src_files>$[attribute:adspso_signed]</src_files>
+    </step>
+    <step filter="dspso" type="copy">
+      <destn_dir>./bin/dspso/cdsp</destn_dir>
+      <src_files>$[attribute:cdspso_signed]</src_files>
+    </step>
+    <step filter="dspso" type="exec" platform="win">
+      <params>@tool_name -s -T -1 -S @req_files -L dsp -l 67108864 -a dsp @destn @src_dir</params>
+      <tool_name>make_ext4fs_win.exe</tool_name>
+      <destn>./bin/dspso_sparse.bin</destn>
+      <src_dir>./bin/dspso</src_dir>
+      <req_files>@root_dir + common/config/ext4fs_tools/windows/file_contexts</req_files>
+      <root_dir>$[build:common]</root_dir>
+    </step>
+    <step filter="dspso" type="exec" platform="win">
+      <exec_dir>./bin/</exec_dir>
+      <params>@tool_name dspso_sparse.bin dspso.bin</params>
+      <tool_name>simg2img_win.exe</tool_name>
+    </step>
+    <step filter="dspso" type="exec" platform="linux">
+      <params>@tool_name -s -T -1 -S @req_files -L dsp -l 67108864 -a dsp @destn @src_dir</params>
+      <tool_name>make_ext4fs</tool_name>
+      <destn>./bin/dspso_sparse.bin</destn>
+      <src_dir>./bin/dspso</src_dir>
+      <req_files>@root_dir + common/config/ext4fs_tools/ubuntu/file_contexts</req_files>
+      <root_dir>$[build:common]</root_dir>
+    </step>
+    <step filter="dspso" type="exec" platform="linux">
+      <exec_dir>./bin/</exec_dir>
+      <params>@tool_name dspso_sparse.bin dspso.bin</params>
+      <tool_name>simg2img</tool_name>
+    </step>
+    <step filter="dspso" type="delete">
+      <destn>./bin/dspso_sparse.bin</destn>
+    </step>
+    <step filter="dspso" type="delete">
+      <destn>./bin/dspso/</destn>
+    </step>
+  </workflow>
+</contents>

@@ -1,0 +1,207 @@
+From 6ff253c6fcea4062e99804550d00dcfb512c61ae Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Fri, 4 Apr 2025 18:35:16 +0100
+Subject: [PATCH] Add support for booting the IMDT SOM8550 (#3)
+
+* Add support for booting IMDT SBC8550
+Added support for booting without PMIC Charger (PM8550B).
+These changes were done with support from Qualcomm's
+engineers as this is not a feature they officially support.
+The XBL change to support booting without the PM8550B
+PMIC mainly involves removing the Charger from the
+UEFI build and changing the XBL CFG dtsi file.
+
+If we don't disable it the PMIC charger in the XBL,
+the ADSP code tries to talk to the PM8550B and just stops
+our board from booting. The ADSP code for the charger PMIC can
+be found under the following directory:
+${QCOM_ROOT_DIR}/adsp_proc/core/battman/battmngr/charger
+
+Also note that changes in in pm.dtsi have been done
+to match the PMIC configuration on the IMDT SOM.
+This device tree is compiled and supplied as part
+of the XBL CFG binary. The XBL CFG binary is
+now Qualcomm's way of allowing customers
+to modify the behaviour of the XBL according to
+their specific hardware.
+This is because the XBL is now only
+provided as a secure binary so we cannot
+modify it. But we can modify the XBL CFG
+binary to change the behaviour of the XBL.
+
+NOTE:
+Although the XBL is only provided
+as a secure binary, the majority of the XBL
+source is still provided. So you can use it
+to understand the XBL logs when booting.
+
+Things to check:
+PM8550 LDO16 - Do we need to disable this?
+---
+ boot/QcomPkg/QcomPkg.dec                      |  2 +-
+ .../QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc |  2 +-
+ boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf    |  8 +-
+ boot/Settings/Kailua/Core/PMIC/pm.dtsi        | 79 ++++++++++++-------
+ 4 files changed, 58 insertions(+), 33 deletions(-)
+
+diff --git a/boot/QcomPkg/QcomPkg.dec b/boot/QcomPkg/QcomPkg.dec
+index 92e895a..fedbe24 100755
+--- a/boot/QcomPkg/QcomPkg.dec
++++ b/boot/QcomPkg/QcomPkg.dec
+@@ -1013,7 +1013,7 @@
+  
+ 
+   #set UsbNoPmic flag to TRUE if PMIC Charger is not being used
+-  gQcomTokenSpaceGuid.UsbNoPmic|FALSE|BOOLEAN|0xE12
++  gQcomTokenSpaceGuid.UsbNoPmic|TRUE|BOOLEAN|0xE12
+   gQcomTokenSpaceGuid.FastbootSecPort|FALSE|BOOLEAN|0xE13
+ 
+   gQcomTokenSpaceGuid.HighSpeedOnlySupported|FALSE|BOOLEAN|0xE14
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc b/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc
+index c4ccd29..7af6bb0 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc
++++ b/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc
+@@ -756,7 +756,7 @@
+   gQcomTokenSpaceGuid.USBPriDPBonded|FALSE
+ 
+   #set UsbNoPmic flag to TRUE if PMIC Charger is not being used
+-  gQcomTokenSpaceGuid.UsbNoPmic|FALSE
++  gQcomTokenSpaceGuid.UsbNoPmic|TRUE
+   #Secondary Port Flag
+   #gQcomTokenSpaceGuid.USBSecHighSpeedOnlySupported|FALSE
+   #gQcomTokenSpaceGuid.FastbootSecPort|FALSE
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf b/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf
+index f06e751..4795ab7 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf
++++ b/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf
+@@ -163,7 +163,7 @@ FvNameGuid         = 631008B0-B2D1-410A-8B49-2C5C4D8ECC7E
+   INF QcomPkg/Drivers/ICBDxe/ICBDxe.inf
+   INF QcomPkg/Drivers/SmemDxe/SmemDxe.inf
+   INF QcomPkg/Drivers/QcomBds/QcomBds.inf
+-  INF QcomPkg/Application/QcomChargerApp/QcomChargerApp.inf
++//  INF QcomPkg/Application/QcomChargerApp/QcomChargerApp.inf
+   INF QcomPkg/Drivers/RscDxe/RscDxe.inf
+   
+   FILE FREEFORM = a91d838e-a5fa-4138-825d-455e2303079e {
+@@ -229,9 +229,9 @@ FvNameGuid         = 433EBDDF-4B28-6730-A9ED-DB9FB98058F3
+    INF QcomPkg/Drivers/ButtonsDxe/ButtonsDxe.inf
+ # --PRESIL--
+ #  INF QcomPkg/Drivers/ChargerExDxe/NullLib/ChargerExDxeNull.inf
+-  INF QcomPkg/Drivers/ChargerExDxe/ChargerExDxe.inf
+-  INF QcomPkg/Drivers/PmicGlinkDxe/PmicGlinkDxe.inf
+-  INF QcomPkg/Drivers/QcomChargerDxe/QcomChargerDxeLA.inf
++//  INF QcomPkg/Drivers/ChargerExDxe/ChargerExDxe.inf
++//  INF QcomPkg/Drivers/PmicGlinkDxe/PmicGlinkDxe.inf
++//  INF QcomPkg/Drivers/QcomChargerDxe/QcomChargerDxeLA.inf
+   INF QcomPkg/Drivers/UsbPwrCtrlDxe/UsbPwrCtrlDxe.inf
+   INF QcomPkg/Drivers/TsensDxe/TsensDxe.inf
+   INF QcomPkg/Drivers/LimitsDxe/LimitsDxe.inf
+diff --git a/boot/Settings/Kailua/Core/PMIC/pm.dtsi b/boot/Settings/Kailua/Core/PMIC/pm.dtsi
+index 98cac09..e2355c0 100755
+--- a/boot/Settings/Kailua/Core/PMIC/pm.dtsi
++++ b/boot/Settings/Kailua/Core/PMIC/pm.dtsi
+@@ -94,7 +94,7 @@
+   };
+   
+   charger {
+-    parallel-charger = <PM_TRUE>;
++    parallel-charger = <PM_FALSE>;
+     charger-pmic-index = <PMIC_H>;
+ 
+     loader-dbc-threshold = <3000>;
+@@ -199,7 +199,8 @@
+     compatible = "qcom,pm-camera";  
+ 
+     // Set the value to <0xFFFF 0xFFFF> will disable PM8010 programming
+-    rst-signal = <7 11>;
++    // IMDT - Changed because we don't have PM8010 which is the Camera PMIC
++    rst-signal = <0xFFFF 0xFFFF>;
+   };
+ 
+   sw-config {
+@@ -210,33 +211,57 @@
+     // 			PON_EVENT_LOG_LEVEL_RAWDATA: verbose parsed log and raw data
+     //          PON_EVENT_LOG_LEVEL_MAX: All log. Currently same as _RAWDATA
+     // By default setting to PON_EVENT_LOG_LEVEL_BRIEF to avoid impacting boot performance
++  // PM_SMPS_SET_AHC_HR        PM_BUSID_0   PMIC_C  PM_SMPS_1    0x6E
++  // PM_SMPS_SET_ULS           PM_BUSID_0   PMIC_F  PM_SMPS_6    1375000          /*The Voltage is in microVolts*/
++  // PM_LDO_SET_ULS            PM_BUSID_0   PMIC_F  PM_SMPS_6    1375000          /*The Voltage is in microVolts*/
++  // PM_CLK_ENABLE             PM_BUSID_0   PMIC_A  PM_CLK_RF_1  PM_TRUE 
++  // PM_SMPS_SET_VOLT          PM_BUSID_0   PMIC_B  PM_SMPS_1    1200 
++  // PM_SMPS_SET_AHC           PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_FALSE 
++  // PM_LDO_SET_AHC            PM_BUSID_0   PMIC_B  PM_LDO_1     PM_FALSE
++  // PM_LDO_SET_VOLT           PM_BUSID_0   PMIC_B  PM_LDO_1     1200
++  // PM_LDO_SET_MODE           PM_BUSID_0   PMIC_B  PM_LDO_1     PM_SW_MODE_NPM        
++  // PM_SMPS_SET_MODE          PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_SW_MODE_NPM       
++  // PM_SMPS_SET_PD_CTRL       PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE    
++  // PM_SMPS_SET_PIN_CTRL      PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE   
++  // PM_SMPS_SET_OCP_BROADCAST PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE
++  // PM_LDO_SET_PD_CTRL        PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE   
++  // PM_LDO_SET_PIN_CTRL       PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE  
++  // PM_LDO_SET_OCP_BROADCAST  PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE
++  // PM_CLK_DRV_STR            PM_BUSID_0   PMIC_A  PM_CLK_RF_1  3
++  // PM_SMPS_SET_ENABLE        PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE    
++  // PM_LDO_SET_ENABLE         PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE 
++  // PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_A  0x2          0x2              /*BUS_ID, PMIC_ID, CLK buff Config, DATA buff Config*/
++  // PM_SPMI1_CLK_DATA_CFG     PM_BUSID_0   PMIC_A  0x2          0x3              /*BUS_ID, PMIC_ID, CLK buff Config, DATA buff Config   -- This item is for SPMI_MASTER2_SPMI_CLK_BUF_CFG*/
++  // PM_LDO_LPM_OCP_RESP       PM_BUSID_0   PMIC_A  PM_SDAM_1    PM_TRUE          /* FALSE = Trigger Reset; TRUE = Send INT */
++  // PM_LDO_OCP_RESP_CFG       PM_BUSID_0   PMIC_B  PM_LDO_1     PM_FALSE
+     verbose = <PON_EVENT_LOG_LEVEL_MIN>;
+     driver-post-init = <
+-	  // PM_SMPS_SET_AHC_HR        PM_BUSID_0   PMIC_C  PM_SMPS_1    0x6E
+-      // PM_SMPS_SET_ULS           PM_BUSID_0   PMIC_F  PM_SMPS_6    1375000          /*The Voltage is in microVolts*/
+-	  // PM_LDO_SET_ULS            PM_BUSID_0   PMIC_F  PM_SMPS_6    1375000          /*The Voltage is in microVolts*/
+-      // PM_CLK_ENABLE             PM_BUSID_0   PMIC_A  PM_CLK_RF_1  PM_TRUE 
+-      // PM_SMPS_SET_VOLT          PM_BUSID_0   PMIC_B  PM_SMPS_1    1200 
+-      // PM_SMPS_SET_AHC           PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_FALSE 
+-      // PM_LDO_SET_AHC            PM_BUSID_0   PMIC_B  PM_LDO_1     PM_FALSE
+-      // PM_LDO_SET_VOLT           PM_BUSID_0   PMIC_B  PM_LDO_1     1200
+-      // PM_LDO_SET_MODE           PM_BUSID_0   PMIC_B  PM_LDO_1     PM_SW_MODE_NPM        
+-      // PM_SMPS_SET_MODE          PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_SW_MODE_NPM       
+-      // PM_SMPS_SET_PD_CTRL       PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE    
+-      // PM_SMPS_SET_PIN_CTRL      PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE   
+-      // PM_SMPS_SET_OCP_BROADCAST PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE
+-      // PM_LDO_SET_PD_CTRL        PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE   
+-      // PM_LDO_SET_PIN_CTRL       PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE  
+-      // PM_LDO_SET_OCP_BROADCAST  PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE
+-      // PM_CLK_DRV_STR            PM_BUSID_0   PMIC_A  PM_CLK_RF_1  3
+-      // PM_SMPS_SET_ENABLE        PM_BUSID_0   PMIC_B  PM_SMPS_1    PM_TRUE    
+-      // PM_LDO_SET_ENABLE         PM_BUSID_0   PMIC_B  PM_LDO_1     PM_TRUE 
+-      // PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_A  0x2          0x2              /*BUS_ID, PMIC_ID, CLK buff Config, DATA buff Config*/
+-      // PM_SPMI1_CLK_DATA_CFG     PM_BUSID_0   PMIC_A  0x2          0x3              /*BUS_ID, PMIC_ID, CLK buff Config, DATA buff Config   -- This item is for SPMI_MASTER2_SPMI_CLK_BUF_CFG*/
+-      // PM_LDO_LPM_OCP_RESP       PM_BUSID_0   PMIC_A  PM_SDAM_1    PM_TRUE          /* FALSE = Trigger Reset; TRUE = Send INT */
+-      // PM_LDO_OCP_RESP_CFG       PM_BUSID_0   PMIC_B  PM_LDO_1     PM_FALSE
+-      
+-	  /*Delay*/
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_A  0x3  0x3
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_B  0x3  0x3
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_C  0x3  0x3
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_D  0x3  0x3
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_E  0x3  0x3
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_F  0x3  0x3
++      PM_SPMI_CLK_DATA_CFG      PM_BUSID_0   PMIC_G  0x3  0x3
++      PM_LDO_SET_OCP_BROADCAST  PM_BUSID_0   PMIC_B  PM_LDO_11  PM_FALSE     /* IMDT --> PM8550 LDO11 - Diable OCP Broadcast */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_1 PM_FALSE         /* IMDT --> PM8550 LDO1 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_2 PM_FALSE         /* IMDT --> PM8550 LDO2 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_4 PM_FALSE         /* IMDT --> PM8550 LDO4 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_6 PM_FALSE         /* IMDT --> PM8550 LDO6 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_7 PM_FALSE         /* IMDT --> PM8550 LDO7 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_8 PM_FALSE         /* IMDT --> PM8550 LDO8 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_9 PM_FALSE         /* IMDT --> PM8550 LDO9 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_10  PM_FALSE       /* IMDT --> PM8550 LDO10 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_11  PM_FALSE       /* IMDT --> PM8550 LDO11 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_12  PM_FALSE       /* IMDT --> PM8550 LDO12 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_13  PM_FALSE       /* IMDT --> PM8550 LDO13 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_B  PM_LDO_14  PM_FALSE       /* IMDT --> PM8550 LDO14 - Disable LDO Output  */
++    //   PM_LDO_SET_ENABLE      PM_BUSID_0   PMIC_B  PM_LDO_16  PM_FALSE     /* IMDT --> PM8550 LDO16 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_C  PM_LDO_1 PM_FALSE         /* IMDT --> PM8550VS_C LDO1 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_C  PM_LDO_2 PM_FALSE         /* IMDT --> PM8550VS_C LDO2 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_D  PM_LDO_3 PM_FALSE         /* IMDT --> PM8550VS_D LDO3 - Disable LDO Output  */
++      PM_LDO_SET_ENABLE       PM_BUSID_0   PMIC_G  PM_LDO_2 PM_FALSE         /* IMDT --> PM8550VS_G LDO2 - Disable LDO Output  */
++      /*Delay*/
+       PM_DELAY(10)
+     > ; 
+ 
+-- 
+2.34.1
+

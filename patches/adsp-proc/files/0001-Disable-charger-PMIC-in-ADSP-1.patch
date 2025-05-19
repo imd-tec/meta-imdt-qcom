@@ -1,0 +1,60 @@
+From 8060fb0ac29292d4ed97bf935da26fb5e7edb82c Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Thu, 21 Nov 2024 12:37:58 +0000
+Subject: [PATCH] Disable charger PMIC in ADSP (#1)
+
+This is part of the patch sent from Qualcomm's engineers to add support for booting without the Charger PMIC.
+This is a feature they have not documented anywhere as most all QCS8550 boards use the charger PMIC (PM8550B).
+Without this patch our board fails to boot past the hypervisor.
+---
+ build/ms/tcfg_kailua.adsp_iot.prod.py  | 4 ++--
+ build/ms/tcfg_kailua.adsp_iot.prodq.py | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/build/ms/tcfg_kailua.adsp_iot.prod.py b/build/ms/tcfg_kailua.adsp_iot.prod.py
+index f4983365..c4170ce7 100755
+--- a/build/ms/tcfg_kailua.adsp_iot.prod.py
++++ b/build/ms/tcfg_kailua.adsp_iot.prod.py
+@@ -20,7 +20,7 @@ def generate(env):
+    env.AddUsesFlags('USES_BUILD_CASA', from_builds_file = True)
+    env.AddUsesFlags('USES_BUSES_IBI_CTRL', from_builds_file = True)
+    env.AddUsesFlags('USES_BUSES_IBI_CTRL_WA', from_builds_file = True)
+-   env.AddUsesFlags('USES_CHARGER_PDR', from_builds_file = True)
++#   env.AddUsesFlags('USES_CHARGER_PDR', from_builds_file = True)
+    env.AddUsesFlags('USES_DAL', from_builds_file = True)
+    env.AddUsesFlags('USES_DECOUPLE_QDSP6', from_builds_file = True)
+    env.AddUsesFlags('USES_DEVCFG_MULTIPLE_CONFIG', from_builds_file = True)
+@@ -35,7 +35,7 @@ def generate(env):
+    env.AddUsesFlags('USES_EAI_IN_USERPD', from_builds_file = True)
+    env.AddUsesFlags('USES_EFS_QMI_PUT_GET_CLIENT', from_builds_file = True)
+    env.AddUsesFlags('USES_ENABLE_ADSP_FATAL_ERROR', from_builds_file = True)
+-   env.AddUsesFlags('USES_ENABLE_CHARGER', from_builds_file = True)
++#   env.AddUsesFlags('USES_ENABLE_CHARGER', from_builds_file = True)
+    env.AddUsesFlags('USES_ENABLE_EAI', from_builds_file = True)
+    env.AddUsesFlags('USES_ENABLE_ENPU', from_builds_file = True)
+    env.AddUsesFlags('USES_ERR_INJECT_CRASH', from_builds_file = True)
+diff --git a/build/ms/tcfg_kailua.adsp_iot.prodq.py b/build/ms/tcfg_kailua.adsp_iot.prodq.py
+index 3c188620..975ce0e1 100755
+--- a/build/ms/tcfg_kailua.adsp_iot.prodq.py
++++ b/build/ms/tcfg_kailua.adsp_iot.prodq.py
+@@ -20,7 +20,7 @@ def generate(env):
+    env.AddUsesFlags('USES_BUILD_CASA', from_builds_file = True)
+    env.AddUsesFlags('USES_BUSES_IBI_CTRL', from_builds_file = True)
+    env.AddUsesFlags('USES_BUSES_IBI_CTRL_WA', from_builds_file = True)
+-   env.AddUsesFlags('USES_CHARGER_PDR', from_builds_file = True)
++#   env.AddUsesFlags('USES_CHARGER_PDR', from_builds_file = True)
+    env.AddUsesFlags('USES_DAL', from_builds_file = True)
+    env.AddUsesFlags('USES_DECOUPLE_QDSP6', from_builds_file = True)
+    env.AddUsesFlags('USES_DEVCFG_MULTIPLE_CONFIG', from_builds_file = True)
+@@ -35,7 +35,7 @@ def generate(env):
+    env.AddUsesFlags('USES_EAI_IN_USERPD', from_builds_file = True)
+    env.AddUsesFlags('USES_EFS_QMI_PUT_GET_CLIENT', from_builds_file = True)
+    env.AddUsesFlags('USES_ENABLE_ADSP_FATAL_ERROR', from_builds_file = True)
+-   env.AddUsesFlags('USES_ENABLE_CHARGER', from_builds_file = True)
++#   env.AddUsesFlags('USES_ENABLE_CHARGER', from_builds_file = True)
+    env.AddUsesFlags('USES_ENABLE_EAI', from_builds_file = True)
+    env.AddUsesFlags('USES_ENABLE_ENPU', from_builds_file = True)
+    env.AddUsesFlags('USES_ERR_INJECT_CRASH', from_builds_file = True)
+-- 
+2.34.1
+
