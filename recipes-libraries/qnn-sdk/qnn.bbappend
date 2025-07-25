@@ -1,27 +1,48 @@
 #
 # Copyright (c) 2024 IMD Technologies
 #
-PV = "2.30.0.250109"
+include ../qcom-ml.inc
 
-GOOGLE_DRIVE_URL   = "https://drive.usercontent.google.com/u/0/uc?id=1715KOIwRLg6MncfsxtggJ8CvtO45t2Kg&export=download"
-SRC_URI            = "${GOOGLE_DRIVE_URL};downloadfilename=${BPN}-${PV}.tar.xz"
-SRC_URI[sha256sum] = "ed9aa149662241684e2d23b5c28d306d38e7e62cd4408182b22871458606c3ef"
+PV = "${QNPSDK_SRC_VER}"
 
-S = "${WORKDIR}/${PV}"
+SRC_URI = "https://softwarecenter.qualcomm.com/api/download/software/qualcomm_neural_processing_sdk/v${QNPSDK_SRC_VER}.zip"
+SRC_URI[sha256sum] = "${QNPSDK_SRC_SHID}"
 
-PLATFORM_DIR = "aarch64-oe-linux-gcc11.2"
+QNN_DIR = "${WORKDIR}/qairt/${QNPSDK_SRC_VER}"
+S = "${QNN_DIR}"
+
+# Fetches the platform directory based on the version of GCC. Defined in qcom-ml.inc
+PLATFORM_DIR = "${@platform_dir(d, "QNN_DIR")}"
+
+do_compile[noexec] = "1"
+do_package_qa[noexec] = "1"
 
 do_install() {
     install -d ${D}/${bindir}
     install -d ${D}/${libdir}/rfsa/adsp
     install -d ${D}/${includedir}
 
-    install -m 0755 ${S}/bin/${PLATFORM_DIR}/* ${D}/${bindir}
-    install -m 0755 ${S}/lib/${PLATFORM_DIR}/* ${D}/${libdir}
-    install -m 0755 ${S}/lib/${HEXAGON_DIR}/unsigned/* ${D}/${libdir}/rfsa/adsp
+    install -m 0755 ${QNN_DIR}/lib/${PLATFORM_DIR}/*Qnn* ${D}/${libdir}
+    install -m 0755 ${QNN_DIR}/lib/${PLATFORM_DIR}/libPlatformValidatorShared.so ${D}/${libdir}
+    install -m 0755 ${QNN_DIR}/lib/${PLATFORM_DIR}/libcalculator.so ${D}/${libdir}
+    install -m 0755 ${QNN_DIR}/bin/${PLATFORM_DIR}/qnn* ${D}/${bindir}
+    install -m 0755 ${QNN_DIR}/bin/${PLATFORM_DIR}/qtld-net-run ${D}/${bindir}
+    install -m 0755 ${QNN_DIR}/lib/${HEXAGON_DIR}/unsigned/libQnn* ${D}/${libdir}/rfsa/adsp
+    install -m 0755 ${QNN_DIR}/lib/${HEXAGON_DIR}/unsigned/libCalculator_skel.so ${D}/${libdir}/rfsa/adsp
 
-    cp -r ${S}/include/QNN/* ${D}/${includedir}
+    cp -r ${QNN_DIR}/include/QNN/* ${D}/${includedir}
     chmod -R 0755 ${D}/${includedir}
 }
 
+INHIBIT_PACKAGE_STRIP = "1"
+INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
+
+INSANE_SKIP:${PN} += "arch"
 INSANE_SKIP:${PN} += "already-stripped"
+
+SOLIBS = ".so"
+FILES_SOLIBSDEV = ""
+
+FILES:${PN} += "${libdir}/*"
+FILES:${PN} += "${bindir}/*"
+FILES:${PN}-dev += "${includedir}/*"

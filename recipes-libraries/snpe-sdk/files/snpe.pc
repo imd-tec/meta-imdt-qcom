@@ -1,0 +1,10 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib
+includedir=/usr/include
+
+Name: SNPE
+Description: Snapdragon Neural Processing Engine (SNPE) Library
+Version: 2.30.0
+Libs: -L${libdir} -lSNPE
+Cflags: -I${includedir} -I${includedir}/SNPE
