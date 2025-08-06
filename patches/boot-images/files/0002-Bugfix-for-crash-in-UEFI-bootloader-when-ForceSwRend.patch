@@ -1,0 +1,227 @@
+From 34b2b7624783fc4b3455b5d331027ee03157f339 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Thu, 26 Jun 2025 15:52:38 +0100
+Subject: [PATCH 2/2] Bugfix for crash in UEFI bootloader when ForceSwRenderer
+ disabled (#6)
+
+To enable the display in the UEFI bootloader the ForceSwRenderer flag
+needs to be disabled. However, when the ForceSwRenderer flag is disabled,
+in Core.dsc.in, the UEFI bootloader crashes. And this crash is caused by
+the call to npa_issue_required_request().
+I'm not absolutely sure what the function does but it seems to
+send a request for some voltage rails to be configured on one or more of
+the Qualcomm PMICs. Since Qualcomm's PMICs are used by multiple
+devices/subsystems (ie clients), clients can request a PMIC output rail
+to be configured with certain parameters (voltage, min/max output current).
+And the NPA subsystem is basically the subsystem that handles these requests
+and allows multiple clients to share/configure a PMIC voltage rail,
+as if it was a shared resources. So the npa_issue_required_request()
+function essentially sends a message to the NPA subsystem to configure
+the voltage rails needed by the display.
+
+And if you follow the code further, you'll see that in PlatformClientInit,
+the NPA resource name that's requested is
+PMIC_NPA_GROUP_ID_DISP_PRIM_AMOLED and the client name
+is DisplayPrim. And in pm_config_pam.c, you'll see that
+there are arrays which specify which PMIC and which rails
+needed to be configured on the requested PMICs
+(See pm_pam_disp_prim_amoled_rails_info and
+pm_pam_deps_disp_prim_amoled)
+
+From those arrays it seems to be trying to configure the following
+regulators into their GENERIC_ACTIVE state:
+PMIC B - LDO11
+PMIC B - LDO12
+PMIC B - LDO13
+PMIC E - LDO1
+PMIC E - LDO3
+
+On our SOM, the DSI subsystem power rails are:
+VREG_L1E_0P88
+VREG_L3E_1P2
+
+So we only really need the PMIC E configuration as this is probably
+used to power the DSI Clock and Data lanes (and internal HW).
+However, the display (and DSI HW) seems to work without the NPA
+request, therefore we will just remove the function call until we
+understand the NPA subsystem a bit better (It's not very well documented
+but Qualcomm has a patent about it).
+
+Note that we also removed calls to initialise a GPIO on the PMIC
+as we don't need this for our SOM HW and will be project specific.
+---
+ .../MDPPlatformLibPanelCommon.c               | 75 -------------------
+ .../MDPPlatformLibPanelConfig.c               | 20 +----
+ 2 files changed, 2 insertions(+), 93 deletions(-)
+
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelCommon.c b/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelCommon.c
+index 59e2196..bdfffa0 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelCommon.c
++++ b/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelCommon.c
+@@ -58,7 +58,6 @@ MDP_Status Panel_Default_PowerUp(MDP_Display_IDType eDisplayId, Panel_PowerCtrlP
+ {
+   MDP_Status                     Status                    = MDP_STATUS_OK;
+   EFI_TLMM_PROTOCOL             *TLMMProtocol              = NULL;
+-  EFI_QCOM_PMIC_GPIO_PROTOCOL   *PmicGpioProtocol          = NULL;
+   MDPPlatformPanelFunctionTable *pMDPSupportPanelFunctions = MDP_GET_PANELFUNC(eDisplayId);
+ 
+   if (MDP_STATUS_OK != (Status = PlatformClientInit(eDisplayId, pPowerParams)))
+@@ -70,18 +69,8 @@ MDP_Status Panel_Default_PowerUp(MDP_Display_IDType eDisplayId, Panel_PowerCtrlP
+     DEBUG((EFI_D_ERROR, "DisplayDxe: Locate TLMM protocol failed!\n"));
+     Status = MDP_STATUS_NO_RESOURCES;
+   }
+-  else if (EFI_SUCCESS != gBS->LocateProtocol(&gQcomPmicGpioProtocolGuid, NULL, (VOID**)&PmicGpioProtocol))
+-  {
+-    DEBUG((EFI_D_ERROR, "DisplayDxe: Locate PMIC GPIO protocol failed!\n"));
+-    Status = MDP_STATUS_NO_RESOURCES;
+-  }
+   else
+   {
+-    /*
+-     * Voting for Display NPA node to be ON
+-     */
+-    npa_issue_required_request(pPowerParams->sNPAClient[eDisplayId], PMIC_NPA_MODE_ID_GENERIC_ACTIVE);
+-
+     /* Display TE pin */
+     if (EFI_SUCCESS != TLMMProtocol->ConfigGpio(EFI_GPIO_CFG(pMDPSupportPanelFunctions->pMDPPlatformPanelGpio->uDispTeGpio,
+                                                              pMDPSupportPanelFunctions->pMDPPlatformPanelGpio->uDispTeGpioFuncSelect,
+@@ -92,40 +81,6 @@ MDP_Status Panel_Default_PowerUp(MDP_Display_IDType eDisplayId, Panel_PowerCtrlP
+     {
+       DEBUG((EFI_D_WARN, "DisplayDxe: Configure GPIO %d for TE line failed!\n", pMDPSupportPanelFunctions->pMDPPlatformPanelGpio->uDispTeGpio));
+     }
+-
+-    /*
+-    * Enable LCD_REG_EN for local on board boost regulator for the panels that do not have
+-    * OLEDB_EN signal to PMIC to enable IBB/LAB.
+-    */
+-    if (EFI_SUCCESS != PmicGpioProtocol->CfgMode(PMIC_B, Default_DISP_LCD_REG_EN, EFI_PM_GPIO_DIG_OUT))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Config Backlight enable GPIO failed!\n"));
+-    }
+-    if (EFI_SUCCESS != PmicGpioProtocol->SetOutBufCfg(PMIC_B, Default_DISP_LCD_REG_EN, EFI_PM_GPIO_OUT_BUF_CFG_CMOS))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Set output for Backlight enable GPIO failed!\n"));
+-    }
+-    if (EFI_SUCCESS != PmicGpioProtocol->SetOutDrvStr(PMIC_B, Default_DISP_LCD_REG_EN, EFI_PM_GPIO_OUT_DRV_STR_MEDIUM))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Set drive strength for Backlight enable GPIO failed!\n"));
+-    }
+-    if (EFI_SUCCESS != PmicGpioProtocol->SetVoltageSource(PMIC_B, Default_DISP_LCD_REG_EN, EFI_PM_GPIO_VIN0))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Set voltage source for Backlight enable GPIO failed!\n"));
+-    }
+-    if (EFI_SUCCESS != PmicGpioProtocol->SetOutSrcCfg(PMIC_B, Default_DISP_LCD_REG_EN, EFI_PM_GPIO_SRC_GND))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Set output source for Backlight enable GPIO failed!\n"));
+-    }
+-    if (EFI_SUCCESS != PmicGpioProtocol->SetOutputLevel(PMIC_B, Default_DISP_LCD_REG_EN, EFI_PM_GPIO_LEVEL_HIGH))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Set output level for Backlight enable GPIO failed!\n"));
+-    }
+-    if (EFI_SUCCESS != PmicGpioProtocol->Enable(PMIC_B, Default_DISP_LCD_REG_EN, TRUE))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Enable for Backlight enable GPIO failed!\n"));
+-    }
+-
+   }
+ 
+   return Status;
+@@ -143,7 +98,6 @@ MDP_Status Panel_Default_PowerDown(MDP_Display_IDType eDisplayId, Panel_PowerCtr
+ {
+   MDP_Status                     Status                    = MDP_STATUS_OK;
+   EFI_TLMM_PROTOCOL             *TLMMProtocol              = NULL;
+-  EFI_QCOM_PMIC_GPIO_PROTOCOL   *PmicGpioProtocol          = NULL;
+   MDPPlatformPanelFunctionTable *pMDPSupportPanelFunctions = MDP_GET_PANELFUNC(eDisplayId);
+ 
+   if (NULL == pPowerParams->sNPAClient[eDisplayId])
+@@ -156,11 +110,6 @@ MDP_Status Panel_Default_PowerDown(MDP_Display_IDType eDisplayId, Panel_PowerCtr
+     DEBUG((EFI_D_ERROR, "DisplayDxe: Locate TLMM protocol failed!\n"));
+     Status = MDP_STATUS_NO_RESOURCES;
+   }
+-  else if (EFI_SUCCESS != gBS->LocateProtocol(&gQcomPmicGpioProtocolGuid, NULL, (VOID**)&PmicGpioProtocol))
+-  {
+-    DEBUG((EFI_D_ERROR, "DisplayDxe: Locate PMIC GPIO protocol failed!\n"));
+-    Status = MDP_STATUS_NO_RESOURCES;
+-  }
+   else
+   {
+     /* 
+@@ -183,15 +132,6 @@ MDP_Status Panel_Default_PowerDown(MDP_Display_IDType eDisplayId, Panel_PowerCtr
+       DEBUG((EFI_D_WARN, "DisplayDxe: Failed to disable GPIO %d for TE pin\n", pMDPSupportPanelFunctions->pMDPPlatformPanelGpio->uDispTeGpio));
+     }
+ 
+-    /*
+-    * Disable LCD_REG_EN for local on board boost regulator for the panels that do not have
+-    * OLEDB_EN signal to PMIC to enable IBB/LAB.
+-    */
+-    if (EFI_SUCCESS != PmicGpioProtocol->Enable(PMIC_B, Default_DISP_LCD_REG_EN, FALSE))
+-    {
+-      DEBUG((EFI_D_WARN, "DisplayDxe: Disable for Backlight failed!\n"));
+-    }
+-
+     if (MDP_DISPLAY_PRIMARY == eDisplayId)
+     {
+       if (TRUE == pPowerParams->bDisplayNPAStatus[MDP_DISPLAY_SECONDARY])
+@@ -199,10 +139,6 @@ MDP_Status Panel_Default_PowerDown(MDP_Display_IDType eDisplayId, Panel_PowerCtr
+         // If secondary display is still on, then just set primary display to disabled status.
+         pPowerParams->bDisplayNPAStatus[MDP_DISPLAY_PRIMARY] = FALSE;
+       }
+-      else
+-      {
+-        npa_complete_request(pPowerParams->sNPAClient[MDP_DISPLAY_PRIMARY]);           // Complete the request to power rails
+-      }
+     }
+     else if (MDP_DISPLAY_SECONDARY == eDisplayId)
+     {
+@@ -211,17 +147,6 @@ MDP_Status Panel_Default_PowerDown(MDP_Display_IDType eDisplayId, Panel_PowerCtr
+         // If primary display is still on, then just set secondary display to disabled status.
+         pPowerParams->bDisplayNPAStatus[MDP_DISPLAY_SECONDARY] = FALSE;
+       }
+-      else
+-      {
+-        npa_complete_request(pPowerParams->sNPAClient[MDP_DISPLAY_SECONDARY]);           // Complete the request to power rails
+-      }
+-    }
+-    else
+-    {
+-      /*
+-       * Voltage Regulators
+-       */
+-      npa_complete_request(pPowerParams->sNPAClient[eDisplayId]);           // Complete the request to power rails
+     }
+   }
+ 
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c b/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c
+index 0d86a77..d4b5c9e 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c
++++ b/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c
+@@ -633,24 +633,8 @@ MDP_Status MDPPlatformSetupPanelConfig(MDP_Display_IDType                 eDispl
+         break;
+ 
+       case EFI_PLATFORMINFO_TYPE_HDK:
+-      {
+-        TLMM_ValueType eGpioValue = GPIO_HIGH_VALUE;
+-
+-        if (0x2 == (pPlatformInfo->sEFIPlatformType.subtype & 0xFF))
+-        {
+-          MDPPlatformSetPanelName(pPlatformPanel->szName,"");
+-        }
+-        else if ((EFI_SUCCESS    == GetDisplayGpioValue(HDK_DISP_DSI_STATUS_GPIO, &eGpioValue)) &&
+-            (GPIO_LOW_VALUE == eGpioValue))
+-        {
+-          MDPPlatformSetPanelName(pPlatformPanel->szName, "vtdr6130_144hz_fhd_dsc_cmd");
+-        }
+-        else
+-        {
+-          MDPPlatformClearPanelName(pPlatformPanel->szName);
+-        }
+-      }
+-      break;
++        MDPPlatformSetPanelName(pPlatformPanel->szName, "vtdr6130_144hz_fhd_dsc_cmd");
++        break;
+ 
+       case EFI_PLATFORMINFO_TYPE_RUMI:
+       default:
+-- 
+2.34.1
+

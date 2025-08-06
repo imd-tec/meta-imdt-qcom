@@ -1,0 +1,12 @@
+[Match]
+Name=enP1p1s0
+
+[Network]
+Address=172.16.30.100/24
+DHCPServer=true
+
+[DHCPServer]
+PoolOffset=200
+PoolSize=32
+EmitDNS=no
+EmitRouter=no

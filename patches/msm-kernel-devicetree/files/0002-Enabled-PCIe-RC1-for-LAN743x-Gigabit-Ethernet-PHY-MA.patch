@@ -1,0 +1,237 @@
+From cd2afef23c32e2069d602cfbcfbb5e6fde65c8b0 Mon Sep 17 00:00:00 2001
+From: joco-imdt <joe.connan@imd-tec.com>
+Date: Tue, 29 Jul 2025 17:51:24 +0100
+Subject: [PATCH 2/3] Enabled PCIe RC1 for LAN743x Gigabit Ethernet PHY + MAC
+ on SBC8550 (#33)
+
+Note that we needed a SW workaround to get the Ethernet
+PHY+MAC controller working. During enumeration,
+PCIe RC1 fails to read part of the configuration space because the
+device seemingly goes into D3 Cold State (or L1SS) during
+enumeration. We don't currently understand why this happens,
+but we have implemented a simple SW workaround for now, by just
+disabling the L1SS state capability in the PCIe Host. This
+tells the device that the PCIe host does not support L1SS state
+and thus prevents the device from entering that state.
+
+---------
+Co-authored-by: Tendai Makumire <tendai.makumire@imd-tec.com>
+---
+ qcom/kalama-pcie.dtsi          |  2 +-
+ qcom/kalama-pinctrl.dtsi       | 28 ++++++-----
+ qcom/kalamap-imdt-sbc8550.dtsi | 92 +++++++++++++++++++++++++---------
+ 3 files changed, 86 insertions(+), 36 deletions(-)
+
+diff --git a/qcom/kalama-pcie.dtsi b/qcom/kalama-pcie.dtsi
+index 43509a2..61d5aa7 100755
+--- a/qcom/kalama-pcie.dtsi
++++ b/qcom/kalama-pcie.dtsi
+@@ -335,7 +335,7 @@
+ 			<0x100 &gic_its 0x1481 0x1>; /* 32 event IDs */
+ 
+ 		perst-gpio = <&tlmm 97 0>;
+-		wake-gpio = <&tlmm 99 0>;
++		wake-gpio = <&tlmm 98 0>;
+ 		pinctrl-names = "default", "sleep";
+ 		pinctrl-0 = <&pcie1_perst_default
+ 				&pcie1_clkreq_default
+diff --git a/qcom/kalama-pinctrl.dtsi b/qcom/kalama-pinctrl.dtsi
+index 135aa7a..16a4ea5 100755
+--- a/qcom/kalama-pinctrl.dtsi
++++ b/qcom/kalama-pinctrl.dtsi
+@@ -3496,47 +3496,51 @@
+ 
+ 			config {
+ 				pins = "gpio97";
+-				drive-strength = <2>;
+-				bias-pull-down;
++				drive-strength = <8>;
++				drive-open-drain;
++				bias-disable;
+ 			};
+ 		};
+ 
+ 		pcie1_clkreq_default: pcie1_clkreq_default {
+ 			mux {
+-				pins = "gpio98";
+-				function = "pcie1_clk_req_n";
++				pins = "gpio99";
++				function = "gpio";
+ 			};
+ 
+ 			config {
+-				pins = "gpio98";
++				pins = "gpio99";
+ 				drive-strength = <2>;
+-				bias-pull-up;
++				drive-open-drain;
++				bias-disable;
+ 			};
+ 		};
+ 
+ 		pcie1_wake_default: pcie1_wake_default {
+ 			mux {
+-				pins = "gpio99";
++				pins = "gpio98";
+ 				function = "gpio";
+ 			};
+ 
+ 			config {
+-				pins = "gpio99";
++				pins = "gpio98";
+ 				drive-strength = <2>;
+-				bias-pull-up;
++				drive-open-drain;
++				bias-disable;
+ 			};
+ 		};
+ 
+ 		pcie1_clkreq_sleep: pcie1_clkreq_sleep {
+ 			mux {
+-				pins = "gpio98";
++				pins = "gpio99";
+ 				function = "gpio";
+ 			};
+ 
+ 			config {
+-				pins = "gpio98";
++				pins = "gpio99";
+ 				drive-strength = <2>;
+-				bias-pull-up;
++				drive-open-drain;
++				bias-disable;
+ 			};
+ 		};
+ 	};
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 06ee1a0..e8bd175 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -391,20 +391,47 @@
+ 				0x1428 0x00 0x0
+ 				0x0200 0x00 0x0
+ 				0x0244 0x03 0x0>;
+-
+ };
+ 
+ &pcie1 {
+-	status = "disabled";
++	status = "okay";
+ 	qcom,boot-option = <0x2>;
+-	qcom,apss-based-l1ss-sleep;
+-	qcom,no-client-based-bw-voting;
++	msi-parent = <&pcie1_msi>;
++
++	/* This is a workaround for the LAN743x Gigabit Ethernet PHY + MAC controller.
++	 * During the PCIe enumeration process the PCIe PHY fails to read the full 
++	 * PCI configuration space of the GBE PHY because it seemingly enters the L1SS
++	 * state whilst it's configuration space is being read.
++	 *
++	 * The simple workaround for now is to simply stop the device entering that
++	 * state by disabling support for the L1SS state in the PCIe Host PHY.
++	 * This will tell the GBE PHY that it cannot enter that state as the host will
++	 * not allow it.
++	 */
++	qcom,no-l1ss-supported;
++
++	perst-gpio = <&tlmm 97 GPIO_ACTIVE_HIGH>;
++	wake-gpio = <&tlmm 98 GPIO_ACTIVE_HIGH>;
++	clkreq-gpio = <&tlmm 99 GPIO_ACTIVE_HIGH>;
++
++	iommu-map = <0x0 &apps_smmu 0x1480 0x1>,
++		<0x100 &apps_smmu 0x1481 0x1>,
++		<0x208 &apps_smmu 0x1482 0x1>,
++		<0x210 &apps_smmu 0x1483 0x1>,
++		<0x218 &apps_smmu 0x1484 0x1>,
++		<0x300 &apps_smmu 0x1487 0x1>,
++		<0x400 &apps_smmu 0x1488 0x1>,
++		<0x500 &apps_smmu 0x148c 0x1>,
++		<0x501 &apps_smmu 0x148e 0x1>;
+ };
+ 
+ &pcie1_rp {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
++&pcie1_msi {
++	status = "okay";
++};
+ 
+ &qcom_qbt {
+ 	status = "disabled";
+@@ -543,6 +570,29 @@
+ 			drive-open-drain;
+ 		};
+ 	};
++	
++	/* Take the GBE Ethernet PHY (LAN743x) out of reset on boot */
++	gbe-reset-gpio {
++		gpio-hog;
++		gpios = <138 GPIO_ACTIVE_HIGH>;
++
++		drive-strength = <2>;
++		drive-open-drain;
++		bias-disable;
++
++		output-high;
++	};
++
++	/* Force PCIE switch to select GBE PHY */
++	pcie-switch-sel-gpio {
++		gpio-hog;
++		gpios = <16 GPIO_ACTIVE_HIGH>;
++
++		drive-strength = <2>;
++		drive-push-pull;
++
++		output-low;
++	};
+ };
+ 
+ &soc {
+@@ -648,27 +698,23 @@
+ 		vin-supply = <&per_pwr>;
+ 	};
+ 
+-	// TODO - PCIE Bringup
+-	// Enables V2MB_3V8 and V2ME_3V3
+-	// Make sure to review this DT node before
+-	// enabling it.
+-	// m2_pd_pwr: regulator-m2-pd-pwr {
+-	// 	compatible = "regulator-fixed";
+-	// 	regulator-name = "m2_pd_pwr";
+-	// 	regulator-min-microvolt = <1800000>;
+-	// 	regulator-max-microvolt = <1800000>;
++	/* Enables V2MB_3V8 and V2ME_3V3 */
++	m2_pd_pwr: regulator-m2-pd-pwr {
++		compatible = "regulator-fixed";
++		regulator-name = "m2_pd_pwr";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
+ 
+-	// 	pinctrl-names = "default";
+-	// 	pinctrl-0 = <&m2_pd_en_default>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&m2_pd_en_default>;
+ 
+-	// 	gpio = <&tlmm 144 GPIO_ACTIVE_LOW>;
++		gpio = <&tlmm 144 GPIO_ACTIVE_LOW>;
+ 
+-	// 	vin-supply = <&som_vph_pwr>;
++		vin-supply = <&som_vph_pwr>;
+ 
+-	// 	regulator-always-on;
+-	// 	regulator-boot-on;
++		regulator-always-on;
++		regulator-boot-on;
+ 
+-	// 	gpio-open-drain;
+-	// };
++		gpio-open-drain;
++	};
+ };
+-
+-- 
+2.34.1
+

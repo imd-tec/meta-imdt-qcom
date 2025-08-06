@@ -1,0 +1,21 @@
+From 62523f17430e712a28d45b420398ea327dbbc638 Mon Sep 17 00:00:00 2001
+From: joco-imdt <joe.connan@imd-tec.com>
+Date: Thu, 31 Jul 2025 16:47:33 +0100
+Subject: [PATCH 2/2] Enable LAN743X kernel driver for SBC8550 (#26)
+
+---
+ arch/arm64/configs/vendor/kalama_le_consolidate.config | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_consolidate.config b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+index 954a27548..ed5ae718c 100644
+--- a/arch/arm64/configs/vendor/kalama_le_consolidate.config
++++ b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+@@ -32,3 +32,4 @@ CONFIG_DEVMEM=y
+ CONFIG_EXTCON=y
+ CONFIG_USB_CONN_GPIO=m
+ CONFIG_EXTCON_USB_GPIO=m
++CONFIG_LAN743X=m
+-- 
+2.34.1
+

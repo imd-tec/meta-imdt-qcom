@@ -1,0 +1,12 @@
+[Match]
+Name=enP1p1s0
+KernelCommandLine=!nfsroot
+KernelCommandLine=!ip
+
+[Network]
+DHCP=yes
+
+[DHCP]
+UseMTU=yes
+RouteMetric=10
+ClientIdentifier=mac

@@ -1,0 +1,150 @@
+From 5e96cbbb06a0ec69c3f8cfd1fa9526b870d1c932 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Tue, 29 Jul 2025 23:26:01 +0100
+Subject: [PATCH 3/3] Enabled PCIE0 M2E for SBC8550 (#32)
+
+I have tested this with a Waveshare RTL8822CE
+M2 Key-E module and was able to enumerate
+the device and also run the required WiFi
+driver and load the firmware. Since this is
+a generic connector, I have enabled all the
+necessary GPIO's and power regulators
+to make sure users can test the connector
+with whatever M2 Key-E PCIe cards they want.
+This has not worked with the Intel AX210
+WiFi card so will need to look into why this
+specific card doesn't enumerate.
+---
+ qcom/kalama-pinctrl.dtsi       |  6 +--
+ qcom/kalamap-imdt-sbc8550.dtsi | 70 +++++++++++++++++++++++++++++++++-
+ 2 files changed, 72 insertions(+), 4 deletions(-)
+
+diff --git a/qcom/kalama-pinctrl.dtsi b/qcom/kalama-pinctrl.dtsi
+index 16a4ea5..bf7960c 100755
+--- a/qcom/kalama-pinctrl.dtsi
++++ b/qcom/kalama-pinctrl.dtsi
+@@ -3414,7 +3414,7 @@
+ 			config {
+ 				pins = "gpio94";
+ 				drive-strength = <2>;
+-				bias-pull-down;
++				drive-open-drain;
+ 			};
+ 		};
+ 
+@@ -3427,7 +3427,7 @@
+ 			config {
+ 				pins = "gpio95";
+ 				drive-strength = <2>;
+-				bias-pull-up;
++				drive-open-drain;
+ 			};
+ 		};
+ 
+@@ -3440,7 +3440,7 @@
+ 			config {
+ 				pins = "gpio96";
+ 				drive-strength = <2>;
+-				bias-pull-up;
++				drive-open-drain;
+ 			};
+ 		};
+ 
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index e8bd175..78d2e46 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -275,7 +275,21 @@
+ };
+ 
+ &pcie0 {
+-	status = "disabled";
++	status = "okay";
++	msi-parent = <&pcie0_msi>;
++
++	pinctrl-0 = <&pcie0_perst_default
++			&pcie0_clkreq_default
++			&pcie0_wake_default>;
++			
++	pinctrl-1 = <&pcie0_perst_default
++			&pcie0_clkreq_default
++			&pcie0_wake_default>;
++
++	/* Enumerate PCIe on boot */
++	qcom,boot-option = <0x2>;
++
++	qcom,target-link-width = <1>;
+ 	qcom,pcie-phy-ver = <102>;
+ 	qcom,phy-sequence = <0x0240 0x03 0x0
+ 				0x00c0 0x01 0x0
+@@ -391,6 +405,15 @@
+ 				0x1428 0x00 0x0
+ 				0x0200 0x00 0x0
+ 				0x0244 0x03 0x0>;
++
++};
++
++&pcie0_rp {
++	status = "okay";
++};
++
++&pcie0_msi {
++	status = "okay";
+ };
+ 
+ &pcie1 {
+@@ -570,6 +593,51 @@
+ 			drive-open-drain;
+ 		};
+ 	};
++
++	/* 
++	 * We set this GPIO HIGH on the M2 Key-E Connector to make
++	 * sure the module is enabled. An M2 Key-E module could
++	 * be using this pin as a chip enable.
++	 */
++	m2e_sdio_resetn {
++		gpio-hog;
++		gpios = <41 GPIO_ACTIVE_LOW>;
++
++		drive-strength = <2>;
++		drive-push-pull;
++		bias-disable;
++
++		output-low;
++	};
++
++	/* 
++	 * W_DISABLE1 and W_DISABLE2 are general M2 Key-E control signals. 
++	 * For WiFi/BT modules these are normally used as WLAN_EN and BT_EN.
++	 *
++	 * We want these GPIO's to be enabled so any M2E modules connected
++	 * to the board will be enabled on boot.
++	 */
++	m2e_w_disable1 {
++		gpio-hog;
++		gpios = <80 GPIO_ACTIVE_LOW>;
++
++		drive-strength = <2>;
++		drive-open-drain;
++		bias-disable;
++
++		output-low;
++	};
++
++	m2e_w_disable2 {
++		gpio-hog;
++		gpios = <81 GPIO_ACTIVE_LOW>;
++
++		drive-strength = <2>;
++		drive-open-drain;
++		bias-disable;
++
++		output-low;
++	};
+ 	
+ 	/* Take the GBE Ethernet PHY (LAN743x) out of reset on boot */
+ 	gbe-reset-gpio {
+-- 
+2.34.1
+
