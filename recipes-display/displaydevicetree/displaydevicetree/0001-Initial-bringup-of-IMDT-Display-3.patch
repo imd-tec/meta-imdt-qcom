@@ -1537,5 +1537,5 @@ index ea151d0..f08d022 100755
  		qcom,altmode-dev = <&altmode 0>;
  		usb-controller = <&usb0>;
 -- 
-2.34.1
+2.41.0
 

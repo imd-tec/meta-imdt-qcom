@@ -1,0 +1,33 @@
+From 135738100d2639a8a02c9f64d9f38cc83db3947a Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Wed, 6 Aug 2025 19:34:59 +0100
+Subject: [PATCH 3/3] Enable kernel driver for Realtek 8822CE M2-E PCI WiFi
+ card (#28)
+
+With the M2-E PCIe slot now enabled, users can now plug
+any M2-E WiFi card into the slot. However, we are adding
+support for the Realtek 8822CE because we have tested
+this card and can see it being detected with lspci.
+To use this WiFi card, firmware also needs to be installed
+under /lib/firmware. This can be done through Yocto
+or just manually installed. The firmware is downloadable
+online from linux-firmware.git
+---
+ arch/arm64/configs/vendor/kalama_le_consolidate.config | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_consolidate.config b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+index ed5ae718c..cd60d02a5 100644
+--- a/arch/arm64/configs/vendor/kalama_le_consolidate.config
++++ b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+@@ -33,3 +33,7 @@ CONFIG_EXTCON=y
+ CONFIG_USB_CONN_GPIO=m
+ CONFIG_EXTCON_USB_GPIO=m
+ CONFIG_LAN743X=m
++CONFIG_WLAN_VENDOR_REALTEK=y
++CONFIG_RTW88=m
++CONFIG_RTW88_PCI=m
++CONFIG_RTW88_8822CE=m
+-- 
+2.41.0
+

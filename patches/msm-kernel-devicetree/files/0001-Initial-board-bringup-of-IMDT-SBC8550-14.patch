@@ -1419,5 +1419,5 @@ index 7b61174..091fc02 100755
  		reg = <0x7 SPMI_USID>;
  		#address-cells = <1>;
 -- 
-2.34.1
+2.41.0
 

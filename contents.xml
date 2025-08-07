@@ -1065,31 +1065,31 @@
       <release_path type="bin_ddm_apqgps">HK33</release_path>
       <download_file cmm_file_var="APPSBOOT_BINARY" backup_partition="abl_b" fastboot="abl_a" minimized="true" oem_imageid="ABL">
         <file_name>abl.elf</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </download_file>
       <download_file cmm_file_var="APPS_BINARY" backup_partition="boot_b" fastboot="boot_a" minimized="true">
         <file_name>boot.img</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </download_file>
       <download_file cmm_file_var="APPS_DTBO_BINARY" backup_partition="dtbo_b" fastboot="dtbo_a" minimized="true">
         <file_name>dtbo.img</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </download_file>
       <download_file minimized="true" fastboot="persist">
         <file_name>persist.img</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </download_file>
       <download_file minimized="true" backup_partition="system_b" fastboot="system_a">
         <file_name>system.img</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </download_file>
       <download_file minimized="true" fastboot="true">
         <file_name>userdata.img</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </download_file>
       <file_ref cmm_file_var="APPS_ELF" minimized="true">
         <file_name>vmlinux</file_name>
-        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</file_path>
+        <file_path>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</file_path>
       </file_ref>
       <wf_step_filter>hlos</wf_step_filter>
       <buildfile_path>./</buildfile_path>
@@ -1290,7 +1290,7 @@
       <params>python @tool_name -i @rawprogram_xml -s @root_dir + @sparse_dir -o rawprogram_unsparse0.xml</params>
       <tool_name>checksparse.py</tool_name>
       <root_dir>$[build:apps]</root_dir>
-      <sparse_dir>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston/</sparse_dir>
+      <sparse_dir>apps_proc/build-imdt-qcom-distro-debug/tmp-glibc/deploy/images/imdt-qcs8550-sbc/imdt-image-weston</sparse_dir>
       <rawprogram_xml>./../../../rawprogram0.xml</rawprogram_xml>
     </step>
     <step filter="dspso" type="delete">

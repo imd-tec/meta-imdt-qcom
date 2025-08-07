@@ -146,5 +146,5 @@ index e8bd175..78d2e46 100644
  	/* Take the GBE Ethernet PHY (LAN743x) out of reset on boot */
  	gbe-reset-gpio {
 -- 
-2.34.1
+2.41.0
 

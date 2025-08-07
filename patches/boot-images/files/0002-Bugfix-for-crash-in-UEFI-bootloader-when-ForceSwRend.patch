@@ -223,5 +223,5 @@ index 0d86a77..d4b5c9e 100755
        case EFI_PLATFORMINFO_TYPE_RUMI:
        default:
 -- 
-2.34.1
+2.41.0
 

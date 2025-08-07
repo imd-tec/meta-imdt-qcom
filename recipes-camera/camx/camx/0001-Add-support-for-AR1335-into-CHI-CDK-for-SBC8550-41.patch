@@ -7543,5 +7543,5 @@ index 00000000..920a3e3a
 +# Include this back in when you want to locally build the AR0521 Sensor Tuning bin file
 +#include ("${CAMX_CHICDK_PATH}/oem/qcom/buildbins/build/linuxembedded/binary_kalama/com.qti.tuned.imdt_ar0521.cmake")
 -- 
-2.34.1
+2.41.0
 
