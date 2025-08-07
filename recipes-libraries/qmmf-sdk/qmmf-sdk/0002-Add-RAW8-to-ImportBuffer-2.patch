@@ -1,0 +1,33 @@
+From 6ddf12d4803cfeab0ebfe97ec7ead3db92387f01 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Thu, 19 Dec 2024 12:34:05 +0000
+Subject: [PATCH 2/2] Add RAW8 to ImportBuffer() (#2)
+
+RAW8 is not listed as a supported
+format for ImportBuffer(). It's
+already supported libGBM
+so we just need to add it here.
+
+Log was printing "gbm bo import failed".
+Weirdly this not cause a stream error.
+---
+ recorder/src/client/qmmf_recorder_client.cc | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/recorder/src/client/qmmf_recorder_client.cc b/recorder/src/client/qmmf_recorder_client.cc
+index 2c964b2c..ee4ccafe 100755
+--- a/recorder/src/client/qmmf_recorder_client.cc
++++ b/recorder/src/client/qmmf_recorder_client.cc
+@@ -993,6 +993,9 @@ void RecorderClient::ImportBuffer(int32_t fd, int32_t metafd,
+   uint32_t format = 0;
+ 
+   switch (meta.format) {
++    case BufferFormat::kRAW8:
++      format = GBM_FORMAT_RAW8;
++      break;
+     case BufferFormat::kRAW10:
+       format = GBM_FORMAT_RAW10;
+       break;
+-- 
+2.34.1
+

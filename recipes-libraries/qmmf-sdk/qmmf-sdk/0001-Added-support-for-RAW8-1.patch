@@ -1,0 +1,62 @@
+From 1aaeaa56d34c337f122500a846ff3377c6f00a67 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Tue, 17 Dec 2024 13:32:45 +0000
+Subject: [PATCH 1/2] Added support for RAW8 (#1)
+
+We now treat FORMAT_Y8 as FORMAT_RAW8.
+FORMAT_Y8 is what the android Camera API
+officially supports which is where the value
+0x20203859 (FORMAT_Y8 in android API) comes from.
+I've also made changes in CamX which treat
+FORMAT_Y8 as RAW8.
+
+Currently the qmmf-server fails to allocate
+any GBM memory for RAW8 images. And that's
+because it's not listed as one of the image formats
+that it can allocate GBM memory for. However,
+I know that libgbm supports GBM_FORMAT_RAW8
+so this is purely a qmmf-server support problem.
+Simple fix is to make it allocate GBM_FORMAT_RAW8
+memory when we request a RAW8/Y8 image.
+---
+ common/memory/qmmf_gbm_interface.cc   | 3 ++-
+ common/memory/qmmf_memory_interface.h | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/common/memory/qmmf_gbm_interface.cc b/common/memory/qmmf_gbm_interface.cc
+index 5546ca84..5cb5b14e 100755
+--- a/common/memory/qmmf_gbm_interface.cc
++++ b/common/memory/qmmf_gbm_interface.cc
+@@ -210,7 +210,7 @@ const std::unordered_map<uint32_t, uint32_t> GBMBuffer::to_gbm_ = {
+   {HAL_PIXEL_FORMAT_RGBX_8888,               GBM_FORMAT_RGBX8888},
+ 
+   {HAL_PIXEL_FORMAT_BLOB,                    GBM_FORMAT_BLOB},
+-  {HAL_PIXEL_FORMAT_RAW8,                    0},
++  {HAL_PIXEL_FORMAT_RAW8,                    GBM_FORMAT_RAW8},
+   {HAL_PIXEL_FORMAT_RAW10,                   GBM_FORMAT_RAW10},
+   {HAL_PIXEL_FORMAT_RAW12,                   GBM_FORMAT_RAW12},
+   {HAL_PIXEL_FORMAT_RAW16,                   GBM_FORMAT_RAW16},
+@@ -245,6 +245,7 @@ const std::unordered_map<int32_t, int32_t> GBMBuffer::from_gbm_ = {
+   {GBM_FORMAT_RGBX8888,                 HAL_PIXEL_FORMAT_RGBX_8888},
+ 
+   {GBM_FORMAT_BLOB,                     HAL_PIXEL_FORMAT_BLOB},
++  {GBM_FORMAT_RAW8,                     HAL_PIXEL_FORMAT_RAW8},
+   {GBM_FORMAT_RAW10,                    HAL_PIXEL_FORMAT_RAW10},
+   {GBM_FORMAT_RAW12,                    HAL_PIXEL_FORMAT_RAW12},
+   {GBM_FORMAT_RAW16,                    HAL_PIXEL_FORMAT_RAW16},
+diff --git a/common/memory/qmmf_memory_interface.h b/common/memory/qmmf_memory_interface.h
+index dadd3564..19cade39 100755
+--- a/common/memory/qmmf_memory_interface.h
++++ b/common/memory/qmmf_memory_interface.h
+@@ -79,7 +79,7 @@
+ #endif
+ 
+ // todo: add and move to platform specific header
+-#define HAL_PIXEL_FORMAT_RAW8                    0x123
++#define HAL_PIXEL_FORMAT_RAW8                    0x20203859
+ #define HAL_PIXEL_FORMAT_NV12_ENCODEABLE         0x102
+ #define HAL_PIXEL_FORMAT_NV21_ZSL                0x113
+ #define HAL_PIXEL_FORMAT_NV12_HEIF               0x00000116 // HEIF video YUV420 format
+-- 
+2.34.1
+
