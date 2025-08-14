@@ -1,7 +1,7 @@
 From 135738100d2639a8a02c9f64d9f38cc83db3947a Mon Sep 17 00:00:00 2001
 From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
 Date: Wed, 6 Aug 2025 19:34:59 +0100
-Subject: [PATCH 3/3] Enable kernel driver for Realtek 8822CE M2-E PCI WiFi
+Subject: [PATCH 3/4] Enable kernel driver for Realtek 8822CE M2-E PCI WiFi
  card (#28)
 
 With the M2-E PCIe slot now enabled, users can now plug

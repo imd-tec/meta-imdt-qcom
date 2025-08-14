@@ -59,6 +59,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     nano \
     opencv \
     pciutils \
+    adsp-boot-service \
 "
 
 # To speed up the build we don't bother creating OTA Recovery image 

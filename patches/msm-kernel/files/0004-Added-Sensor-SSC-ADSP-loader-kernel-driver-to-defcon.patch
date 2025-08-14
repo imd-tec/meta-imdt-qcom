@@ -1,0 +1,54 @@
+From b55fe5d7aa6838e000ab3f9c2fff21c7b185f3d7 Mon Sep 17 00:00:00 2001
+From: imdtom <thomas.bourlard@imd-tec.com>
+Date: Thu, 14 Aug 2025 12:00:14 +0100
+Subject: [PATCH 4/4] Added Sensor SSC ADSP loader kernel driver to defconfig
+ (#29)
+
+* Added Sensor SSC ADSP loader driver to kernel configs
+Have enabled the Sensor SSC loader so that we can
+use this kernel driver to load the ADSP firmware.
+It works similarly to the adsp-loader in the
+audio kernel drivers.
+
+* Workaround - Renamed boot_slpi to boot_adsp
+This is a workaround so that we can re-use the sensors_ssc
+kernel driver to boot the ADSP without modifying the upstream
+code. At the moment, the sensors code seems to look for
+either boot_slpi or boot_adsp. And if it sees boot_slpi,
+it will look to find a libssc_default_listener.so (which we don't have).
+But if it finds boot_adsp, it will look for libadsp_default_listener.so,
+which we do have. We can make a symbolic link at runtime to workaround,
+this library issue but it's up being slightly difficult to do because
+the rootfs is read-only at boot time. So it's simpler to just rename
+the boot file to boot_adsp so the userspace tools select
+the library we have.
+---
+ arch/arm64/configs/vendor/kalama_le_consolidate.config | 1 +
+ drivers/soc/qcom/sensors_ssc.c                         | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_consolidate.config b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+index cd60d02a5..a06e7d941 100644
+--- a/arch/arm64/configs/vendor/kalama_le_consolidate.config
++++ b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+@@ -37,3 +37,4 @@ CONFIG_WLAN_VENDOR_REALTEK=y
+ CONFIG_RTW88=m
+ CONFIG_RTW88_PCI=m
+ CONFIG_RTW88_8822CE=m
++CONFIG_SENSORS_SSC=m
+diff --git a/drivers/soc/qcom/sensors_ssc.c b/drivers/soc/qcom/sensors_ssc.c
+index cd6b2a36b..3cf59d25a 100644
+--- a/drivers/soc/qcom/sensors_ssc.c
++++ b/drivers/soc/qcom/sensors_ssc.c
+@@ -225,7 +225,7 @@ static int slpi_loader_init_sysfs(struct platform_device *pdev)
+ 
+ 	priv->attr_group->attrs = attrs;
+ 
+-	priv->boot_slpi_obj = kobject_create_and_add("boot_slpi", kernel_kobj);
++	priv->boot_slpi_obj = kobject_create_and_add("boot_adsp", kernel_kobj);
+ 	if (!priv->boot_slpi_obj) {
+ 		dev_err(&pdev->dev, "%s: sysfs create and add failed\n",
+ 						__func__);
+-- 
+2.41.0
+

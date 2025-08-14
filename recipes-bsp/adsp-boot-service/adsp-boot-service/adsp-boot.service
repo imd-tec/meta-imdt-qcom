@@ -1,0 +1,17 @@
+# Copyright (c) 2025 IMD Technologies
+# All Rights Reserved.
+#
+
+[Unit]
+Description=ADSP/SLPI Boot Service
+Requires=dev-remoteproc\x2dadsp\x2dmd.device
+After=dev-remoteproc\x2dadsp\x2dmd.device
+
+[Service]
+User=root
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /usr/bin/boot_adsp.sh
+
+[Install]
+WantedBy=multi-user.target
