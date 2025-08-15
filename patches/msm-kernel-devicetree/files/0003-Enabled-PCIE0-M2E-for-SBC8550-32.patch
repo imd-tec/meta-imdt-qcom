@@ -1,7 +1,7 @@
 From 5e96cbbb06a0ec69c3f8cfd1fa9526b870d1c932 Mon Sep 17 00:00:00 2001
 From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
 Date: Tue, 29 Jul 2025 23:26:01 +0100
-Subject: [PATCH 3/4] Enabled PCIE0 M2E for SBC8550 (#32)
+Subject: [PATCH] Enabled PCIE0 M2E for SBC8550 (#32)
 
 I have tested this with a Waveshare RTL8822CE
 M2 Key-E module and was able to enumerate

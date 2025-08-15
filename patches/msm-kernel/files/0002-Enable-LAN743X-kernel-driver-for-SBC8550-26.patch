@@ -1,7 +1,7 @@
 From 62523f17430e712a28d45b420398ea327dbbc638 Mon Sep 17 00:00:00 2001
 From: joco-imdt <joe.connan@imd-tec.com>
 Date: Thu, 31 Jul 2025 16:47:33 +0100
-Subject: [PATCH 2/4] Enable LAN743X kernel driver for SBC8550 (#26)
+Subject: [PATCH] Enable LAN743X kernel driver for SBC8550 (#26)
 
 ---
  arch/arm64/configs/vendor/kalama_le_consolidate.config | 1 +

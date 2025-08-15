@@ -1,8 +1,8 @@
 From cd2afef23c32e2069d602cfbcfbb5e6fde65c8b0 Mon Sep 17 00:00:00 2001
 From: joco-imdt <joe.connan@imd-tec.com>
 Date: Tue, 29 Jul 2025 17:51:24 +0100
-Subject: [PATCH 2/4] Enabled PCIe RC1 for LAN743x Gigabit Ethernet PHY + MAC
- on SBC8550 (#33)
+Subject: [PATCH] Enabled PCIe RC1 for LAN743x Gigabit Ethernet PHY + MAC on
+ SBC8550 (#33)
 
 Note that we needed a SW workaround to get the Ethernet
 PHY+MAC controller working. During enumeration,

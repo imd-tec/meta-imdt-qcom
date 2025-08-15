@@ -1,7 +1,7 @@
 From 6ff253c6fcea4062e99804550d00dcfb512c61ae Mon Sep 17 00:00:00 2001
 From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
 Date: Fri, 4 Apr 2025 18:35:16 +0100
-Subject: [PATCH 1/2] Add support for booting the IMDT SOM8550 (#3)
+Subject: [PATCH] Add support for booting the IMDT SOM8550 (#3)
 
 * Add support for booting IMDT SBC8550
 Added support for booting without PMIC Charger (PM8550B).

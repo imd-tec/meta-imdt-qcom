@@ -1,8 +1,7 @@
 From b55fe5d7aa6838e000ab3f9c2fff21c7b185f3d7 Mon Sep 17 00:00:00 2001
 From: imdtom <thomas.bourlard@imd-tec.com>
 Date: Thu, 14 Aug 2025 12:00:14 +0100
-Subject: [PATCH 4/4] Added Sensor SSC ADSP loader kernel driver to defconfig
- (#29)
+Subject: [PATCH] Added Sensor SSC ADSP loader kernel driver to defconfig (#29)
 
 * Added Sensor SSC ADSP loader driver to kernel configs
 Have enabled the Sensor SSC loader so that we can

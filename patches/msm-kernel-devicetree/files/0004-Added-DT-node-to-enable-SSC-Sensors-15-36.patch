@@ -1,7 +1,7 @@
 From b0b004c92b128f07e3cbe82fe299610cde3fabd5 Mon Sep 17 00:00:00 2001
 From: imdtom <thomas.bourlard@imd-tec.com>
 Date: Thu, 14 Aug 2025 14:24:49 +0100
-Subject: [PATCH 4/4] Added DT node to enable SSC Sensors (#15) (#36)
+Subject: [PATCH] Added DT node to enable SSC Sensors (#15) (#36)
 
 Added DT node to enable kernel module
 which will load the adsp firmware and provide

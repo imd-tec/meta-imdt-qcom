@@ -1,7 +1,7 @@
 From 34b2b7624783fc4b3455b5d331027ee03157f339 Mon Sep 17 00:00:00 2001
 From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
 Date: Thu, 26 Jun 2025 15:52:38 +0100
-Subject: [PATCH 2/2] Bugfix for crash in UEFI bootloader when ForceSwRenderer
+Subject: [PATCH] Bugfix for crash in UEFI bootloader when ForceSwRenderer
  disabled (#6)
 
 To enable the display in the UEFI bootloader the ForceSwRenderer flag

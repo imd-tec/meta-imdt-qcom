@@ -1,7 +1,7 @@
 From 2f6b0674fd15bf21373eaea0b7e9bad129855149 Mon Sep 17 00:00:00 2001
 From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
 Date: Tue, 13 May 2025 10:38:35 +0100
-Subject: [PATCH 2/2] Added support for AR1335 on CSI4 and CSI6 (#51)
+Subject: [PATCH] Added support for AR1335 on CSI4 and CSI6 (#51)
 
 The CSI4 and CSI6 camera slots on the SBC
 are connected to I2C buses from an I2C switch.
