@@ -1,0 +1,185 @@
+From 492c68ef386046035f8f7d1714946beab78110ab Mon Sep 17 00:00:00 2001
+From: joco-imdt <joe.connan@imd-tec.com>
+Date: Thu, 14 Aug 2025 15:46:24 +0100
+Subject: [PATCH] Make AI demos build correctly in yocto
+
+Change-Id: Ib2de63c1e8991526d2fb8bd08c0fc5a352c79d46
+---
+ gst-sample-apps/CMakeLists.txt                | 28 +++++++++++++++++
+ .../config_classification.json                |  2 +-
+ ...g_daisychain_detection_classification.json |  4 +--
+ .../gst-ai-monodepth/config_monodepth.json    |  2 +-
+ .../config_detection.json                     |  2 +-
+ .../gst-ai-parallel-inference/CMakeLists.txt  | 30 ++++++++++---------
+ .../gst-ai-pose-detection/config_pose.json    |  2 +-
+ .../config_segmentation.json                  |  2 +-
+ 8 files changed, 51 insertions(+), 21 deletions(-)
+ create mode 100644 gst-sample-apps/CMakeLists.txt
+
+diff --git a/gst-sample-apps/CMakeLists.txt b/gst-sample-apps/CMakeLists.txt
+new file mode 100644
+index 0000000..46022dc
+--- /dev/null
++++ b/gst-sample-apps/CMakeLists.txt
+@@ -0,0 +1,36 @@
++cmake_minimum_required(VERSION 3.8.2)
++project(GST_SAMPLE_APPS LANGUAGES C CXX)
++
++project(gstreamer)
++include(GNUInstallDirs)
++
++set(CMAKE_INCLUDE_CURRENT_DIR ON)
++set(GST_EXAMPLE_BIN gst-ai-parallel-inference)
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -Wno-error=missing-field-initializers")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
++
++find_package(PkgConfig REQUIRED)
++find_package(gstappsutils REQUIRED)
++
++pkg_check_modules(glib REQUIRED glib-2.0 IMPORTED_TARGET GLOBAL)
++pkg_check_modules(gstreamer REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED} IMPORTED_TARGET GLOBAL)
++
++include_directories(${SYSROOT_INCDIR})
++link_directories(${SYSROOT_LIBDIR})
++
++add_subdirectory(gst-ai-classification)
++add_subdirectory(gst-ai-daisychain-detection-classification)
++add_subdirectory(gst-ai-daisychain-detection-pose)
++add_subdirectory(gst-ai-face-detection)
++add_subdirectory(gst-ai-face-recognition)
++add_subdirectory(gst-ai-monodepth)
++add_subdirectory(gst-ai-multi-input-output-object-detection)
++add_subdirectory(gst-ai-multistream-batch-inference)
++add_subdirectory(gst-ai-multistream-inference)
++add_subdirectory(gst-ai-object-detection)
++add_subdirectory(gst-ai-parallel-inference)
++add_subdirectory(gst-ai-pose-detection)
++add_subdirectory(gst-ai-segmentation)
++add_subdirectory(gst-ai-smartcodec-example)
++add_subdirectory(gst-ai-superresolution)
++
+diff --git a/gst-sample-apps/gst-ai-classification/config_classification.json b/gst-sample-apps/gst-ai-classification/config_classification.json
+index 6b92592..544b6f0 100644
+--- a/gst-sample-apps/gst-ai-classification/config_classification.json
++++ b/gst-sample-apps/gst-ai-classification/config_classification.json
+@@ -1,5 +1,5 @@
+ {
+-  "file-path": "/opt/video.mp4",
++  "camera": 0,
+   "ml-framework": "tflite",
+   "model": "/opt/inception_v3_quantized.tflite",
+   "labels": "/opt/classification.labels",
+diff --git a/gst-sample-apps/gst-ai-daisychain-detection-classification/config_daisychain_detection_classification.json b/gst-sample-apps/gst-ai-daisychain-detection-classification/config_daisychain_detection_classification.json
+index 87584d4..9f5f289 100644
+--- a/gst-sample-apps/gst-ai-daisychain-detection-classification/config_daisychain_detection_classification.json
++++ b/gst-sample-apps/gst-ai-daisychain-detection-classification/config_daisychain_detection_classification.json
+@@ -1,8 +1,8 @@
+ {
+-  "input-file": "/opt/video.mp4",
++  "camera": 0,
+   "detection-model": "/opt/yolov5.tflite",
+   "detection-labels": "/opt/yolov5.labels",
+-  "classification-model": "/opt/inceptionv3.tflite",
++  "classification-model": "/opt/inception_v3_quantized.tflite",
+   "classification-labels": "/opt/classification.labels",
+   "detection-constants": "YoloV5,q-offsets=<3.0>,q-scales=<0.005047998391091824>;"
+ }
+diff --git a/gst-sample-apps/gst-ai-monodepth/config_monodepth.json b/gst-sample-apps/gst-ai-monodepth/config_monodepth.json
+index 05cca47..3dbcc3d 100644
+--- a/gst-sample-apps/gst-ai-monodepth/config_monodepth.json
++++ b/gst-sample-apps/gst-ai-monodepth/config_monodepth.json
+@@ -1,5 +1,5 @@
+ {
+-  "file-path": "/opt/video.mp4",
++  "camera": 0,
+   "ml-framework": "tflite",
+   "model": "/opt/Midas-V2-Quantized.tflite",
+   "labels": "/opt/monodepth.labels",
+diff --git a/gst-sample-apps/gst-ai-object-detection/config_detection.json b/gst-sample-apps/gst-ai-object-detection/config_detection.json
+index 4bf4c69..bea4baf 100644
+--- a/gst-sample-apps/gst-ai-object-detection/config_detection.json
++++ b/gst-sample-apps/gst-ai-object-detection/config_detection.json
+@@ -1,5 +1,5 @@
+ {
+-  "file-path": "/opt/video.mp4",
++  "camera": 0,
+   "ml-framework": "tflite",
+   "yolo-model-type": "yolov8",
+   "model": "/opt/YOLOv8-Detection-Quantized.tflite",
+diff --git a/gst-sample-apps/gst-ai-parallel-inference/CMakeLists.txt b/gst-sample-apps/gst-ai-parallel-inference/CMakeLists.txt
+index f532a40..3483d23 100644
+--- a/gst-sample-apps/gst-ai-parallel-inference/CMakeLists.txt
++++ b/gst-sample-apps/gst-ai-parallel-inference/CMakeLists.txt
+@@ -1,34 +1,34 @@
+ cmake_minimum_required(VERSION 3.8.2)
+ project(GST-AI-PARALLEL-INFERENCE LANGUAGES C CXX)
++project(gstreamer)
++include(GNUInstallDirs)
+ 
+ set(CMAKE_INCLUDE_CURRENT_DIR ON)
+-
+-include_directories(${SYSROOT_INCDIR})
+-link_directories(${SYSROOT_LIBDIR})
+-link_directories(${GST_PLUGINS_QTI_OSS_INSTALL_LIBDIR})
+-
+-find_package(PkgConfig)
+-
+-# Get the pkgconfigs exported by the automake tools
+-pkg_check_modules(GST
+-  REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED})
+-
+ set(GST_EXAMPLE_BIN gst-ai-parallel-inference)
+-
+-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -Wno-error=missing-field-initializers")
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
+ 
++find_package(PkgConfig REQUIRED)
++find_package(gstappsutils REQUIRED)
++
++pkg_check_modules(glib REQUIRED glib-2.0 IMPORTED_TARGET GLOBAL)
++pkg_check_modules(gstreamer REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED} IMPORTED_TARGET GLOBAL)
++
+ add_executable(${GST_EXAMPLE_BIN}
+   main.c
+ )
+ 
+ target_include_directories(${GST_EXAMPLE_BIN} PRIVATE
+   ${GST_INCLUDE_DIRS}
++  ${GLIB_INCLUDE_DIRS}
+ )
+ 
+ target_link_libraries(${GST_EXAMPLE_BIN} PRIVATE
+   ${GST_LIBRARIES}
+-  gstappsutils
++  ${GLIB_LIBRARIES}
++  gstappsutils::gstappsutils
++  PkgConfig::glib
++  PkgConfig::gstreamer
+ )
+ 
+ install(
+diff --git a/gst-sample-apps/gst-ai-pose-detection/config_pose.json b/gst-sample-apps/gst-ai-pose-detection/config_pose.json
+index 6c168fc..3dd0b9c 100644
+--- a/gst-sample-apps/gst-ai-pose-detection/config_pose.json
++++ b/gst-sample-apps/gst-ai-pose-detection/config_pose.json
+@@ -1,5 +1,5 @@
+ {
+-  "file-path": "/opt/video.mp4",
++  "camera": 0,
+   "ml-framework": "tflite",
+   "model": "/opt/hrnet_pose_quantized.tflite",
+   "labels": "/opt/hrnet_pose.labels",
+diff --git a/gst-sample-apps/gst-ai-segmentation/config_segmentation.json b/gst-sample-apps/gst-ai-segmentation/config_segmentation.json
+index ce82757..60a047f 100644
+--- a/gst-sample-apps/gst-ai-segmentation/config_segmentation.json
++++ b/gst-sample-apps/gst-ai-segmentation/config_segmentation.json
+@@ -1,5 +1,5 @@
+ {
+-  "file-path": "/opt/video.mp4",
++  "camera": 0,
+   "ml-framework": "tflite",
+   "model": "/opt/deeplabv3_plus_mobilenet_quantized.tflite",
+   "labels": "/opt/deeplabv3_resnet50.labels",
+-- 
+2.34.1

@@ -1,0 +1,109 @@
+diff --git a/gst-sample-apps-utils/CMakeLists.txt b/gst-sample-apps-utils/CMakeLists.txt
+index 8738794..970eaa9 100644
+--- a/gst-sample-apps-utils/CMakeLists.txt
++++ b/gst-sample-apps-utils/CMakeLists.txt
+@@ -1,40 +1,71 @@
+ cmake_minimum_required(VERSION 3.8.2)
+ project(GST_SAMPLE_APPS_UTILS_LIB LANGUAGES C CXX)
+-
+-set(CMAKE_INCLUDE_CURRENT_DIR ON)
+-
+-include_directories(${SYSROOT_INCDIR})
+-link_directories(${SYSROOT_LIBDIR})
+-
+ find_package(PkgConfig)
++include(CMakePackageConfigHelpers)
++
+ 
+ # Get the pkgconfigs exported by the automake tools
+-pkg_check_modules(GST
+-  REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED})
++pkg_check_modules(GST REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED} IMPORTED_TARGET GLOBAL) 
++pkg_check_modules(GLIB REQUIRED glib-2.0 IMPORTED_TARGET GLOBAL)
+ 
+-set(GST_SAMPLE_APPS_UTILS gstappsutils)
++if (NOT DEFINED GST_SAMPLE_APPS_UTILS_TARGET_NAME)
++  # Allow overriding the target name when using FetchContent / add_subdirectory.
++  set(GST_SAMPLE_APPS_UTILS_TARGET_NAME gstappsutils)
++endif()
+ 
+-add_library(${GST_SAMPLE_APPS_UTILS} SHARED
++add_library(${GST_SAMPLE_APPS_UTILS_TARGET_NAME} SHARED
+   gst_sample_apps_utils.c
+ )
+ 
+-set_target_properties(${GST_SAMPLE_APPS_UTILS} PROPERTIES PUBLIC_HEADER
+-  "gst_sample_apps_utils.h;gst_sample_apps_pipeline.h"
++set(${PROJECT_NAME}_HDRS
++  gst_sample_apps_utils.h
++  gst_sample_apps_pipeline.h
+ )
+ 
+-target_include_directories(${GST_SAMPLE_APPS_UTILS} PUBLIC
+-  ${GST_INCLUDE_DIRS})
++add_library(${GST_SAMPLE_APPS_UTILS_TARGET_NAME}::${GST_SAMPLE_APPS_UTILS_TARGET_NAME} ALIAS 
++  ${GST_SAMPLE_APPS_UTILS_TARGET_NAME}
++)
+ 
+-target_link_libraries(${GST_SAMPLE_APPS_UTILS} PRIVATE
+-  ${GST_LIBRARIES}
++target_include_directories(${GST_SAMPLE_APPS_UTILS_TARGET_NAME}
++     PUBLIC
++          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++          $<INSTALL_INTERFACE:include>
+ )
+-#LIBRARY DESTINATION /usr/lib/
+-#PUBLIC_HEADER DESTINATION /usr/include/gstreamer-1.0/gst/apps/
++
++set_target_properties(${GST_SAMPLE_APPS_UTILS_TARGET_NAME} PROPERTIES
++                      SOVERSION 1
++                      PUBLIC_HEADER "${${PROJECT_NAME}_HDRS}")
++
++target_link_libraries(${GST_SAMPLE_APPS_UTILS_TARGET_NAME}
++     PRIVATE
++         PkgConfig::GST
++         PkgConfig::GLIB
++)
++
++configure_package_config_file(
++  "cmake/gstappsutilsConfig.cmake.in"
++  "${CMAKE_CURRENT_BINARY_DIR}/gstappsutilsConfig.cmake"
++  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/gstappsutils"
++)
++
++install(
++  FILES "${CMAKE_CURRENT_BINARY_DIR}/gstappsutilsConfig.cmake"
++  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/gstappsutils"
++)
++
++install(
++  TARGETS                   ${GST_SAMPLE_APPS_UTILS_TARGET_NAME}
++  EXPORT                    ${GST_SAMPLE_APPS_UTILS_TARGET_NAME}Targets
++  LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/gstreamer-1.0/gst/sampleapps"
++  PERMISSIONS   OWNER_EXECUTE OWNER_WRITE OWNER_READ
++                GROUP_EXECUTE GROUP_READ
++                WORLD_EXECUTE WORLD_READ
++)
++
+ install(
+-  TARGETS ${GST_SAMPLE_APPS_UTILS}
+-  LIBRARY DESTINATION ${GST_PLUGINS_QTI_OSS_INSTALL_LIBDIR}
+-  PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+-              GROUP_EXECUTE GROUP_READ
+-              WORLD_EXECUTE WORLD_READ
+-  PUBLIC_HEADER DESTINATION ${GST_PLUGINS_QTI_OSS_INSTALL_INCDIR}/gstreamer-1.0/gst/sampleapps/
++  EXPORT      ${GST_SAMPLE_APPS_UTILS_TARGET_NAME}Targets
++  FILE        ${GST_SAMPLE_APPS_UTILS_TARGET_NAME}Targets.cmake
++  NAMESPACE   ${GST_SAMPLE_APPS_UTILS_TARGET_NAME}::
++  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${GST_SAMPLE_APPS_UTILS_TARGET_NAME}
+ )
+diff --git a/gst-sample-apps-utils/cmake/gstappsutilsConfig.cmake.in b/gst-sample-apps-utils/cmake/gstappsutilsConfig.cmake.in
+new file mode 100644
+index 0000000..0d656a5
+--- /dev/null
++++ b/gst-sample-apps-utils/cmake/gstappsutilsConfig.cmake.in
+@@ -0,0 +1,3 @@
++@PACKAGE_INIT@
++
++include("${CMAKE_CURRENT_LIST_DIR}/gstappsutilsTargets.cmake")

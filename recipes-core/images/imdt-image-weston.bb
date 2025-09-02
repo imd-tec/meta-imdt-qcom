@@ -37,6 +37,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     packagegroup-qti-display \
     packagegroup-qti-eva \
     packagegroup-qti-gst \
+    packagegroup-gst-sample-apps \
     packagegroup-qti-gfx \
     packagegroup-mesa \
     gbm \
