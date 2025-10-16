@@ -1,0 +1,80 @@
+From f0692453cbbd750ecdb288597725f9ea902616ac Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Thu, 9 Oct 2025 22:52:49 +0100
+Subject: [PATCH] Bugfix for calculating the correct stride for planar formats
+ like NV12 (#2)
+
+When userspace calls set_fmt with the format requested to be
+1920x1080 NV12, the UVC V4L2 driver calculates the bytesperline to be
+1920 * 1080 * 12 / 8 = 2880 bytes (where 12 is bBitsPerPixel set in configfs).
+The problem with this value is that userspace uses this as the stride
+for a NV12 buffer and thus calculates the offset for the UV plane incorrectly.
+
+For an NV12 buffer, the stride/bytesperline is equal to the width (ie 1920).
+The calculated image size is actually 1920 * 1080 * 3 / 2.
+And this is because NV12 is a planar format where it has a Y plane
+that is 1920 * 1080 and a UV plane that is 1920 * (1080 / 2).
+So the UVC V4L2 driver is just not handling contiguous planar
+formats like NV12. To fix this we replace the simple bytesperline
+calculation with a call to v4l2_fill_pixfmt() instead, which does
+handle the stride calculations for planar formats correctly.
+
+Note that we also check that the returned image size from
+v4l2_fill_pixfmt() matches what the user has configured
+through configfs and error out if not.
+
+The bug was found when I was trying to get NV12 working over UVC.
+But I found an upstream commit which fixes the bug and back-ported it.
+The back-ported commit:
+https://github.com/torvalds/linux/commit/7a700d8f2431b681f2dae1118d62177719912f5d
+---
+ drivers/usb/gadget/function/uvc_v4l2.c | 32 ++++++++++++++++++--------
+ 1 file changed, 22 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/usb/gadget/function/uvc_v4l2.c b/drivers/usb/gadget/function/uvc_v4l2.c
+index 4b66542fa..47cfed9e5 100644
+--- a/drivers/usb/gadget/function/uvc_v4l2.c
++++ b/drivers/usb/gadget/function/uvc_v4l2.c
+@@ -263,17 +263,29 @@ uvc_v4l2_try_format(struct file *file, void *fh, struct v4l2_format *fmt)
+ 	if (!uframe)
+ 		return -EINVAL;
+ 
+-	fmt->fmt.pix.width = uframe->frame.w_width;
+-	fmt->fmt.pix.height = uframe->frame.w_height;
+-	fmt->fmt.pix.field = V4L2_FIELD_NONE;
+-	fmt->fmt.pix.bytesperline = uvc_v4l2_get_bytesperline(uformat, uframe);
+-	fmt->fmt.pix.sizeimage = uvc_get_frame_size(uformat, uframe);
+-
+-	fmtdesc = to_uvc_format(uformat);
+-	if (IS_ERR(fmtdesc))
+-		return PTR_ERR(fmtdesc);
++	if (uformat->type == UVCG_UNCOMPRESSED) {
++		struct uvcg_uncompressed *u =
++			to_uvcg_uncompressed(&uformat->group.cg_item);
++		if (!u)
++			return 0;
+ 
+-	fmt->fmt.pix.pixelformat = fmtdesc->fcc;
++		v4l2_fill_pixfmt(&fmt->fmt.pix, fmt->fmt.pix.pixelformat,
++				 uframe->frame.w_width, uframe->frame.w_height);
++
++		if (fmt->fmt.pix.sizeimage != (uvc_v4l2_get_bytesperline(uformat, uframe) *
++						uframe->frame.w_height))
++			return -EINVAL;
++	} else {
++		fmt->fmt.pix.width = uframe->frame.w_width;
++		fmt->fmt.pix.height = uframe->frame.w_height;
++		fmt->fmt.pix.bytesperline = uvc_v4l2_get_bytesperline(uformat, uframe);
++		fmt->fmt.pix.sizeimage = uvc_get_frame_size(uformat, uframe);
++		fmtdesc = to_uvc_format(uformat);
++		if (IS_ERR(fmtdesc))
++			return PTR_ERR(fmtdesc);
++		fmt->fmt.pix.pixelformat = fmtdesc->fcc;
++	}
++	fmt->fmt.pix.field = V4L2_FIELD_NONE;
+ 	fmt->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
+ 	fmt->fmt.pix.priv = 0;
+ 
+-- 
+2.41.0
+
