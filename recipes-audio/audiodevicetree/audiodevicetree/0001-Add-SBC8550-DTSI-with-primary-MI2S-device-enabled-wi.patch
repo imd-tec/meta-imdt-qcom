@@ -1,0 +1,198 @@
+From a13a407a54c19770541c7e9368388946bd7a9b70 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 20 Oct 2025 15:51:28 +0100
+Subject: [PATCH] Add SBC8550 DTSI with primary MI2S device enabled with
+ TLV320AIC3X codec  (#4)
+
+Main changes in our DT overlay are:
+- Disable existing codec (WCD938X), speaker and amplifier nodes that are used on the HDK platform
+- Enable the use of the I2S for our codec (TLV320AIC3X)
+- Route all audio components under the Qualcomm sound card (kalama_snd)
+
+We have also removed the other overlays from the build to avoid build conflicts.
+In the future we may keep them. For now it's simpler to just disable them.
+
+Note that we had to remove the reference to fsa4480-i2c-handle in the base
+audio-devicetree as we do not have this on our boards. And if we keep it in the
+base devicetree, the devicetree compiler will fail because it can't find the
+phandle.
+---
+ Kbuild                         |  15 +----
+ kalama-audio-imdt-sbc8550.dts  |  17 ++++++
+ kalama-audio-imdt-sbc8550.dtsi | 100 +++++++++++++++++++++++++++++++++
+ kalama-audio.dtsi              |   3 +-
+ 4 files changed, 120 insertions(+), 15 deletions(-)
+ create mode 100755 kalama-audio-imdt-sbc8550.dts
+ create mode 100755 kalama-audio-imdt-sbc8550.dtsi
+
+diff --git a/Kbuild b/Kbuild
+index 758f532..4b590d4 100755
+--- a/Kbuild
++++ b/Kbuild
+@@ -1,19 +1,6 @@
+ ifeq ($(CONFIG_ARCH_KALAMA), y)
+ dtbo-y += kalama-audio.dtbo \
+-                 kalama-audio-cdp.dtbo \
+-                 kalama-audio-cdp-nfc.dtbo \
+-                 kalama-audio-wsa883x-cdp.dtbo \
+-                 kalama-audio-mtp.dtbo \
+-                 kalama-audio-mtp-nfc.dtbo \
+-                 kalama-audio-qrd.dtbo \
+-                 kalama-audio-atp.dtbo \
+-                 kalama-audio-rcm.dtbo \
+-                 kalama-audio-rumi.dtbo \
+-                 kalama-audio-hdk.dtbo \
+-                 kalama-sg-audio-hhg.dtbo \
+-                 kalama-audio-rb5-gen2.dtbo \
+-                 kalama-audio-rb5-gen2-dvt.dtbo \
+-                 kalama-audio-aim300.dtbo
++		kalama-audio-imdt-sbc8550.dtbo 
+ endif
+ 
+ ifeq ($(CONFIG_ARCH_SA8155), y)
+diff --git a/kalama-audio-imdt-sbc8550.dts b/kalama-audio-imdt-sbc8550.dts
+new file mode 100755
+index 0000000..018d1f1
+--- /dev/null
++++ b/kalama-audio-imdt-sbc8550.dts
+@@ -0,0 +1,17 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/clock/qcom,gcc-kalama.h>
++#include <dt-bindings/interrupt-controller/arm-gic.h>
++#include <dt-bindings/interconnect/qcom,kalama.h>
++#include <dt-bindings/regulator/qcom,rpmh-regulator-levels.h>
++
++#include "kalama-audio-imdt-sbc8550.dtsi"
++
++/ {
++	model = "Qualcomm Technologies, Inc. Kalama";
++	compatible = "qcom,kalama-hdk", "qcom,kalama", "qcom,hdk",
++			"qcom,kalamap";
++	qcom,msm-id = <519 0x10000>, <536 0x10000>, <519 0x20000>, <536 0x20000>, <600 0x20000>, <601 0x20000>, <603 0x20000>, <604 0x20000>;
++	qcom,board-id = <0x1001f 0>;
++};
+diff --git a/kalama-audio-imdt-sbc8550.dtsi b/kalama-audio-imdt-sbc8550.dtsi
+new file mode 100755
+index 0000000..ada62d6
+--- /dev/null
++++ b/kalama-audio-imdt-sbc8550.dtsi
+@@ -0,0 +1,100 @@
++#include "kalama-audio-overlay.dtsi"
++
++&wcd938x_tx_slave {
++	status = "disabled";
++};
++
++&swr_dmic_04 {
++	status = "disabled";
++};
++
++&swr_dmic_03 {
++	status = "disabled";
++};
++
++&swr_dmic_02 {
++	status = "disabled";
++};
++
++&swr_dmic_01 {
++	status = "disabled";
++};
++
++&swr_haptics {
++	status = "disabled";
++};
++
++&wcd938x_rx_slave {
++	status = "disabled";
++};
++
++&wsa_macro {
++	status = "disabled";
++};
++
++&wsa2_macro {
++	status = "disabled";
++};
++
++&wcd938x_codec{
++	status = "disabled";
++};
++
++&lpass_cdc {
++	qcom,num-macros = <3>;
++	tlv320aic3x_codec: ti,tlv320aic3x {
++		compatible = "ti,tlv320aic3x";
++		sound-dai = <&audio_speaker_dac>;
++	};
++};
++
++&fm_i2s1_gpios {
++	status= "disabled";
++};
++
++&wsa_spkr_en02 {
++	status = "disabled";
++};
++
++&wsa_spkr_en13 {
++	status = "disabled";
++};
++
++
++&spf_core_platform { 
++	cdc_pri_mi2s_gpios: pri_i2s1_pinctrl { 
++		compatible = "qcom,msm-cdc-pinctrl"; 
++		pinctrl-names = "aud_active", "aud_sleep"; 
++		pinctrl-0 = <&i2s0_sck_active &i2s0_ws_active &i2s0_sd1_active>; 
++		pinctrl-1 = <&i2s0_sck_sleep  &i2s0_ws_sleep  &i2s0_sd1_sleep>; 
++		#gpio-cells = <0>; 
++	}; 
++}; 
++
++&cdc_pri_mi2s_gpios { 
++	status = "ok"; 
++}; 
++
++&kalama_snd {
++	status = "ok";
++	qcom,mi2s-audio-intf = <1>;
++	qcom,pri-mi2s-gpios = <&cdc_pri_mi2s_gpios>;  
++	qcom,wcn-bt = <0>;
++	qcom,wcd-disabled = <1>;
++	qcom,ext-disp-audio-rx = <0>;
++	qcom,wsa-max-devs = <0>;
++	compatible = "qcom,kalama-asoc-snd";
++	asoc-codec  = <&stub_codec>, <&lpass_cdc>,
++			<&tlv320aic3x_codec>;
++	asoc-codec-names = "msm-stub-codec.1", "lpass-cdc",
++			"tlv320aic3x";
++	qcom,audio-routing = 
++		"RX_TX DEC0_INP", "TX DEC0 MUX",
++		"RX_TX DEC1_INP", "TX DEC1 MUX",
++		"RX_TX DEC2_INP", "TX DEC2 MUX",
++		"RX_TX DEC3_INP", "TX DEC3 MUX",
++		"VA SWR_INPUT", "VA_SWR_CLK",
++		"VA_AIF1 CAP", "VA_SWR_CLK",
++		"VA_AIF2 CAP", "VA_SWR_CLK",
++		"VA_AIF3 CAP", "VA_SWR_CLK";
++};
+diff --git a/kalama-audio.dtsi b/kalama-audio.dtsi
+index b686eb1..3fe7493 100755
+--- a/kalama-audio.dtsi
++++ b/kalama-audio.dtsi
+@@ -143,7 +143,8 @@
+ 
+ 		clock-names = "lpass_audio_hw_vote";
+ 		clocks = <&lpass_audio_hw_vote 0>;
+-		fsa4480-i2c-handle = <&fsa4480>;
++		//It does not exist on the SBC board.
++		//fsa4480-i2c-handle = <&fsa4480>;
+ 	};
+ };
+ 
+-- 
+2.41.0
+

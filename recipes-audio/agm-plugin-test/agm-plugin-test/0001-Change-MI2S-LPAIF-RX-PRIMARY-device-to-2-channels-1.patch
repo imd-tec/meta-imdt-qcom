@@ -1,0 +1,27 @@
+From fcb0c8e3c3aa6f34817f8e6db629b6b01cc83a17 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 3 Oct 2025 12:07:07 +0100
+Subject: [PATCH] Change MI2S-LPAIF-RX-PRIMARY device to 2 channels (#1)
+
+Change MI2S-LPAIF-RX-PRIMARY device to 2 channels.
+This is the interface (GPIO lines) that the DAC is connected to and the DAC supports 2 channels.
+---
+ backend_conf.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/backend_conf.xml b/backend_conf.xml
+index cf4be32..34f7a00 100644
+--- a/backend_conf.xml
++++ b/backend_conf.xml
+@@ -41,7 +41,7 @@
+     <device name="MI2S-LPAIF_AXI-TX-PRIMARY" rate="48000" ch="1" bits="16" />
+     <device name="SLIM-DEV1-TX-0" rate="48000" ch="1" bits="16" />
+     <device name="USB_AUDIO-TX" rate="48000" ch="1" bits="16" />
+-    <device name="MI2S-LPAIF-RX-PRIMARY" rate="48000" ch="1" bits="16" />
++    <device name="MI2S-LPAIF-RX-PRIMARY" rate="48000" ch="2" bits="16" />
+     <device name="MI2S-LPAIF-TX-PRIMARY" rate="48000" ch="1" bits="16" />
+     <device name="MI2S-LPAIF_AUD-RX-PRIMARY" rate="48000" ch="1" bits="16" />
+     <device name="MI2S-LPAIF_AUD-TX-PRIMARY" rate="48000" ch="1" bits="16" />
+-- 
+2.41.0
+

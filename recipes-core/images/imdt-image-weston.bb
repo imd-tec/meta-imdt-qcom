@@ -61,6 +61,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     opencv \
     pciutils \
     adsp-boot-service \
+    packagegroup-qti-audio \
+    audio-init-service \
 "
 
 # To speed up the build we don't bother creating OTA Recovery image 

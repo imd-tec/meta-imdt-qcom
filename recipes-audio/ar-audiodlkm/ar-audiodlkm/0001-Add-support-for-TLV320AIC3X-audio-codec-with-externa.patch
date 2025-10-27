@@ -1,0 +1,84 @@
+From 3b5a9516df395005924bb5b81a27d614dbcb83f4 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 20 Oct 2025 14:44:00 +0100
+Subject: [PATCH] Add support for TLV320AIC3X audio codec with external MCLK
+ (#1) (#2)
+
+This commits adds support our codec (TLV320DAC3100 using TLV320AIC31XX kernel driver)
+into the Qualcomm sound machine driver. Qualcomm seems to define their sound DAI links
+in the kernel driver rather than through the devicetree which is why we have had to modify
+the sound DAI links in the define SND_SOC_DAILINK_DEFS(pri_mi2s_rx) [I2S Usecase].
+
+Also after tracing the code we can see that hw_params function in msm-common
+is used to setup the codec (our DAC). However, the hw_params function in msm-common
+seems to be missing the call to setup the system clock (set_sysclk) which is what
+the codec driver uses to configure it's PLL registers. So we had to add a call
+to set_sysclk so that our codec has the correct PLL configuration. Also note
+that we have had to hardcode the sysclk provided as this essentially
+the MCLK. And our MCLK is provided externally (12.288MHz).
+We are not quite sure how to do this cleanly but for now this works.
+The driver seems to calculate the bitclk which is:
+sample_rate * MI2S_NUM_CHANNELS * sample_width (bits)
+
+However, this is not the same as the MCLK. The bitclk is derived from
+the MCLK via the PLL divisors/multipliers. So we will have to look more
+into the audio subsystem in the kernel to understand how upstream
+drivers do this in a cleaner way.
+---
+ asoc/msm_common.c  | 12 ++++++++++++
+ asoc/msm_dailink.h |  2 +-
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/asoc/msm_common.c b/asoc/msm_common.c
+index 65db612..f6cea49 100644
+--- a/asoc/msm_common.c
++++ b/asoc/msm_common.c
+@@ -47,6 +47,8 @@ struct snd_card_pdata {
+ #define SAMPLING_RATE_176P4KHZ  176400
+ #define SAMPLING_RATE_352P8KHZ  352800
+ 
++#define DAC_MCLK 12288000 // External MCLK provided to the DAC
++
+ static struct attribute device_state_attr = {
+ 	.name = "state",
+ 	.mode = 0660,
+@@ -399,6 +401,7 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
+ 	struct msm_common_pdata *pdata = msm_common_get_pdata(card);
+ 	int index = get_mi2s_tdm_auxpcm_intf_index(stream_name);
+ 	struct clk_cfg intf_clk_cfg;
++	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+ 
+ 	dev_dbg(rtd->card->dev,
+ 		"%s: substream = %s  stream = %d\n",
+@@ -485,6 +488,15 @@ int msm_common_snd_hw_params(struct snd_pcm_substream *substream,
+ 						__func__, ret);
+ 					goto done;
+ 				}
++				// Call of the set_sysclk function of the codec_dai to set up the DAC.
++				// It receives a hardcoded MCLK because it is external and cannot be 
++				// calculated any other way at this point.
++				ret = snd_soc_dai_set_sysclk(codec_dai, 0, DAC_MCLK, 0);
++				if (ret < 0) {
++					pr_err("%s: snd_soc_dai_set_sysclk failed ret %d\n",
++						__func__, ret);
++					goto done;
++				}
+ 			} else {
+ 				pr_err("%s: unsupported stream name: %s\n",
+ 					__func__, stream_name);
+diff --git a/asoc/msm_dailink.h b/asoc/msm_dailink.h
+index 85381d3..44c6338 100644
+--- a/asoc/msm_dailink.h
++++ b/asoc/msm_dailink.h
+@@ -208,7 +208,7 @@ SND_SOC_DAILINK_DEFS(proxy_rx,
+ 
+ SND_SOC_DAILINK_DEFS(pri_mi2s_rx,
+ 	DAILINK_COMP_ARRAY(COMP_CPU("snd-soc-dummy-dai")),
+-	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-rx")),
++	DAILINK_COMP_ARRAY(COMP_CODEC("tlv320aic3x.0-0018", "tlv320aic3x-hifi")),
+ 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
+ 
+ SND_SOC_DAILINK_DEFS(pri_mi2s_tx,
+-- 
+2.41.0
+

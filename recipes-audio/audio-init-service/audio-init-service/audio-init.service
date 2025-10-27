@@ -1,0 +1,14 @@
+[Unit]
+Description=Run qtitinymix commands for audio initialization at boot
+Requires=sys-devices-platform-soc-soc:spf_core_platform-soc:spf_core_platform:sound-sound-card0-controlC0.device
+Wants=pulseaudio.service
+After=sys-devices-platform-soc-soc:spf_core_platform-soc:spf_core_platform:sound-sound-card0-controlC0.device
+Before=pulseaudio.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/setup-audio.sh
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

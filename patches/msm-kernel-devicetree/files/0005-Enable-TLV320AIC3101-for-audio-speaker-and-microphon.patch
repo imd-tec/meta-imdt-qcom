@@ -1,0 +1,62 @@
+From a344dd8ad7ea4e1863ab87c8c61b198a2d925008 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 17 Oct 2025 18:15:37 +0100
+Subject: [PATCH] Enable TLV320AIC3101 for audio speaker and microphone (#43)
+
+This commit adds and activates the DT node for
+the Audio AIC we are using on the SBC (TLV320AIC3101).
+It is registered as ti,tlv320aic3x to match the TLV320AIC3X driver.
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index c77a086..1de9761 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -661,6 +661,19 @@
+ 
+ 		output-low;
+ 	};
++
++	audio_speaker_dac_reset_gpio_default: audio_speaker_dac_reset_gpio_default {
++		mux {
++			pins = "gpio177";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio177";
++			drive-strength = <2>;
++			drive-open-drain;
++		};
++	};
+ };
+ 
+ &soc {
+@@ -796,3 +809,22 @@
+ 	};
+ 
+ };
++
++&qupv3_hub_i2c2 {
++	status = "ok";
++	audio_speaker_dac: tlv320aic3x@18 {
++		reg = <0x18>;
++		compatible = "ti,tlv320aic3x";
++		
++		pinctrl-names = "default";
++		pinctrl-0 = <&audio_speaker_dac_reset_gpio_default>;
++		reset-gpios = <&tlmm 177 GPIO_ACTIVE_LOW>;
++		
++		HPVDD-supply = <&per_3v3_reg>;
++		SPRVDD-supply = <&per_3v3_reg>;
++		SPLVDD-supply = <&per_3v3_reg>;
++		AVDD-supply = <&per_3v3_reg>;
++		IOVDD-supply = <&per_1v8_reg>;
++		DVDD-supply = <&per_1v8_reg>;
++	};
++};
+-- 
+2.41.0
+
