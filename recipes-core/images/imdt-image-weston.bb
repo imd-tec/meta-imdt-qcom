@@ -63,6 +63,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     adsp-boot-service \
     packagegroup-qti-audio \
     audio-init-service \
+    linux-firmware-ath11k \
+    wpa-supplicant \
+    iw \
+    iperf3 \
 "
 
 # To speed up the build we don't bother creating OTA Recovery image 

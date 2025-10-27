@@ -1,0 +1,153 @@
+From 6d2b9a1f717e5ffb83fca975fd026af34532565e Mon Sep 17 00:00:00 2001
+From: Joe Connan <joe.connan@imd-tec.com>
+Date: Tue, 21 Oct 2025 16:00:26 +0100
+Subject: [PATCH] Enable ath11k PCI driver and fix unsupported HW version bug
+ for QCNFA765 (#36)
+
+This commit enables the ath11k PCI drivers to allow us to use
+the QCNFA765 PCI WiFi card. We've also had to fix a bug in the driver
+that causes the ath11k driver probe function to fail.
+When it fails, it reports this error message:
+"Unsupported WCN6855 SOC hardware version: 18 17".
+
+This is caused by the bitmask for the HW version
+being incorrect and thus it fails the HW version
+check that is in the kernel driver. So the bitmask
+has been corrected. Furthermore, the updated
+hardware (v2.1) has slight differences so an extra
+element in the ath11k_hw_params array has been
+added for this version of the HW.
+
+This is a known issue with the ath11k driver and there is a patch series here:
+https://lore.kernel.org/all/20211129025613.21594-1-quic_bqiang@quicinc.com/
+---
+ .../vendor/kalama_le_consolidate.config       |  4 ++
+ drivers/net/wireless/ath/ath11k/core.c        | 41 +++++++++++++++++++
+ drivers/net/wireless/ath/ath11k/core.h        |  1 +
+ drivers/net/wireless/ath/ath11k/mhi.c         |  1 +
+ drivers/net/wireless/ath/ath11k/pci.c         | 14 ++++++-
+ 5 files changed, 59 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_consolidate.config b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+index 125a680be..129548b1e 100644
+--- a/arch/arm64/configs/vendor/kalama_le_consolidate.config
++++ b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+@@ -40,3 +40,7 @@ CONFIG_RTW88_8822CE=m
+ CONFIG_SENSORS_SSC=m
+ CONFIG_SND_SOC_TLV320AIC3X_I2C=m
+ CONFIG_SND_SOC_TLV320AIC3X=m
++CONFIG_CRYPTO_MICHAEL_MIC=m
++CONFIG_WLAN_VENDOR_ATH=y
++CONFIG_ATH11K=m
++CONFIG_ATH11K_PCI=m
+diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
+index 48a449fbd..be86f990f 100644
+--- a/drivers/net/wireless/ath/ath11k/core.c
++++ b/drivers/net/wireless/ath/ath11k/core.c
+@@ -225,6 +225,47 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 		.tcl_0_only = true,
+ 		.spectral_fft_sz = 0,
+ 
++		.interface_modes = BIT(NL80211_IFTYPE_STATION) |
++					BIT(NL80211_IFTYPE_AP),
++		.supports_monitor = false,
++		.supports_shadow_regs = true,
++		.idle_ps = true,
++		.cold_boot_calib = false,
++		.supports_suspend = true,
++		.hal_desc_sz = sizeof(struct hal_rx_desc_wcn6855),
++		.fix_l1ss = false,
++		.wakeup_mhi = true,
++	},
++    {
++		.name = "wcn6855 hw2.1",
++		.hw_rev = ATH11K_HW_WCN6855_HW21,
++		.fw = {
++			.dir = "WCN6855/hw2.1",
++			.board_size = 256 * 1024,
++			.cal_size = 128 * 1024,
++		},
++		.max_radios = 3,
++		.bdf_addr = 0x4B0C0000,
++		.hw_ops = &wcn6855_ops,
++		.ring_mask = &ath11k_hw_ring_mask_qca6390,
++		.internal_sleep_clock = true,
++		.regs = &wcn6855_regs,
++		.qmi_service_ins_id = ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_QCA6390,
++		.host_ce_config = ath11k_host_ce_config_qca6390,
++		.ce_count = 9,
++		.target_ce_config = ath11k_target_ce_config_wlan_qca6390,
++		.target_ce_count = 9,
++		.svc_to_ce_map = ath11k_target_service_to_ce_map_wlan_qca6390,
++		.svc_to_ce_map_len = 14,
++		.single_pdev_only = true,
++		.rxdma1_enable = false,
++		.num_rxmda_per_pdev = 2,
++		.rx_mac_buf_ring = true,
++		.vdev_start_delay = true,
++		.htt_peer_map_v2 = false,
++		.tcl_0_only = true,
++		.spectral_fft_sz = 0,
++
+ 		.interface_modes = BIT(NL80211_IFTYPE_STATION) |
+ 					BIT(NL80211_IFTYPE_AP),
+ 		.supports_monitor = false,
+diff --git a/drivers/net/wireless/ath/ath11k/core.h b/drivers/net/wireless/ath/ath11k/core.h
+index fda1c2db0..abeea715a 100644
+--- a/drivers/net/wireless/ath/ath11k/core.h
++++ b/drivers/net/wireless/ath/ath11k/core.h
+@@ -113,6 +113,7 @@ enum ath11k_hw_rev {
+ 	ATH11K_HW_IPQ6018_HW10,
+ 	ATH11K_HW_QCN9074_HW10,
+ 	ATH11K_HW_WCN6855_HW20,
++    ATH11K_HW_WCN6855_HW21,
+ };
+ 
+ enum ath11k_firmware_mode {
+diff --git a/drivers/net/wireless/ath/ath11k/mhi.c b/drivers/net/wireless/ath/ath11k/mhi.c
+index f2149241f..5c20cb4d7 100644
+--- a/drivers/net/wireless/ath/ath11k/mhi.c
++++ b/drivers/net/wireless/ath/ath11k/mhi.c
+@@ -356,6 +356,7 @@ int ath11k_mhi_register(struct ath11k_pci *ab_pci)
+ 		break;
+ 	case ATH11K_HW_QCA6390_HW20:
+ 	case ATH11K_HW_WCN6855_HW20:
++    case ATH11K_HW_WCN6855_HW21:
+ 		ath11k_mhi_config = &ath11k_mhi_config_qca6390;
+ 		break;
+ 	default:
+diff --git a/drivers/net/wireless/ath/ath11k/pci.c b/drivers/net/wireless/ath/ath11k/pci.c
+index b8e4c7425..768389c1c 100644
+--- a/drivers/net/wireless/ath/ath11k/pci.c
++++ b/drivers/net/wireless/ath/ath11k/pci.c
+@@ -25,7 +25,7 @@
+ #define WINDOW_RANGE_MASK		GENMASK(18, 0)
+ 
+ #define TCSR_SOC_HW_VERSION		0x0224
+-#define TCSR_SOC_HW_VERSION_MAJOR_MASK	GENMASK(16, 8)
++#define TCSR_SOC_HW_VERSION_MAJOR_MASK	GENMASK(11, 8)
+ #define TCSR_SOC_HW_VERSION_MINOR_MASK	GENMASK(7, 0)
+ 
+ /* BAR0 + 4k is always accessible, and no
+@@ -1266,7 +1266,17 @@ static int ath11k_pci_probe(struct pci_dev *pdev,
+ 					   &soc_hw_version_minor);
+ 		switch (soc_hw_version_major) {
+ 		case 2:
+-			ab->hw_rev = ATH11K_HW_WCN6855_HW20;
++			switch (soc_hw_version_minor) {
++			case 0x10:
++			case 0x11:
++				ab->hw_rev = ATH11K_HW_WCN6855_HW21;
++				break;
++			case 0x00:
++			case 0x01:
++			default:
++				ab->hw_rev = ATH11K_HW_WCN6855_HW20;
++				break;
++			}
+ 			break;
+ 		default:
+ 			dev_err(&pdev->dev, "Unsupported WCN6855 SOC hardware version: %d %d\n",
+-- 
+2.41.0
+
