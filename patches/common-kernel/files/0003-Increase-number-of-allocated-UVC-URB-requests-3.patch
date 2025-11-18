@@ -1,0 +1,47 @@
+From 5a6c72897f72d7e471fb0540f5f5aed2ca26906a Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Tue, 18 Nov 2025 14:38:51 +0000
+Subject: [PATCH] Increase number of allocated UVC URB requests (#3)
+
+When we have two UVC gadgets running
+at 30FPS where one UVC stream is much larger
+than the other stream, the lower resolution stream
+get's starved and streams at a very low
+framerate (almost 0FPS).
+
+And this issue seems to be related to how the
+kernel calculates the number of UVC URB requests.
+For small streams, the number of requests needed
+to send a frame is very small. This means the host can
+read all the requests quite quickly so
+there are no URB's for several micro-frames.
+When the host scheduler sees this, it then throttles
+that stream. A simple workaround has been to increase
+the number of allocated requests.
+---
+ drivers/usb/gadget/function/uvc_queue.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/usb/gadget/function/uvc_queue.c b/drivers/usb/gadget/function/uvc_queue.c
+index 0aa3d7e1f..ac765d519 100644
+--- a/drivers/usb/gadget/function/uvc_queue.c
++++ b/drivers/usb/gadget/function/uvc_queue.c
+@@ -58,12 +58,10 @@ static int uvc_queue_setup(struct vb2_queue *vq,
+ 		 * max_t(unsigned int, video->ep->maxburst, 1)
+ 		 * (video->ep->mult);
+ 
+-	/* We divide by two, to increase the chance to run
+-	 * into fewer requests for smaller framesizes.
+-	 */
+-	nreq = DIV_ROUND_UP(DIV_ROUND_UP(sizes[0], 2), req_size);
+-	nreq = clamp(nreq, 4U, 64U);
++	nreq = DIV_ROUND_UP(sizes[0], req_size);
++	nreq = clamp((nreq * 2U), 4U, 64U);
+ 	video->uvc_num_requests = nreq;
++	uvc_trace(UVC_TRACE_CAPTURE, "[I] Number of allocated requests =%d, size=%d\n", nreq, sizes[0]);
+ 
+ 	return 0;
+ }
+-- 
+2.41.0
+
