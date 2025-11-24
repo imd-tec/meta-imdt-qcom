@@ -1,0 +1,2 @@
+SWUPDATE_ARGS="-v -H kalama:1 -M -m"
+SWUPDATE_WEBSERVER_ARGS="--document-root /www --port 8080"

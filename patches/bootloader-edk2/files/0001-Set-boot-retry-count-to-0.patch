@@ -1,0 +1,30 @@
+From 16375f7f8abc735b42008d785ac8f5ac6cca5881 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 14 Nov 2025 10:08:18 +0000
+Subject: [PATCH] Set boot retry count to 0
+
+If trying to boot from a partition fails, the default behaviour
+is to go to fastboot and retry 6 times.
+However, we want to boot directly to an alternative partition,
+so we are setting the PART_ATT_MAX_RETRY_COUNT_VAL to 0.
+---
+ QcomModulePkg/Include/Library/PartitionTableUpdate.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/QcomModulePkg/Include/Library/PartitionTableUpdate.h b/QcomModulePkg/Include/Library/PartitionTableUpdate.h
+index 27c2bfb..e07a62e 100644
+--- a/QcomModulePkg/Include/Library/PartitionTableUpdate.h
++++ b/QcomModulePkg/Include/Library/PartitionTableUpdate.h
+@@ -150,7 +150,8 @@ table in the respective position mentioned below.
+ 
+ #define PART_ATT_PRIORITY_VAL ((UINT64)0x3 << PART_ATT_PRIORITY_BIT)
+ #define PART_ATT_ACTIVE_VAL ((UINT64)0x1 << PART_ATT_ACTIVE_BIT)
+-#define PART_ATT_MAX_RETRY_COUNT_VAL ((UINT64)0x7 << PART_ATT_MAX_RETRY_CNT_BIT)
++// Disable the retry and boot to an alternative slot instead of going to fastboot
++#define PART_ATT_MAX_RETRY_COUNT_VAL ((UINT64)0x0 << PART_ATT_MAX_RETRY_CNT_BIT) 
+ #define PART_ATT_SUCCESSFUL_VAL ((UINT64)0x1 << PART_ATT_SUCCESS_BIT)
+ #define PART_ATT_UNBOOTABLE_VAL ((UINT64)0x1 << PART_ATT_UNBOOTABLE_BIT)
+ #define MAX_PRIORITY 3
+-- 
+2.41.0
+

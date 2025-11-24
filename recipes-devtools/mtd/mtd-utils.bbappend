@@ -1,0 +1,21 @@
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+
+FILES:${PN}-staticdev += "ubi-utils/libubi.a ${libdir}/*.a"
+
+do_install:append () {
+	install -d ${D}${includedir}/mtd/
+	install -d ${D}${libdir}/
+	install -m 0644 ${S}/include/libubi.h ${D}${includedir}
+	install -m 0644 ${S}/include/libmtd.h ${D}${includedir}
+	install -m 0644 ${S}/include/libscan.h ${D}${includedir}
+	install -m 0644 ${S}/include/libubigen.h ${D}${includedir}
+	install -m 0644 ${S}/include/mtd/ubi-media.h ${D}${includedir}/mtd/
+	ln -sf ../libubi.h ${D}${includedir}/mtd/libubi.h
+	ln -sf ../libmtd.h ${D}${includedir}/mtd/libmtd.h
+	ln -sf ../libscan.h ${D}${includedir}/mtd/libscan.h
+	ln -sf ../libubigen.h ${D}${includedir}/mtd/libubigen.h
+	oe_libinstall -a libubi ${D}${libdir}/
+	oe_libinstall -a libmtd ${D}${libdir}/
+}
+
+BBCLASSEXTEND += "native"

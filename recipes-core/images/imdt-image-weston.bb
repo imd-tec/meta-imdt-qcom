@@ -66,9 +66,11 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     linux-firmware-ath11k \
     wpa-supplicant \
     iw \
-    iperf3 \
+    iperf3 \    
+    swupdate \
+    swupdate-www \
 "
 
-# To speed up the build we don't bother creating OTA Recovery image 
-do_recovery_ext4[noexec] = "1"
-do_gen_ota_full_zip_ext4[noexec] = "1"
+# OTA Recovery image is not created to speed up the build, when ENABLE_RECOVERY is not 1 
+do_recovery_ext4[noexec] = "${@'1' if d.getVar('ENABLE_RECOVERY') != '1' else ''}"
+do_gen_ota_full_zip_ext4[noexec] = "${@'1' if d.getVar('ENABLE_RECOVERY') != '1' else ''}"

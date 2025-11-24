@@ -1,0 +1,20 @@
+software =
+{
+	version = "1.0.0";
+	hardware-compatibility = ["1"];
+        files:
+        (
+            {
+                filename = "update_ext4.zip";
+                path = "/data/update_ext4.zip";
+            }
+        );
+        scripts:
+        (
+            {
+                filename = "update.sh";
+                type = "shellscript";
+            }
+        );
+
+};

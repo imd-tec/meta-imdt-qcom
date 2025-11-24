@@ -1,0 +1,16 @@
+[Unit]
+Description=SWUpdate daemon
+Documentation=https://github.com/sbabic/swupdate
+Documentation=https://sbabic.github.io/swupdate
+
+# The Type=notify was replaced by Type=simple,
+# because the service was waiting for a completion notification
+# which is not sent by the update.sh script 
+# that is installing the update.
+[Service]
+Type=simple
+ExecStart=/usr/lib/swupdate/swupdate.sh
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
