@@ -69,6 +69,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     iperf3 \    
     swupdate \
     swupdate-www \
+    ntp \
 "
 
 # OTA Recovery image is not created to speed up the build, when ENABLE_RECOVERY is not 1 
