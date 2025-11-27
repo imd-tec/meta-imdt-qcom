@@ -1,0 +1,81 @@
+From 0de722be5780a457ed9553e2b016a5a759cbfce7 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Wed, 26 Nov 2025 12:25:42 +0000
+Subject: [PATCH] Enable GT911 display touchscreen on SE4 I2C for IMDT display
+ (#45)
+
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 53 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 53 insertions(+)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 1de9761..2b1ef6e 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -674,6 +674,33 @@
+ 			drive-open-drain;
+ 		};
+ 	};
++
++	goodix_reset_default: goodix_reset_default {
++		mux {
++			pins = "gpio122";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio122";
++			drive-strength = <8>;
++			drive-open-drain;
++			bias-disable;
++		};
++	};
++
++	goodix_int_default: goodix_int_default {
++		mux {
++			pins = "gpio88";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio88";
++			bias-disable;
++			input-enable;
++		};
++	};
+ };
+ 
+ &soc {
+@@ -828,3 +855,29 @@
+ 		DVDD-supply = <&per_1v8_reg>;
+ 	};
+ };
++
++&qupv3_se4_i2c {
++	// Enable I2C on GPIO 44 (SDA) and GPIO 45 (SCL)
++	#address-cells = <1>;
++	#size-cells = <0>;
++	qcom,clk-freq-out = <400000>;
++	status = "ok";
++
++	goodix_touch_ctrl: goodix-touch-controller@14 {
++		compatible = "goodix,gt911";
++		reg = <0x14>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&goodix_reset_default>, <&goodix_int_default>;
++
++		interrupt-parent = <&tlmm>;
++		interrupts = <88 IRQ_TYPE_EDGE_RISING>;
++		irq-gpios = <&tlmm 88 GPIO_ACTIVE_HIGH>;
++		reset-gpios = <&tlmm 122 GPIO_ACTIVE_HIGH>;
++
++		AVDD28-supply = <&per_3v3_reg>;
++		VDDIO-supply = <&per_1v8_reg>;
++
++		status = "ok";
++	};
++};
+-- 
+2.41.0
+

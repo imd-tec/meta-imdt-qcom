@@ -1,0 +1,25 @@
+From 16a80e4f01c701dba844b3f7a4a68713bb533504 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Wed, 26 Nov 2025 16:02:51 +0000
+Subject: [PATCH] Enable QUPV3 SE4 I2C for touchscreen (#12)
+
+---
+ .../buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c  | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+index 0efe04d..6558db9 100755
+--- a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
++++ b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+@@ -125,7 +125,7 @@ const QUPv3_se_security_permissions_type qupv3_perms_qrd[] =
+   { QUPV3_1_SE1, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI,  AC_TZ,              FALSE, TRUE,  TRUE  }, // NFC eSE
+   { QUPV3_1_SE2, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI,  AC_HLOS,            FALSE, TRUE,  FALSE }, // FP-SENSOR
+   /*QUPV3_1_SE3*/                                                    
+-  { QUPV3_1_SE4, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI,  AC_HLOS,            FALSE, TRUE,  FALSE }, //touch Screen
++  { QUPV3_1_SE4, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO,  AC_HLOS,           TRUE, TRUE,  FALSE }, //touch Screen
+   /*QUPV3_1_SE5*/
+   { QUPV3_1_SE6, QUPV3_PROTOCOL_UFCS,     QUPV3_MODE_FIFO, AC_ADSP_Q6_ELF,    TRUE,  TRUE,  FALSE }, // UFCS
+   { QUPV3_1_SE7, QUPV3_PROTOCOL_UART_2W, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  FALSE, FALSE }, //Debug UART  
+-- 
+2.41.0
+

@@ -1,0 +1,21 @@
+From 80fc4bf9cd214ebb4cf5fccc032b75429458f7cc Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Tue, 25 Nov 2025 16:54:48 +0000
+Subject: [PATCH] Add goodix touchscreen kernel module (#37)
+
+---
+ arch/arm64/configs/vendor/kalama_le_consolidate.config | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_consolidate.config b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+index 129548b1e..1f3d0ccb5 100644
+--- a/arch/arm64/configs/vendor/kalama_le_consolidate.config
++++ b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+@@ -44,3 +44,4 @@ CONFIG_CRYPTO_MICHAEL_MIC=m
+ CONFIG_WLAN_VENDOR_ATH=y
+ CONFIG_ATH11K=m
+ CONFIG_ATH11K_PCI=m
++CONFIG_TOUCHSCREEN_GOODIX=m
+-- 
+2.41.0
+
