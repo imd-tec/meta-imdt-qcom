@@ -1,0 +1,25 @@
+From ee443243d0678b8550662ac871f90df88fb1972c Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 8 Dec 2025 12:03:17 +0000
+Subject: [PATCH] Enable SE9 as UART for the RS232 (#14)
+
+---
+ .../buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c  | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+index f8501b8..4bed1ec 100755
+--- a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
++++ b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+@@ -130,7 +130,7 @@ const QUPv3_se_security_permissions_type qupv3_perms_qrd[] =
+   { QUPV3_1_SE6, QUPV3_PROTOCOL_UFCS,     QUPV3_MODE_FIFO, AC_ADSP_Q6_ELF,    TRUE,  TRUE,  FALSE }, // UFCS
+   { QUPV3_1_SE7, QUPV3_PROTOCOL_UART_2W, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  FALSE, FALSE }, //Debug UART  
+   { QUPV3_2_SE0, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI, AC_HLOS,            FALSE,  TRUE,  FALSE }, //SECOND TOUCH
+-  { QUPV3_2_SE1, QUPV3_PROTOCOL_I3C_IBI, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Camera I3c
++  { QUPV3_2_SE1, QUPV3_PROTOCOL_UART_2W, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //RS232 UART
+   { QUPV3_2_SE2, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //SPI1(3rd party camera)/laser range finder 
+   { QUPV3_2_SE3, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Flicker Detection sensor 
+   { QUPV3_2_SE4, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //I2C Extension
+-- 
+2.41.0
+

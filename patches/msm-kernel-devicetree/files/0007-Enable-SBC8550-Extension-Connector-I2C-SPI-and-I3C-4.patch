@@ -1,0 +1,60 @@
+From 6a599ffd6211346c5cbd194526fe286dc8cf42d5 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Thu, 4 Dec 2025 13:04:58 +0000
+Subject: [PATCH] Enable SBC8550 Extension Connector - I2C, SPI and I3C (#46)
+
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 24 +++++++++++++++++++++---
+ 1 file changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 2b1ef6e..8e2518a 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -838,7 +838,7 @@
+ };
+ 
+ &qupv3_hub_i2c2 {
+-	status = "ok";
++	status = "okay";
+ 	audio_speaker_dac: tlv320aic3x@18 {
+ 		reg = <0x18>;
+ 		compatible = "ti,tlv320aic3x";
+@@ -861,7 +861,7 @@
+ 	#address-cells = <1>;
+ 	#size-cells = <0>;
+ 	qcom,clk-freq-out = <400000>;
+-	status = "ok";
++	status = "okay";
+ 
+ 	goodix_touch_ctrl: goodix-touch-controller@14 {
+ 		compatible = "goodix,gt911";
+@@ -878,6 +878,24 @@
+ 		AVDD28-supply = <&per_3v3_reg>;
+ 		VDDIO-supply = <&per_1v8_reg>;
+ 
+-		status = "ok";
++		status = "okay";
++	};
++};
++
++&qupv3_se12_i2c {
++	status = "okay";
++};
++
++&i3c0 {
++	status = "okay";
++};
++
++&qupv3_se10_spi {
++	status = "okay";
++	spidev@0 {
++		compatible = "qcom,spi-msm-codec-slave";
++		spi-max-frequency = <50000000>;
++		reg = <0>;
++		status = "okay";
+ 	};
+ };
+-- 
+2.41.0
+

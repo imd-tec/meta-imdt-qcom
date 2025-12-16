@@ -1,0 +1,38 @@
+From 9acbee30f9cd3d8ffef355b96296283c60fd538c Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 8 Dec 2025 12:16:54 +0000
+Subject: [PATCH] Enable UART on QUPv3 SE9 for RS232 connector (#47)
+
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 8e2518a..67d4d79 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -701,6 +701,12 @@
+ 			input-enable;
+ 		};
+ 	};
++
++	rs232-enable-hog {
++		gpio-hog;
++		gpios = <6 GPIO_ACTIVE_HIGH>;
++		output-low;
++	};
+ };
+ 
+ &soc {
+@@ -899,3 +905,8 @@
+ 		status = "okay";
+ 	};
+ };
++
++&qupv3_se9_2uart {
++	qcom,auto-suspend-disable;
++	status = "okay";
++};
+-- 
+2.41.0
+

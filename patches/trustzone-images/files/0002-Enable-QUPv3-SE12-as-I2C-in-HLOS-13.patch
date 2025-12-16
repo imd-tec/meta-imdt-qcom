@@ -1,0 +1,25 @@
+From 0c41a486f1f0ce8cbfe1b3489e70f4633af22951 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Thu, 4 Dec 2025 11:45:30 +0000
+Subject: [PATCH] Enable QUPv3 SE12 as I2C in HLOS (#13)
+
+---
+ .../buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c  | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+index 6558db9..f8501b8 100755
+--- a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
++++ b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+@@ -133,7 +133,7 @@ const QUPv3_se_security_permissions_type qupv3_perms_qrd[] =
+   { QUPV3_2_SE1, QUPV3_PROTOCOL_I3C_IBI, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Camera I3c
+   { QUPV3_2_SE2, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //SPI1(3rd party camera)/laser range finder 
+   { QUPV3_2_SE3, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Flicker Detection sensor 
+-  { QUPV3_2_SE4, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_NON_SECURE,      TRUE,  TRUE,  FALSE }, // RF EEPROM
++  { QUPV3_2_SE4, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //I2C Extension
+   /*QUPV3_2_SE5*/
+   { QUPV3_2_SE6, QUPV3_PROTOCOL_UART_4W, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, // Hamilton BT HCI UART
+   /*QUPV3_2_SE7*/
+-- 
+2.41.0
+
