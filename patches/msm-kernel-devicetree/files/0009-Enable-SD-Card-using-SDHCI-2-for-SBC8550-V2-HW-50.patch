@@ -1,0 +1,169 @@
+From d3b6fcea6939818264bfc0b7338128caf6b19b1d Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 12 Dec 2025 12:18:10 +0000
+Subject: [PATCH] Enable SD Card using SDHCI 2 for SBC8550 V2 HW (#50)
+
+This commit adds support for the SD Card. The changes have been
+tested on V1 HW but require an extensive HW mod to make
+it work. So the SD card will really only work on V2 HW.
+When testing we were able to see the SD card working at
+UHS-SDR104 speeds (208MHz) which verifies that the
+SD card layout is good on V1 HW.
+
+The main issues faced:
+
+- VREG_L11B_1P2 causes a warm reset when enabled (on some boards).
+We are using this regulator as the SD card level shifter pullup voltage.
+So we need it to work to use the SD Card. To get around this issue,
+we cut a trace and used an external 1.2V supply to verify the SD card signals.
+
+- When we do manage to enable VREG_L11B_1P2 we can see voltage
+drops when we start SD card transactions which shows that we
+probably need more decoupling on the regulator. This was probably
+why the SD controller was failing to work at UHS-SDR104 speeds.
+The SD Controller was continuously trying to do the SD clock tuning
+procedure and failing when we were using VREG_L11B_1P2.
+
+- The pullups on the SD lines need to be disabled. Qualcomm's
+pinctrl settings for SDHCI_2 lines seem to enable the internal pullups.
+However, when I scoped the signals, they were distorted (even at 400KHz!)
+when the internal pullups are enabled. This is probably due to the interaction
+between the internal and external pullups (pullups in the SD card level shifter).
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 106 +++++++++++++++++++++++++++++++++
+ 1 file changed, 106 insertions(+)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 67d4d79..6483cb4 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -707,9 +707,51 @@
+ 		gpios = <6 GPIO_ACTIVE_HIGH>;
+ 		output-low;
+ 	};
++
++	sd_vset_default: sd_vset_default {
++		mux {
++			pins = "gpio4";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio4";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
++
++	sdc2_default: sdc2_default {
++		clk {
++			pins = "sdc2_clk";
++			bias-disable;
++			drive-strength = <16>;
++		};
++
++		cmd {
++			pins = "sdc2_cmd";
++			bias-disable;
++			drive-strength = <16>;
++		};
++
++		data {
++			pins = "sdc2_data";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
+ };
+ 
+ &soc {
++	vsys_3v3_reg: regulator-vsys-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "vsys_3v3_reg";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
+ 	som_vph_pwr: regulator-vph-pwr {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "som_vph_pwr";
+@@ -831,6 +873,27 @@
+ 
+ 		gpio-open-drain;
+ 	};
++
++	sdhci_2_vqmmc: regulator-sdhci-2-vqmmc {
++		compatible = "regulator-gpio";
++
++		regulator-name = "sdhci_2_vqmmc";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-type = "voltage";
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&sd_vset_default>;
++
++		gpios = <&tlmm 4 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		gpios-states = <0>;
++		states = <3300000 0
++			1800000 1>;
++
++		startup-delay-us = <10000>;
++	};
+ 	
+ 	/* Alternative firmware loader for the ADSP */
+ 	/* Audio Device Tree uses the adsp-loader */
+@@ -910,3 +973,46 @@
+ 	qcom,auto-suspend-disable;
+ 	status = "okay";
+ };
++
++&pm8550_gpios {
++	sd_card_detect_default: sd_card_detect_default {
++		pins = "gpio12";
++		function = "normal";
++		input-enable;
++		output-disable;
++		bias-disable;
++		power-source = <1>; /* 1.8 V */
++	};
++};
++
++&sdhc_2 {
++	/* I have specified both the standard kernel (vmmc and vqmmc)
++	 * and the Qualcomm specific voltage regulator
++	 * properties as the driver seems to use both.
++	 * The Qualcomm specific ones are not optional.
++	 */
++	vmmc-supply = <&vsys_3v3_reg>;
++	vqmmc-supply = <&sdhci_2_vqmmc>;
++
++	cd-gpios = <&pm8550_gpios 12 GPIO_ACTIVE_LOW>;
++
++	vdd-supply = <&vsys_3v3_reg>;
++	qcom,vdd-voltage-level = <3300000 3300000>;
++	qcom,vdd-current-level = <800000 800000>;
++
++	vdd-io-supply = <&sdhci_2_vqmmc>;
++	qcom,vdd-io-voltage-level = <1800000 3300000>;
++	qcom,vdd-io-current-level = <5600 5600>;
++
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&sdc2_default>, <&sd_card_detect_default>;
++	pinctrl-1 = <&sdc2_default>, <&sd_card_detect_default>;
++
++	qcom,iommu-dma = "fastmap";
++	qcom,uses_level_shifter;
++
++	resets = <&gcc GCC_SDCC2_BCR>;
++	reset-names = "core_reset";
++
++	status = "okay";
++};
+-- 
+2.41.0
+
