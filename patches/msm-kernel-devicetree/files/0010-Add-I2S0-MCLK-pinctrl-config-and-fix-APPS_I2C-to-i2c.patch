@@ -1,0 +1,66 @@
+From 2721e4472eefa1cb4d007438b8799ad8888c7243 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Tue, 16 Dec 2025 11:57:51 +0000
+Subject: [PATCH] Add I2S0 MCLK pinctrl config and fix APPS_I2C to i2c0 (#49)
+
+---
+ qcom/kalama-pinctrl.dtsi | 30 ++++++++++++++++++++++++++++++
+ qcom/kalama.dtsi         |  1 +
+ 2 files changed, 31 insertions(+)
+
+diff --git a/qcom/kalama-pinctrl.dtsi b/qcom/kalama-pinctrl.dtsi
+index bf7960c..ae60774 100755
+--- a/qcom/kalama-pinctrl.dtsi
++++ b/qcom/kalama-pinctrl.dtsi
+@@ -3140,6 +3140,36 @@
+ 		};
+ 	};
+ 
++	i2s0_mclk {
++		i2s0_mclk_sleep: i2s0_mclk_sleep {
++			mux {
++				pins = "gpio125";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio125";
++				drive-strength = <2>;   /* 2 mA */
++				bias-pull-down;         /* PULL DOWN */
++				input-enable;
++			};
++		};
++
++		i2s0_mclk_active: i2s0_mclk_active {
++			mux {
++				pins = "gpio125";
++				function = "i2s0_mclk";
++			};
++
++			config {
++				pins = "gpio125";
++				drive-strength = <8>;   /* 8 mA */
++				bias-disable;           /* NO PULL */
++				output-high;
++			};
++		};
++	};
++
+ 	i2s0_sck {
+ 		i2s0_sck_sleep: i2s0_sck_sleep {
+ 			mux {
+diff --git a/qcom/kalama.dtsi b/qcom/kalama.dtsi
+index b0b0925..28e22ae 100755
+--- a/qcom/kalama.dtsi
++++ b/qcom/kalama.dtsi
+@@ -49,6 +49,7 @@
+ 		hsuart3 = &qupv3_se11_2uart;
+ 		mmc1 = &sdhc_2; /* SD card slot */
+ 		ufshc1 = &ufshc_mem; /* Embedded UFS Slot */
++		i2c0 = &qupv3_hub_i2c2; /* APPS_I2C */
+ 	};
+ 
+ 	sram: sram@17D09400 {
+-- 
+2.41.0
+
