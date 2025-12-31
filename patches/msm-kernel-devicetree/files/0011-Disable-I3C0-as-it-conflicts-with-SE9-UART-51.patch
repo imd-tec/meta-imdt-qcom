@@ -1,0 +1,32 @@
+From a83149a3328db9f267cc1ec6f28ef2f9670882ba Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 19 Dec 2025 12:41:32 +0000
+Subject: [PATCH] Disable I3C0 as it conflicts with SE9 UART (#51)
+
+We will disable I3C and keep the UART/RS232
+as customers will probably find the RS232
+more useful than the I3C. There are not many
+supported I3C devices out in the world just
+yet.
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 6483cb4..5a238c0 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -955,10 +955,6 @@
+ 	status = "okay";
+ };
+ 
+-&i3c0 {
+-	status = "okay";
+-};
+-
+ &qupv3_se10_spi {
+ 	status = "okay";
+ 	spidev@0 {
+-- 
+2.41.0
+
