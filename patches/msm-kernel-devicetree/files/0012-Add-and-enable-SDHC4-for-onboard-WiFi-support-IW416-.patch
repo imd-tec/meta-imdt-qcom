@@ -1,0 +1,424 @@
+From 2216f684830909aca81a38468d9ff36287f1ae89 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Mon, 29 Dec 2025 16:26:09 +0000
+Subject: [PATCH] Add and enable SDHC4 for onboard WiFi support (IW416) (#53)
+
+This commit adds support for SDC4 on the QCS8550 SoC.
+I have been able to create the devicetree node for SDC4
+by reading the Qualcomm's QCS8550 register reference manual and
+looking at the upstream SM8550/SM8650 devicetree's.
+
+The main things I discovered whilst bringing up SDC4:
+- The ARM SMMU (IOMMU) mapping is incorrect in the upstream devicetree for the SM8550.
+The ARM SMMU stream ID's for peripherals are largely undocumented
+but I managed to find the ARM SMMU stream ID for SDC4 in the UEFI bootloader code.
+When the wrong stream ID is used, SDC4 fails to do DMA transfers and crashes the system
+on the first DMA write. This is because the SDHCI code which actions the DMA transfer
+has no timeout so it just waits forever. It assumes that the SDHCI DMA HW is working
+because in the normal case, if the DMA transfer fails, an interrupt will be raised and cancel the operation.
+And then the blocking wait function will return. The SDHCI DMA HW only works correctly
+if the right ARM SMMU stream ID is used.
+- The interconnects used are incorrect in the upstream devicetree. MASTER_SDCC_4 can only
+be found on aggre1_noc not on aggre2_noc like SDC2. This can be found by looking at the kernel
+code in drivers/interconnect/qcom/kalama.c
+The driver actually fails to probe with the wrong interconnect which indicates that SDC4 has not
+been tested by the upstream developer (this was actually mentioned in the mailing list)
+- SDC4 may have an internal SoC issue as it fails to tune it's DLL (Delay-Locked-Loop?) This means
+we are limited to speeds below SDR50 as SDR50 and above require the tuning process to be
+executed. If we don't cap the speed, it will enumerate our WiFi card at SDR50 speeds and it will fail
+the tuning process with the following message "DLL failed to LOCK".
+The upstream devicetree also caps the speed to SDR25 and has a comment saying "Broken HW".
+---
+ qcom/kalama.dtsi               |  72 ++++++++++-
+ qcom/kalamap-imdt-sbc8550.dtsi | 213 +++++++++++++++++++++++++++++++--
+ 2 files changed, 274 insertions(+), 11 deletions(-)
+
+diff --git a/qcom/kalama.dtsi b/qcom/kalama.dtsi
+index 28e22ae..6af5497 100755
+--- a/qcom/kalama.dtsi
++++ b/qcom/kalama.dtsi
+@@ -48,6 +48,7 @@
+ 		hsuart2 = &qupv3_se9_2uart;
+ 		hsuart3 = &qupv3_se11_2uart;
+ 		mmc1 = &sdhc_2; /* SD card slot */
++		mmc2 = &sdhc_4; /* WLAN Card card slot */
+ 		ufshc1 = &ufshc_mem; /* Embedded UFS Slot */
+ 		i2c0 = &qupv3_hub_i2c2; /* APPS_I2C */
+ 	};
+@@ -1839,6 +1840,22 @@
+ 		};
+ 	};
+ 
++	sdhc4_opp_table: sdhc4-opp-table {
++		compatible = "operating-points-v2";
++
++		opp-100000000 {
++			opp-hz = /bits/ 64 <100000000>;
++			opp-peak-kBps = <160000 100000>;
++			opp-avg-kBps = <50000 0>;
++		};
++
++		opp-202000000 {
++			opp-hz = /bits/ 64 <202000000>;
++			opp-peak-kBps = <200000 120000>;
++			opp-avg-kBps = <104000 0>;
++		};
++	};
++
+ 	sdhc_2: sdhci@8804000 {
+ 		status = "disabled";
+ 
+@@ -1850,11 +1867,11 @@
+ 				<GIC_SPI 223 IRQ_TYPE_LEVEL_HIGH>;
+ 		interrupt-names = "hc_irq", "pwr_irq";
+ 
++		resets = <&gcc GCC_SDCC2_BCR>;
++		reset-names = "core_reset";
++
+ 		bus-width = <4>;
+-		no-sdio;
+-		no-mmc;
+ 		qcom,restore-after-cx-collapse;
+-		qcom,uses_level_shifter;
+ 		qcom,dll_lock_bist_fail_wa;
+ 
+ 		clocks = <&gcc GCC_SDCC2_AHB_CLK>,
+@@ -1888,6 +1905,55 @@
+ 		};
+ 	};
+ 
++	sdhc_4: sdhci@88844000 {
++		status = "disabled";
++
++		compatible = "qcom,sdhci-msm-v5";
++		reg = <0x08844000 0x1000>;
++		reg-names = "hc_mem";
++
++		interrupts = <GIC_SPI 261 IRQ_TYPE_LEVEL_HIGH>,
++				<GIC_SPI 227 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "hc_irq", "pwr_irq";
++
++		resets = <&gcc GCC_SDCC4_BCR>;
++		reset-names = "core_reset";
++
++		bus-width = <4>;
++		qcom,restore-after-cx-collapse;
++		qcom,dll_lock_bist_fail_wa;
++
++		clocks = <&gcc GCC_SDCC4_AHB_CLK>,
++			<&gcc GCC_SDCC4_APPS_CLK>;
++		clock-names = "iface", "core";
++
++		/*
++		 * DLL HSR settings. Refer go/hsr - <Target> DLL settings.
++		 * Note that the DLL_CONFIG_2 value is not passed from the
++		 * device tree, but it is calculated in the driver.
++		 */
++		qcom,dll-hsr-list = <0x0007442C 0x0 0x10
++					0x090106C0 0x80040868>;
++		
++		/* See SDC4 SMMU mapping in boot_images/boot/Settings/Kailua/Core/SMMU/iort.dtsi */
++		iommus = <&apps_smmu 0x80 0>;
++		dma-coherent;
++
++		interconnects = <&aggre1_noc MASTER_SDCC_4 &mc_virt SLAVE_EBI1>,
++			      <&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_SDCC_4>;
++		interconnect-names = "sdhc-ddr", "cpu-sdhc";
++		operating-points-v2 = <&sdhc4_opp_table>;
++
++		qos0 {
++			perf;
++			vote = <44>;
++		};
++
++		qos1 {
++			vote = <44>;
++		};
++	};
++
+ 	ufsphy_mem: ufsphy_mem@1d80000 {
+ 		reg = <0x1d80000 0x1934>;
+ 		reg-names = "phy_mem";
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 5a238c0..bf79388 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -662,6 +662,39 @@
+ 		output-low;
+ 	};
+ 
++	/* PMIC_EN of NXP IW416 WiFi/BT Chipset */
++	wifi-pmic-en {
++		gpio-hog;
++		gpios = <19 GPIO_ACTIVE_HIGH>;
++
++		drive-strength = <2>;
++		drive-push-pull;
++
++		output-high;
++	};
++
++	/* WLAN EN for NXP IW416 WiFi/BT Chipset */
++	wl-wake-dev {
++		gpio-hog;
++		gpios = <5 GPIO_ACTIVE_HIGH>;
++
++		drive-strength = <2>;
++		drive-push-pull;
++
++		output-high;
++	};
++
++	/* BT EN input of NXP IW416 WiFi/BT Chipset */
++	bt-wake-dev {
++		gpio-hog;
++		gpios = <160 GPIO_ACTIVE_HIGH>;
++
++		drive-strength = <2>;
++		drive-push-pull;
++
++		output-high;
++	};
++
+ 	audio_speaker_dac_reset_gpio_default: audio_speaker_dac_reset_gpio_default {
+ 		mux {
+ 			pins = "gpio177";
+@@ -740,12 +773,99 @@
+ 			drive-strength = <16>;
+ 		};
+ 	};
++
++	sdc4_data0: sdc4_data0 {
++		mux {
++			pins = "gpio89";
++			function = "sdc40";
++		};
++
++		config {
++			pins = "gpio89";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
++
++	sdc4_data1: sdc4_data1 {
++		mux {
++			pins = "gpio90";
++			function = "sdc41";
++		};
++
++		config {
++			pins = "gpio90";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
++
++	sdc4_data2: sdc4_data2 {
++		mux {
++			pins = "gpio48";
++			function = "sdc42";
++		};
++
++		config {
++			pins = "gpio48";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
++
++	sdc4_data3: sdc4_data3 {
++		mux {
++			pins = "gpio49";
++			function = "sdc43";
++		};
++
++		config {
++			pins = "gpio49";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
++
++	sdc4_clk: sdc4_clk {
++		mux {
++			pins = "gpio50";
++			function = "sdc4_clk";
++		};
++
++		config {
++			pins = "gpio50";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
++
++	sdc4_cmd: sdc4_cmd {
++		mux {
++			pins = "gpio51";
++			function = "sdc4_cmd";
++		};
++
++		config {
++			pins = "gpio51";
++			bias-disable;
++			drive-strength = <16>;
++		};
++	};
+ };
+ 
+ &soc {
+-	vsys_3v3_reg: regulator-vsys-3v3 {
++	vsys_sd_3v3_reg: regulator-vsys-sd-3v3 {
+ 		compatible = "regulator-fixed";
+-		regulator-name = "vsys_3v3_reg";
++		regulator-name = "vsys_sd_3v3_reg";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	vsys_wlan_3v3_reg: regulator-vsys-wlan-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "vsys_wlan_3v3_reg";
+ 		regulator-min-microvolt = <3300000>;
+ 		regulator-max-microvolt = <3300000>;
+ 		regulator-always-on;
+@@ -894,6 +1014,17 @@
+ 
+ 		startup-delay-us = <10000>;
+ 	};
++
++	sdhci_4_vqmmc: regulator-sdhci-4-vqmmc {
++		compatible = "regulator-fixed";
++		regulator-name = "sdhci_4_vqmmc";
++
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		regulator-always-on;
++		regulator-boot-on;
++	};
+ 	
+ 	/* Alternative firmware loader for the ADSP */
+ 	/* Audio Device Tree uses the adsp-loader */
+@@ -903,7 +1034,6 @@
+ 		qcom,firmware-name = "adsp";
+ 		qcom,rproc-handle = <&adsp_pas>;
+ 	};
+-
+ };
+ 
+ &qupv3_hub_i2c2 {
+@@ -971,7 +1101,9 @@
+ };
+ 
+ &pm8550_gpios {
+-	sd_card_detect_default: sd_card_detect_default {
++	status = "okay";
++
++	sd_card_detect_default: sd-card-detect-default {
+ 		pins = "gpio12";
+ 		function = "normal";
+ 		input-enable;
+@@ -981,18 +1113,32 @@
+ 	};
+ };
+ 
++&pmk8550_gpios {
++	status = "okay";
++
++	/* 32KHz Sleep Clock for WLAN card */
++	pmk8550_sleep_clk_default: pmk8550-sleep-clk-default {
++		pins = "gpio3";
++		function = "func1";
++		input-disable;
++		output-enable;
++		bias-disable;
++		power-source = <1>; /* 1.8 V */
++	};
++};
++
+ &sdhc_2 {
+ 	/* I have specified both the standard kernel (vmmc and vqmmc)
+ 	 * and the Qualcomm specific voltage regulator
+ 	 * properties as the driver seems to use both.
+ 	 * The Qualcomm specific ones are not optional.
+ 	 */
+-	vmmc-supply = <&vsys_3v3_reg>;
++	vmmc-supply = <&vsys_sd_3v3_reg>;
+ 	vqmmc-supply = <&sdhci_2_vqmmc>;
+ 
+ 	cd-gpios = <&pm8550_gpios 12 GPIO_ACTIVE_LOW>;
+ 
+-	vdd-supply = <&vsys_3v3_reg>;
++	vdd-supply = <&vsys_sd_3v3_reg>;
+ 	qcom,vdd-voltage-level = <3300000 3300000>;
+ 	qcom,vdd-current-level = <800000 800000>;
+ 
+@@ -1007,8 +1153,59 @@
+ 	qcom,iommu-dma = "fastmap";
+ 	qcom,uses_level_shifter;
+ 
+-	resets = <&gcc GCC_SDCC2_BCR>;
+-	reset-names = "core_reset";
++	status = "okay";
++};
++
++&sdhc_4 {
++	vmmc-supply = <&vsys_wlan_3v3_reg>;
++	vqmmc-supply = <&sdhci_4_vqmmc>;
++
++	vdd-supply = <&vsys_wlan_3v3_reg>;
++	qcom,vdd-voltage-level = <3300000 3300000>;
++	qcom,vdd-current-level = <800000 800000>;
++
++	vdd-io-supply = <&sdhci_4_vqmmc>;
++	qcom,vdd-io-voltage-level = <1800000 1800000>;
++	qcom,vdd-io-current-level = <5600 5600>;
++
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&sdc4_data0>,
++			<&sdc4_data1>,
++			<&sdc4_data2>,
++			<&sdc4_data3>,
++			<&sdc4_clk>,
++			<&sdc4_cmd>,
++			<&pmk8550_sleep_clk_default>;
++
++	pinctrl-1 = <&sdc4_data0>,
++			<&sdc4_data1>,
++			<&sdc4_data2>,
++			<&sdc4_data3>,
++			<&sdc4_clk>,
++			<&sdc4_cmd>,
++			<&pmk8550_sleep_clk_default>;
++
++	keep-power-in-suspend;
++	non-removable;
++
++	no-mmc;
++	no-sd;
++
++	/*
++	 * SoC SDHCI HW seems incapable of going above SDR25
++	 * but it's speed capability register says it supports SDR50 and SDR104.
++	 * As a workaround, we mask these capabilities out for this specific
++	 * controller.
++	 * Upstream kernel also seems show that some SDHCI controllers in Qualcomm chips
++	 * are broken and are also masking out these higher speeds.
++	 *
++	 * Bitmasks:
++	 * SDHCI_SUPPORT_SDR50	0x00000001
++	 * SDHCI_SUPPORT_SDR104 0x00000002
++	 */
++	sdhci-caps-mask = <0x3 0x0>;
++
++	qcom,iommu-dma = "fastmap";
+ 
+ 	status = "okay";
+ };
+-- 
+2.41.0
+

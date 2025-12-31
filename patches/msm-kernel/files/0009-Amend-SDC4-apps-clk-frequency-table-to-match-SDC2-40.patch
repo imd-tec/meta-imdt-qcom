@@ -1,0 +1,39 @@
+From 68b4c0fa25a800f56a8a9a9b4aab76fb5c89de34 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Mon, 29 Dec 2025 15:24:06 +0000
+Subject: [PATCH] Amend SDC4 apps clk frequency table to match SDC2 (#40)
+
+This change should allow SDC4 to use the higher frequencies
+if it can work at UHS SDR50 and SDR104 speeds.
+---
+ drivers/clk/qcom/gcc-kalama.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/clk/qcom/gcc-kalama.c b/drivers/clk/qcom/gcc-kalama.c
+index b53ded0d3..e4406603c 100644
+--- a/drivers/clk/qcom/gcc-kalama.c
++++ b/drivers/clk/qcom/gcc-kalama.c
+@@ -1423,7 +1423,9 @@ static const struct freq_tbl ftbl_gcc_sdcc4_apps_clk_src[] = {
+ 	F(400000, P_BI_TCXO, 12, 1, 4),
+ 	F(25000000, P_GCC_GPLL0_OUT_EVEN, 12, 0, 0),
+ 	F(37500000, P_GCC_GPLL0_OUT_EVEN, 8, 0, 0),
+-	F(75000000, P_GCC_GPLL0_OUT_EVEN, 4, 0, 0),
++	F(50000000, P_GCC_GPLL0_OUT_EVEN, 6, 0, 0),
++	F(100000000, P_GCC_GPLL0_OUT_EVEN, 3, 0, 0),
++	F(148000000, P_GCC_GPLL9_OUT_MAIN, 4, 0, 0),
+ 	{ }
+ };
+ 
+@@ -1447,7 +1449,8 @@ static struct clk_rcg2 gcc_sdcc4_apps_clk_src = {
+ 		.num_vdd_classes = ARRAY_SIZE(gcc_kalama_regulators),
+ 		.num_rate_max = VDD_NUM,
+ 		.rate_max = (unsigned long[VDD_NUM]) {
+-			[VDD_LOWER] = 75000000},
++			[VDD_LOWER] = 100000000,
++			[VDD_LOW_L1] = 148000000},
+ 	},
+ };
+ 
+-- 
+2.41.0
+

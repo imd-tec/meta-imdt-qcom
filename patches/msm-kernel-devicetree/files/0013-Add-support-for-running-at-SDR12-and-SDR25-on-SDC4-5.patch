@@ -1,0 +1,35 @@
+From 9eb49283b8f69419a888fc01a1f04d7fa7b25ad7 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Wed, 31 Dec 2025 18:05:57 +0000
+Subject: [PATCH] Add support for running at SDR12 and SDR25 on SDC4 (#54)
+
+In the logs I can now see:
+mmc2: new ultra high speed SDR25 SDIO card at address 0001
+
+Without this change the speed is capped to SD High Speed
+because the caps mask disables SDR50 and SDR104.
+And the code only enables SDR12 and SDR104 if
+these SDR50 or SDR104 is supported. So we need
+to add this to our devicetree to tell the kernel
+that we can support SDR12 and SDR25 on SDC4.
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index bf79388..2f4543e 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -1205,6 +1205,9 @@
+ 	 */
+ 	sdhci-caps-mask = <0x3 0x0>;
+ 
++	sd-uhs-sdr12;
++	sd-uhs-sdr25;
++
+ 	qcom,iommu-dma = "fastmap";
+ 
+ 	status = "okay";
+-- 
+2.41.0
+
