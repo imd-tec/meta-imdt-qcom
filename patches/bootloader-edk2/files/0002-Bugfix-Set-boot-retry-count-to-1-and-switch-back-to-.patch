@@ -1,0 +1,47 @@
+From 9c2b5fba2ddd1c046ea874a678acbafb1f5904cf Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 9 Jan 2026 15:01:28 +0000
+Subject: [PATCH] Bugfix: Set boot retry count to 1 and switch back to previous
+ bootable slot on boot fail (#2)
+
+After flashing the device, the first boot has unbootable = 0 and RetryCount = 0
+which was causing the boot to fail. So, the RetryCount needs to be set >0 so as to
+select the bootable device and boot. In case of a failed update, ValidateSlotGuids function
+recognizes that the boot slot has changed but it fails to boot.
+At this point, HandleActiveSlotUnbootable is called to switch
+slot and boot from the previous correctly booted slot.
+If the other slot fails too, then it will stay in bootloader.
+---
+ QcomModulePkg/Include/Library/PartitionTableUpdate.h | 2 +-
+ QcomModulePkg/Library/BootLib/PartitionTableUpdate.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/QcomModulePkg/Include/Library/PartitionTableUpdate.h b/QcomModulePkg/Include/Library/PartitionTableUpdate.h
+index e07a62e..7943751 100644
+--- a/QcomModulePkg/Include/Library/PartitionTableUpdate.h
++++ b/QcomModulePkg/Include/Library/PartitionTableUpdate.h
+@@ -151,7 +151,7 @@ table in the respective position mentioned below.
+ #define PART_ATT_PRIORITY_VAL ((UINT64)0x3 << PART_ATT_PRIORITY_BIT)
+ #define PART_ATT_ACTIVE_VAL ((UINT64)0x1 << PART_ATT_ACTIVE_BIT)
+ // Disable the retry and boot to an alternative slot instead of going to fastboot
+-#define PART_ATT_MAX_RETRY_COUNT_VAL ((UINT64)0x0 << PART_ATT_MAX_RETRY_CNT_BIT) 
++#define PART_ATT_MAX_RETRY_COUNT_VAL ((UINT64)0x1 << PART_ATT_MAX_RETRY_CNT_BIT) 
+ #define PART_ATT_SUCCESSFUL_VAL ((UINT64)0x1 << PART_ATT_SUCCESS_BIT)
+ #define PART_ATT_UNBOOTABLE_VAL ((UINT64)0x1 << PART_ATT_UNBOOTABLE_BIT)
+ #define MAX_PRIORITY 3
+diff --git a/QcomModulePkg/Library/BootLib/PartitionTableUpdate.c b/QcomModulePkg/Library/BootLib/PartitionTableUpdate.c
+index 83194d1..347abc9 100644
+--- a/QcomModulePkg/Library/BootLib/PartitionTableUpdate.c
++++ b/QcomModulePkg/Library/BootLib/PartitionTableUpdate.c
+@@ -1775,7 +1775,7 @@ ValidateSlotGuids (Slot *BootableSlot)
+       DEBUG ((EFI_D_ERROR, "Boot lun: %x and BootableSlot: %s "
+                            "do not match\n",
+               UfsBootLun, BootableSlot->Suffix));
+-      return EFI_DEVICE_ERROR;
++      GUARD (HandleActiveSlotUnbootable (FALSE));
+     }
+   } else if (!AsciiStrnCmp (BootDeviceType, "EMMC", AsciiStrLen ("EMMC"))) {
+   } else {
+-- 
+2.41.0
+
