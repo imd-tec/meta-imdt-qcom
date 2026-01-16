@@ -1,0 +1,25 @@
+From 45f24e230e53b6bfc7389ccc7eeb94695bea91ee Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Tue, 2 Dec 2025 09:17:28 +0000
+Subject: [PATCH] Configure SHT4x temperature sensor to use QUPv3 SSC SE1 (#4)
+
+---
+ registry/config/kalama/kailua_iot_hdk_sht4x_0.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/registry/config/kalama/kailua_iot_hdk_sht4x_0.json b/registry/config/kalama/kailua_iot_hdk_sht4x_0.json
+index da809e3..fdbb311 100755
+--- a/registry/config/kalama/kailua_iot_hdk_sht4x_0.json
++++ b/registry/config/kalama/kailua_iot_hdk_sht4x_0.json
+@@ -49,7 +49,7 @@
+         "data": "0"
+       },
+       "bus_instance":{ "type": "int", "ver": "0",
+-        "data": "4"
++        "data": "2"
+       },
+       "slave_config":{ "type": "int", "ver": "0",
+         "data": "68"
+-- 
+2.41.0
+
