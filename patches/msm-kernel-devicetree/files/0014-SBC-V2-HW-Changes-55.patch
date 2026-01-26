@@ -1,0 +1,105 @@
+From 89080e2f3f16fb82581950643face7d5901652f8 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 23 Jan 2026 10:46:19 +0000
+Subject: [PATCH] SBC V2 HW Changes (#55)
+
+-Change audio reset gpio
+-Revert PCIE1 pins
+NOTE: if flashed in V1 HW, pcie1 will not work.
+---
+ qcom/kalama-pinctrl.dtsi       | 14 +++++++-------
+ qcom/kalamap-imdt-sbc8550.dtsi | 10 +++-------
+ 2 files changed, 10 insertions(+), 14 deletions(-)
+
+diff --git a/qcom/kalama-pinctrl.dtsi b/qcom/kalama-pinctrl.dtsi
+index ae60774..61acecc 100755
+--- a/qcom/kalama-pinctrl.dtsi
++++ b/qcom/kalama-pinctrl.dtsi
+@@ -3534,12 +3534,12 @@
+ 
+ 		pcie1_clkreq_default: pcie1_clkreq_default {
+ 			mux {
+-				pins = "gpio99";
+-				function = "gpio";
++				pins = "gpio98";
++				function = "pcie1_clk_req_n";
+ 			};
+ 
+ 			config {
+-				pins = "gpio99";
++				pins = "gpio98";
+ 				drive-strength = <2>;
+ 				drive-open-drain;
+ 				bias-disable;
+@@ -3548,12 +3548,12 @@
+ 
+ 		pcie1_wake_default: pcie1_wake_default {
+ 			mux {
+-				pins = "gpio98";
++				pins = "gpio99";
+ 				function = "gpio";
+ 			};
+ 
+ 			config {
+-				pins = "gpio98";
++				pins = "gpio99";
+ 				drive-strength = <2>;
+ 				drive-open-drain;
+ 				bias-disable;
+@@ -3562,12 +3562,12 @@
+ 
+ 		pcie1_clkreq_sleep: pcie1_clkreq_sleep {
+ 			mux {
+-				pins = "gpio99";
++				pins = "gpio98";
+ 				function = "gpio";
+ 			};
+ 
+ 			config {
+-				pins = "gpio99";
++				pins = "gpio98";
+ 				drive-strength = <2>;
+ 				drive-open-drain;
+ 				bias-disable;
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 2f4543e..0936664 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -433,10 +433,6 @@
+ 	 */
+ 	qcom,no-l1ss-supported;
+ 
+-	perst-gpio = <&tlmm 97 GPIO_ACTIVE_HIGH>;
+-	wake-gpio = <&tlmm 98 GPIO_ACTIVE_HIGH>;
+-	clkreq-gpio = <&tlmm 99 GPIO_ACTIVE_HIGH>;
+-
+ 	iommu-map = <0x0 &apps_smmu 0x1480 0x1>,
+ 		<0x100 &apps_smmu 0x1481 0x1>,
+ 		<0x208 &apps_smmu 0x1482 0x1>,
+@@ -697,12 +693,12 @@
+ 
+ 	audio_speaker_dac_reset_gpio_default: audio_speaker_dac_reset_gpio_default {
+ 		mux {
+-			pins = "gpio177";
++			pins = "gpio171";
+ 			function = "gpio";
+ 		};
+ 
+ 		config {
+-			pins = "gpio177";
++			pins = "gpio171";
+ 			drive-strength = <2>;
+ 			drive-open-drain;
+ 		};
+@@ -1044,7 +1040,7 @@
+ 		
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&audio_speaker_dac_reset_gpio_default>;
+-		reset-gpios = <&tlmm 177 GPIO_ACTIVE_LOW>;
++		reset-gpios = <&tlmm 171 GPIO_ACTIVE_LOW>;
+ 		
+ 		HPVDD-supply = <&per_3v3_reg>;
+ 		SPRVDD-supply = <&per_3v3_reg>;
+-- 
+2.41.0
+

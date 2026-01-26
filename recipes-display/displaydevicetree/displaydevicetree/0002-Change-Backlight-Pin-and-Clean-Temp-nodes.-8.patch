@@ -1,0 +1,146 @@
+From 54d05e81bb25a91c71c491c143433db23a204d0d Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 26 Jan 2026 15:47:56 +0000
+Subject: [PATCH] Change Backlight Pin and Clean Temp nodes. (#8)
+
+Change backlight enable pin to PM8550 GPIO6 instead of QCS pin.
+This is to enable the display on SBC V2 HW and it doesn't work on V1 HW.
+
+Clean up dsi_temp_bl_en_default node as it's not used anymore.
+---
+ display/kalama-imdt-sde-display-pinctrl.dtsi | 32 +--------------
+ display/kalama-imdt-sde-display.dtsi         | 43 ++++----------------
+ 2 files changed, 10 insertions(+), 65 deletions(-)
+
+diff --git a/display/kalama-imdt-sde-display-pinctrl.dtsi b/display/kalama-imdt-sde-display-pinctrl.dtsi
+index fd55ef1..4d5cef3 100755
+--- a/display/kalama-imdt-sde-display-pinctrl.dtsi
++++ b/display/kalama-imdt-sde-display-pinctrl.dtsi
+@@ -111,12 +111,12 @@
+ 	pmx_disp_en: pmx_disp_en {
+ 		disp_pwr_en_default: disp_pwr_en_default {
+ 			mux {
+-				pins = "gpio91";
++				pins = "gpio123";
+ 				function = "gpio";
+ 			};
+ 
+ 			config {
+-				pins = "gpio91";
++				pins = "gpio123";
+ 				drive-strength = <8>;   /* 8 mA */
+ 				bias-disable;
+ 			};
+@@ -136,33 +136,5 @@
+ 			bias-disable;
+ 		};
+ 	};
+-
+-	dsi_temp_bl_en_default: dsi_temp_bl_en_default {
+-		mux {
+-			pins = "gpio121";
+-			function = "gpio";
+-		};
+-
+-		config {
+-			pins = "gpio121";
+-			drive-strength = <8>;   /* 8 mA */
+-			bias-disable;
+-		};
+-	};
+-
+-
+-	dsi_temp_disp_en_default: dsi_temp_disp_en_default {
+-		mux {
+-			pins = "gpio123";
+-			function = "gpio";
+-		};
+-
+-		config {
+-			pins = "gpio123";
+-			drive-strength = <8>;   /* 8 mA */
+-			bias-disable;
+-		};
+-	};
+-
+ };
+ 
+diff --git a/display/kalama-imdt-sde-display.dtsi b/display/kalama-imdt-sde-display.dtsi
+index c649a4c..063a15b 100644
+--- a/display/kalama-imdt-sde-display.dtsi
++++ b/display/kalama-imdt-sde-display.dtsi
+@@ -31,6 +31,9 @@
+ 		label = "disp_rdump_region";
+ 	};
+ 
++	/* IMDT NOTE
++	 * Using GPIO_123 (I2S1_WS) for 10_1PWR_EN.
++	 */
+ 	display_panel_pwr_en: regulator-display-panel-en {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "display_panel_pwr_en";
+@@ -40,7 +43,7 @@
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&disp_pwr_en_default>;
+ 		
+-		gpio = <&tlmm 91 0>;
++		gpio = <&tlmm 123 0>;
+ 		enable-active-high;
+ 		
+ 		vin-supply = <&som_vph_pwr>;
+@@ -70,48 +73,18 @@
+ 		regulator-boot-on;
+ 	};
+ 
+-	/* IMDT NOTE
+-	 * Temporary Hack because DSI adapter is actually
+-	 * using GPIO_123 (I2S1_WS) for 10_1PWR_EN.
+-	 * This should be GPIO_91.
+-	 */
+-	display_panel_pwr_en_temp: regulator-display-panel-en-temp {
+-		compatible = "regulator-fixed";
+-		regulator-name = "display_panel_pwr_en_temp";
+-		regulator-min-microvolt = <8000000>;
+-		regulator-max-microvolt = <8000000>;
+-
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&dsi_temp_disp_en_default>;
+-		
+-		gpio = <&tlmm 123 0>;
+-		enable-active-high;
+-		
+-		vin-supply = <&som_vph_pwr>;
+-
+-		regulator-always-on;
+-		regulator-boot-on;
+-	};
+-
+-	/* IMDT NOTE
+-	 * Temporary Hack because DSI adapter is actually
+-	 * using GPIO_121 (I2S1_SCK) for 10_Inch_Display_PWM.
+-	 * This should be PM8550 GPIO6.
+-	 * I don't think we can PWM this pin either!
+-	 */
+-	dsi_temp_bl_en: regulator-dsi-temp-bl-en {
++	dsi_bl_en: regulator-dsi-bl-en {
+ 		compatible = "regulator-fixed";
+-		regulator-name = "dsi_temp_bl_en";
++		regulator-name = "dsi_bl_en";
+ 		regulator-min-microvolt = <8000000>;
+ 		regulator-max-microvolt = <8000000>;
+ 
+ 		pinctrl-names = "default";
+-		pinctrl-0 = <&dsi_temp_bl_en_default>;
++		pinctrl-0 = <&display0_backlight_default>;
+ 		
+-		gpio = <&tlmm 121 0>;
+ 		enable-active-high;
+ 		
+-		vin-supply = <&display_panel_pwr_en_temp>;
++		vin-supply = <&display_panel_pwr_en>;
+ 
+ 		regulator-always-on;
+ 		regulator-boot-on;
+-- 
+2.41.0
+

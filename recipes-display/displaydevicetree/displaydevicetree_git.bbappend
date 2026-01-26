@@ -7,3 +7,4 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
 
 # Patches for qcom-display-devicetree
 SRC_URI:append:imdt-qcs8550-sbc = " file://0001-Initial-bringup-of-IMDT-Display-3.patch"
+SRC_URI:append:imdt-qcs8550-sbc = " file://0002-Change-Backlight-Pin-and-Clean-Temp-nodes.-8.patch"
