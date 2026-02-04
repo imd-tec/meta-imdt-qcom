@@ -1,0 +1,25 @@
+From 038e01c790ac8b361dec6b2d29d4d5f51df7dea9 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Tue, 3 Feb 2026 13:15:08 +0000
+Subject: [PATCH] Update Slave Address of AK991X to 0xC
+
+---
+ registry/config/kalama/kailua_iot_hdk_ak991x_0.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/registry/config/kalama/kailua_iot_hdk_ak991x_0.json b/registry/config/kalama/kailua_iot_hdk_ak991x_0.json
+index 518ed53..079cf8e 100755
+--- a/registry/config/kalama/kailua_iot_hdk_ak991x_0.json
++++ b/registry/config/kalama/kailua_iot_hdk_ak991x_0.json
+@@ -48,7 +48,7 @@
+         "data": "2"
+       },
+       "slave_config":{ "type": "int", "ver": "0",
+-        "data": "14"
++        "data": "12"
+       },
+       "i3c_address":{ "type": "int", "ver": "0",
+         "data": "30"
+-- 
+2.41.0
+
