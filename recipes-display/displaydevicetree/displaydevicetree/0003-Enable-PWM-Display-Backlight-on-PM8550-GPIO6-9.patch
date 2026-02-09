@@ -1,0 +1,74 @@
+From 4abee15722df1aaa50bab9087b40371a66236281 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 9 Feb 2026 13:02:05 +0000
+Subject: [PATCH] Enable PWM Display Backlight on PM8550 GPIO6 (#9)
+
+Enable pwm control for backlight.
+Change GPIO6 (display0_backlight_default) to use function1 which corresponds to PWM2.
+PWM2 is enabled in dsi_tst070wsbe165c_video which controls the backlight through /sys/class/backlight/panel0-backlight folder.
+Disabled pm8550_rgb because there where using pwm2.
+Note: pwms = <&pm8550_pwm_1 1 1000>;
+pm8550_pwm_1 corresponds to pwmchip0 in sw and slot 1 to pwn1, which is using the PWM2 (func1 for GPIO6)
+This can be checked in /sys/kernel/debug/pwm, which shows the node address and how they are used.
+100Kns is the refresh rate which seems to be working but I am not sure if needs changed
+---
+ display/kalama-imdt-sde-display-hdk.dtsi |  6 ++----
+ display/kalama-imdt-sde-display.dtsi     | 14 +++++++++++---
+ 2 files changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/display/kalama-imdt-sde-display-hdk.dtsi b/display/kalama-imdt-sde-display-hdk.dtsi
+index 1493fb5..d55a0bc 100755
+--- a/display/kalama-imdt-sde-display-hdk.dtsi
++++ b/display/kalama-imdt-sde-display-hdk.dtsi
+@@ -4,15 +4,13 @@
+ 	qcom,dsi-select-clocks = "pll_byte_clk0", "pll_dsi_clk0";
+ 	qcom,dsi-select-sec-clocks = "pll_byte_clk1", "pll_dsi_clk1";
+ 
+-	/* Do we need qcom,esd-check-enabled; ? */
+-	/* display0_backlight_default ?? */
+ 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_avdd>;
+-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_external";
++	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+ 	qcom,mdss-dsi-bl-min-level = <1>;
+ 	qcom,mdss-dsi-bl-max-level = <4095>;
+ 	qcom,mdss-brightness-max-level = <255>;
+-	qcom,platform-bklight-en-gpio = <&pm8550_gpios 6 0>;
+ 	qcom,platform-reset-gpio = <&tlmm 133 0>;
++	pwms = <&pm8550_pwm_1 1 100000>; /* PWM period = 100000 ns (10 kHz) */
+ 
+ 	qcom,mdss-dsi-display-timings {
+ 		timing@0 {
+diff --git a/display/kalama-imdt-sde-display.dtsi b/display/kalama-imdt-sde-display.dtsi
+index 063a15b..5f52e4e 100644
+--- a/display/kalama-imdt-sde-display.dtsi
++++ b/display/kalama-imdt-sde-display.dtsi
+@@ -2,15 +2,23 @@
+ #include "kalama-imdt-sde-display-common.dtsi"
+ #include <dt-bindings/clock/qcom,dispcc-kalama.h>
+ 
++&pm8550_rgb {
++        status = "disabled";
++};
++
++&pm8550_pwm_1 {
++        status = "okay";
++};
++
+ &pm8550_gpios {
+ 	display0_backlight_default: display0_backlight_default {
+ 		pins = "gpio6";
+-		function = "normal";
++		function = "func1";
+ 		input-disable;
+ 		output-enable;
+ 		bias-disable;
+-		power-source = <1>;
+-		qcom,drive-strength = <3>;
++		power-source = <1>; /* 1.8V */
++		qcom,drive-strength = <2>;
+ 	};
+ };
+ 
+-- 
+2.41.0
+
