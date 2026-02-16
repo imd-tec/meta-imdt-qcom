@@ -1,0 +1,39 @@
+From 56b4901751c0e3f583e9726b26cc72406b21dfdf Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 16 Feb 2026 10:47:11 +0000
+Subject: [PATCH] Enable DMIC4 on GPIO 177,178 (#7)
+
+Add dmic45 gpios.
+Add routings for DMICs over TX and VA (Voice Accelerator).
+DMIC can be activated with :
+qtitinymix 'TX DEC0 MUX' 'MSM_DMIC'
+qtitinymix 'TX DMIC MUX0' 'DMIC4'
+qtitinymix 'TX_AIF1_CAP Mixer DEC0' 1
+qtitinymix 'TX_DEC0 Volume' 84
+
+And it is using the CODEC_DMA-LPAIF_RXTX-TX-3 pcm.
+---
+ kalama-audio-imdt-sbc8550.dtsi | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/kalama-audio-imdt-sbc8550.dtsi b/kalama-audio-imdt-sbc8550.dtsi
+index ada62d6..54e6d27 100755
+--- a/kalama-audio-imdt-sbc8550.dtsi
++++ b/kalama-audio-imdt-sbc8550.dtsi
+@@ -88,7 +88,12 @@
+ 			<&tlv320aic3x_codec>;
+ 	asoc-codec-names = "msm-stub-codec.1", "lpass-cdc",
+ 			"tlv320aic3x";
+-	qcom,audio-routing = 
++	qcom,cdc-dmic45-gpios = <&cdc_dmic45_gpios>; 
++	qcom,audio-routing =
++		"TX DMIC3", "Digital Mic3",     
++		"TX DMIC4", "Digital Mic4", 
++		"VA DMIC3", "Digital Mic3", 
++		"VA DMIC4", "Digital Mic4", 
+ 		"RX_TX DEC0_INP", "TX DEC0 MUX",
+ 		"RX_TX DEC1_INP", "TX DEC1 MUX",
+ 		"RX_TX DEC2_INP", "TX DEC2 MUX",
+-- 
+2.41.0
+
