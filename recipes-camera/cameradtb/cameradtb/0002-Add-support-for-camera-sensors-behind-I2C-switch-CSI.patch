@@ -1,0 +1,68 @@
+From a96950aa6acc7d96034a10db5424e67528f68898 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Fri, 13 Mar 2026 11:13:33 +0000
+Subject: [PATCH] Add support for camera sensors behind I2C switch (CSI4 to
+ CSI7) (#24)
+
+There are 4 camera sensors sitting behind the I2C switch.
+And they are:
+CSI4 -> I2C Switch Channel 0
+CSI5 -> I2C Switch Channel 1
+CSI6 -> I2C Switch Channel 2
+CSI7 -> I2C Switch Channel 3
+
+The 7 bit I2C switch address is 0x74 and
+the kernel driver uses this information
+to set the I2C switch channel before reading/writing
+to the sensor.
+---
+ kalama-camera-sensor-imdt-sbc8550.dtsi | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/kalama-camera-sensor-imdt-sbc8550.dtsi b/kalama-camera-sensor-imdt-sbc8550.dtsi
+index c15a03b..a708a5e 100644
+--- a/kalama-camera-sensor-imdt-sbc8550.dtsi
++++ b/kalama-camera-sensor-imdt-sbc8550.dtsi
+@@ -280,6 +280,9 @@
+ 		sensor-position-pitch = <0>;
+ 		sensor-position-yaw = <180>;
+ 
++		i2c-switch = <0x74>;
++		i2c-channel = <0x0>;
++
+ 		/* 
+ 		Power Supplies for CCM 
+ 		- 1V8_CAM (1.8V)
+@@ -329,6 +332,9 @@
+ 		sensor-position-pitch = <0>;
+ 		sensor-position-yaw = <180>;
+ 
++		i2c-switch = <0x74>;
++		i2c-channel = <0x1>;
++
+ 		/* 
+ 		Power Supplies for CCM 
+ 		- 1V8_CAM (1.8V)
+@@ -374,6 +380,9 @@
+ 		sensor-position-pitch = <0>;
+ 		sensor-position-yaw = <180>;
+ 
++		i2c-switch = <0x74>;
++		i2c-channel = <0x2>;
++
+ 		/* 
+ 		Power Supplies for CCM 
+ 		- 1V8_CAM (1.8V)
+@@ -419,6 +428,9 @@
+ 		sensor-position-pitch = <0>;
+ 		sensor-position-yaw = <180>;
+ 
++		i2c-switch = <0x74>;
++		i2c-channel = <0x3>;
++
+ 		/* 
+ 		Power Supplies for CCM 
+ 		- 1V8_CAM (1.8V)
+-- 
+2.41.0
+

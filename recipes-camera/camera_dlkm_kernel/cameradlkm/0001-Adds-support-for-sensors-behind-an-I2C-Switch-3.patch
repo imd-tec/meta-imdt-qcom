@@ -1,0 +1,318 @@
+From 0fa60476def66163fb67b49a4d3aac15b91b668d Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Tue, 17 Mar 2026 13:31:50 +0000
+Subject: [PATCH] Adds support for sensors behind an I2C Switch (#3)
+
+Adds support for sensors behind an I2C switch on the CCI bus by selecting the appropriate switch channel before CCI read/write/poll operations.
+-Extend camera_io_master with I2C switch address/channel fields and a mutex intended to serialize switch select + CCI transactions.
+-Add cam_cci_i2c_write_switch() helper and call it from CCI read/write/read-seq/poll paths.
+-Parse new DT properties (i2c-switch, i2c-channel) into io_master_info.
+The cam_cci_i2c_write_switch changes the channel of the I2C switch before each communication with the sensor.
+---
+ .../cam_sensor/cam_sensor_dev.c               |  3 +
+ .../cam_sensor/cam_sensor_soc.c               | 11 +++
+ .../cam_sensor_io/cam_sensor_cci_i2c.c        | 24 ++++++
+ .../cam_sensor_io/cam_sensor_i2c.h            |  9 +++
+ .../cam_sensor_io/cam_sensor_io.c             | 80 +++++++++++++++++--
+ .../cam_sensor_io/cam_sensor_io.h             |  6 ++
+ 6 files changed, 127 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/cam_sensor_module/cam_sensor/cam_sensor_dev.c b/drivers/cam_sensor_module/cam_sensor/cam_sensor_dev.c
+index 6e0e9cc..8b524fd 100644
+--- a/drivers/cam_sensor_module/cam_sensor/cam_sensor_dev.c
++++ b/drivers/cam_sensor_module/cam_sensor/cam_sensor_dev.c
+@@ -238,6 +238,8 @@ static int cam_sensor_i2c_component_bind(struct device *dev,
+ 	/* Initialize sensor device type */
+ 	s_ctrl->of_node = client->dev.of_node;
+ 	s_ctrl->io_master_info.master_type = I2C_MASTER;
++	s_ctrl->io_master_info.i2c_switch = -1;
++	s_ctrl->io_master_info.i2c_channel = -1;
+ 	s_ctrl->is_probe_succeed = 0;
+ 	s_ctrl->last_flush_req = 0;
+ 
+@@ -327,6 +329,7 @@ static void cam_sensor_i2c_component_unbind(struct device *dev,
+ 	mutex_unlock(&(s_ctrl->cam_sensor_mutex));
+ 	cam_unregister_subdev(&(s_ctrl->v4l2_dev_str));
+ 	soc_info = &s_ctrl->soc_info;
++	mutex_destroy(&s_ctrl->io_master_info.cci_mutex);
+ 
+ 	kfree(s_ctrl->i2c_data.per_frame);
+ 	kfree(s_ctrl->i2c_data.frame_skip);
+diff --git a/drivers/cam_sensor_module/cam_sensor/cam_sensor_soc.c b/drivers/cam_sensor_module/cam_sensor/cam_sensor_soc.c
+index 05ca0c6..17d6762 100644
+--- a/drivers/cam_sensor_module/cam_sensor/cam_sensor_soc.c
++++ b/drivers/cam_sensor_module/cam_sensor/cam_sensor_soc.c
+@@ -260,6 +260,16 @@ static int32_t cam_sensor_driver_get_dt_data(struct cam_sensor_ctrl_t *s_ctrl)
+ 		s_ctrl->aon_camera_id = NOT_AON_CAM;
+ 	}
+ 
++	if (of_property_read_s32(of_node, "i2c-switch", &s_ctrl->io_master_info.i2c_switch)) {
++		CAM_DBG(CAM_SENSOR, "i2c-switch is not used");
++		s_ctrl->io_master_info.i2c_switch = -1;
++	}
++
++	if (of_property_read_s32(of_node, "i2c-channel", &s_ctrl->io_master_info.i2c_channel)) {
++		CAM_DBG(CAM_SENSOR, "i2c-channel is not used");
++		s_ctrl->io_master_info.i2c_channel = -1;
++	}
++
+ 	rc = cam_sensor_util_aon_registration(
+ 		s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY],
+ 		s_ctrl->aon_camera_id);
+@@ -291,6 +301,7 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
+ 
+ 	/* Initialize mutex */
+ 	mutex_init(&(s_ctrl->cam_sensor_mutex));
++	mutex_init(&s_ctrl->io_master_info.cci_mutex);
+ 
+ 	/* Initialize default parameters */
+ 	for (i = 0; i < soc_info->num_clk; i++) {
+diff --git a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_cci_i2c.c b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_cci_i2c.c
+index 33add70..80319f0 100644
+--- a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_cci_i2c.c
++++ b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_cci_i2c.c
+@@ -140,6 +140,30 @@ static int32_t cam_cci_i2c_write_table_cmd(
+ }
+ 
+ 
++int32_t cam_cci_i2c_write_switch( struct camera_io_master *client)
++{
++	int rc, sid;
++	struct cam_sensor_i2c_reg_array reg_array;
++	struct cam_sensor_i2c_reg_setting i2c_switch_write_setting;
++	if (client == NULL || client->cci_client == NULL)
++		return -EINVAL;
++	reg_array.reg_addr = 1 << client->i2c_channel;
++	reg_array.reg_data = 1 << client->i2c_channel;
++	reg_array.delay = 0x00;
++	i2c_switch_write_setting.reg_setting = &reg_array;
++	i2c_switch_write_setting.size = 1;
++	i2c_switch_write_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
++	i2c_switch_write_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
++	i2c_switch_write_setting.delay = 0;
++
++	sid = client->cci_client->sid;
++	client->cci_client->sid = client->i2c_switch;
++	rc = cam_cci_i2c_write_table_cmd(client, &i2c_switch_write_setting, MSM_CCI_I2C_WRITE);
++	client->cci_client->sid = sid;
++
++	return rc;
++}
++
+ int32_t cam_cci_i2c_write_table(
+ 	struct camera_io_master *client,
+ 	struct cam_sensor_i2c_reg_setting *write_setting)
+diff --git a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_i2c.h b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_i2c.h
+index 1f6d9c7..238039b 100644
+--- a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_i2c.h
++++ b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_i2c.h
+@@ -130,6 +130,15 @@ int32_t cam_qup_i2c_read_seq(struct i2c_client *client,
+ 	enum camera_sensor_i2c_type addr_type,
+ 	uint32_t num_byte);
+ 
++/**
++ * @client: CCI client structure
++ *
++ * This function writes to the I2C channel into 
++ * the I2C switch if the client is behind an I2C switch 
++ * connected to the CCI bus. 
++ */
++int32_t cam_cci_i2c_write_switch(struct camera_io_master *client);
++
+ /**
+  * cam_qup_i2c_poll : QUP based I2C poll operation
+  * @client    : QUP I2C client structure
+diff --git a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.c b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.c
+index 9aba7dc..3490e13 100644
+--- a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.c
++++ b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.c
+@@ -14,6 +14,7 @@ int32_t camera_io_dev_poll(struct camera_io_master *io_master_info,
+ 	enum camera_sensor_i2c_type data_type,
+ 	uint32_t delay_ms)
+ {
++	int rc = 0;
+ 	int16_t mask = data_mask & 0xFF;
+ 
+ 	if (!io_master_info) {
+@@ -23,8 +24,19 @@ int32_t camera_io_dev_poll(struct camera_io_master *io_master_info,
+ 
+ 	switch (io_master_info->master_type) {
+ 	case CCI_MASTER:
+-		return cam_cci_i2c_poll(io_master_info->cci_client,
++		if (io_master_info->i2c_switch > 0) {
++			mutex_lock(&io_master_info->cci_mutex);
++			rc = cam_cci_i2c_write_switch(io_master_info);
++			if (rc != 0) {
++				mutex_unlock(&io_master_info->cci_mutex);
++				return rc;
++			}
++		}
++		rc = cam_cci_i2c_poll(io_master_info->cci_client,
+ 			addr, data, mask, data_type, addr_type, delay_ms);
++		if (io_master_info->i2c_switch > 0)
++			mutex_unlock(&io_master_info->cci_mutex);
++		return rc;
+ 	case I2C_MASTER:
+ 		return cam_qup_i2c_poll(io_master_info->client,
+ 			addr, data, data_mask, addr_type, data_type, delay_ms);
+@@ -72,6 +84,7 @@ int32_t camera_io_dev_read(struct camera_io_master *io_master_info,
+ 	enum camera_sensor_i2c_type data_type,
+ 	bool is_probing)
+ {
++	int rc = 0;
+ 	if (!io_master_info) {
+ 		CAM_ERR(CAM_SENSOR, "Invalid Args");
+ 		return -EINVAL;
+@@ -84,8 +97,19 @@ int32_t camera_io_dev_read(struct camera_io_master *io_master_info,
+ 		return cam_qup_i2c_read(io_master_info->client,
+ 			addr, data, addr_type, data_type);
+ 	case CCI_MASTER:
+-		return cam_cci_i2c_read(io_master_info->cci_client,
++		if (io_master_info->i2c_switch > 0) {
++			mutex_lock(&io_master_info->cci_mutex);
++			rc = cam_cci_i2c_write_switch(io_master_info);
++			if (rc != 0) {
++				mutex_unlock(&io_master_info->cci_mutex);
++				return rc;
++			}
++		}
++		rc = cam_cci_i2c_read(io_master_info->cci_client,
+ 			addr, data, addr_type, data_type, is_probing);
++		if (io_master_info->i2c_switch > 0)
++			mutex_unlock(&io_master_info->cci_mutex);
++		return rc;
+ 	case I3C_MASTER:
+ 		return cam_qup_i3c_read(io_master_info->i3c_client,
+ 			addr, data, addr_type, data_type);
+@@ -101,10 +125,28 @@ int32_t camera_io_dev_read_seq(struct camera_io_master *io_master_info,
+ 	enum camera_sensor_i2c_type addr_type,
+ 	enum camera_sensor_i2c_type data_type, int32_t num_bytes)
+ {
++	int rc = 0;
++
++	if (!io_master_info) {
++		CAM_ERR(CAM_SENSOR, "Invalid Args");
++		return -EINVAL;
++	}
++
+ 	switch (io_master_info->master_type) {
+ 	case CCI_MASTER:
+-		return cam_camera_cci_i2c_read_seq(io_master_info->cci_client,
++		if (io_master_info->i2c_switch > 0) {
++			mutex_lock(&io_master_info->cci_mutex);
++			rc = cam_cci_i2c_write_switch(io_master_info);
++			if (rc != 0) {
++				mutex_unlock(&io_master_info->cci_mutex);
++				return rc;
++			}
++		}
++		rc = cam_camera_cci_i2c_read_seq(io_master_info->cci_client,
+ 			addr, data, addr_type, data_type, num_bytes);
++		if (io_master_info->i2c_switch > 0)
++			mutex_unlock(&io_master_info->cci_mutex);
++		return rc;
+ 	case I2C_MASTER:
+ 		return cam_qup_i2c_read_seq(io_master_info->client,
+ 			addr, data, addr_type, num_bytes);
+@@ -123,6 +165,7 @@ int32_t camera_io_dev_read_seq(struct camera_io_master *io_master_info,
+ int32_t camera_io_dev_write(struct camera_io_master *io_master_info,
+ 	struct cam_sensor_i2c_reg_setting *write_setting)
+ {
++	int rc = 0;
+ 	if (!write_setting || !io_master_info) {
+ 		CAM_ERR(CAM_SENSOR,
+ 			"Input parameters not valid ws: %pK ioinfo: %pK",
+@@ -137,7 +180,18 @@ int32_t camera_io_dev_write(struct camera_io_master *io_master_info,
+ 
+ 	switch (io_master_info->master_type) {
+ 	case CCI_MASTER:
+-		return cam_cci_i2c_write_table(io_master_info, write_setting);
++		if (io_master_info->i2c_switch > 0) {
++			mutex_lock(&io_master_info->cci_mutex);
++			rc = cam_cci_i2c_write_switch(io_master_info);
++			if (rc != 0) {
++				mutex_unlock(&io_master_info->cci_mutex);
++				return rc;
++			}
++		}
++		rc = cam_cci_i2c_write_table(io_master_info, write_setting);
++		if (io_master_info->i2c_switch > 0)
++			mutex_unlock(&io_master_info->cci_mutex);
++		return rc;
+ 	case I2C_MASTER:
+ 		return cam_qup_i2c_write_table(io_master_info, write_setting);
+ 	case SPI_MASTER:
+@@ -155,6 +209,7 @@ int32_t camera_io_dev_write_continuous(struct camera_io_master *io_master_info,
+ 	struct cam_sensor_i2c_reg_setting *write_setting,
+ 	uint8_t cam_sensor_i2c_write_flag)
+ {
++	int rc = 0;
+ 	if (!write_setting || !io_master_info) {
+ 		CAM_ERR(CAM_SENSOR,
+ 			"Input parameters not valid ws: %pK ioinfo: %pK",
+@@ -169,8 +224,19 @@ int32_t camera_io_dev_write_continuous(struct camera_io_master *io_master_info,
+ 
+ 	switch (io_master_info->master_type) {
+ 	case CCI_MASTER:
+-		return cam_cci_i2c_write_continuous_table(io_master_info,
++		if (io_master_info->i2c_switch > 0) {
++			mutex_lock(&io_master_info->cci_mutex);
++			rc = cam_cci_i2c_write_switch(io_master_info);
++			if (rc != 0) {
++				mutex_unlock(&io_master_info->cci_mutex);
++				return rc;
++			}
++		}
++		rc = cam_cci_i2c_write_continuous_table(io_master_info,
+ 			write_setting, cam_sensor_i2c_write_flag);
++		if (io_master_info->i2c_switch > 0)
++			mutex_unlock(&io_master_info->cci_mutex);
++		return rc; 
+ 	case I2C_MASTER:
+ 		return cam_qup_i2c_write_continuous_table(io_master_info,
+ 			write_setting, cam_sensor_i2c_write_flag);
+@@ -188,6 +254,7 @@ int32_t camera_io_dev_write_continuous(struct camera_io_master *io_master_info,
+ 
+ int32_t camera_io_init(struct camera_io_master *io_master_info)
+ {
++	int rc = 0;
+ 	if (!io_master_info) {
+ 		CAM_ERR(CAM_SENSOR, "Invalid Args");
+ 		return -EINVAL;
+@@ -197,7 +264,8 @@ int32_t camera_io_init(struct camera_io_master *io_master_info)
+ 	case CCI_MASTER:
+ 		io_master_info->cci_client->cci_subdev = cam_cci_get_subdev(
+ 						io_master_info->cci_client->cci_device);
+-		return cam_sensor_cci_i2c_util(io_master_info->cci_client, MSM_CCI_INIT);
++		rc = cam_sensor_cci_i2c_util(io_master_info->cci_client, MSM_CCI_INIT);
++		return rc;
+ 	case I2C_MASTER:
+ 	case SPI_MASTER:
+ 	case I3C_MASTER: return 0;
+diff --git a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.h b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.h
+index ab7b615..5384321 100644
+--- a/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.h
++++ b/drivers/cam_sensor_module/cam_sensor_io/cam_sensor_io.h
+@@ -18,6 +18,9 @@
+ 
+ /**
+  * @master_type: CCI master type
++ * @i2c_switch: I2C switch slave address
++ * @i2c_channel: I2C channel for the switch
++ * @cci_mutex: CCI mutex
+  * @i2c_client: I2C client information structure
+  * @i3c_client: I3C client information structure
+  * @cci_client: CCI client information structure
+@@ -25,6 +28,9 @@
+  */
+ struct camera_io_master {
+ 	int master_type;
++	int i2c_switch;
++	int i2c_channel;
++	struct mutex cci_mutex;
+ 	struct i2c_client *client;
+ 	struct i3c_device *i3c_client;
+ 	struct cam_sensor_cci_client *cci_client;
+-- 
+2.41.0
+
