@@ -71,6 +71,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     swupdate \
     swupdate-www \
     ntp \
+    rtc-time-control \
 "
 
 # OTA Recovery image is not created to speed up the build, when ENABLE_RECOVERY is not 1 
