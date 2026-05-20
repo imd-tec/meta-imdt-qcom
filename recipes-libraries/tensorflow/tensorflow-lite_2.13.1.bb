@@ -25,7 +25,7 @@ DEPENDS = "\
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}-${PV}:"
 
-SRCREV = "${AUTOREV}"
+SRCREV = "5d37bd0350f0144632629c1aa2ebaef6ca76300b"
 BRANCH = "github.com/r${@'.'.join(d.getVar('PV').split('.')[0:2])}"
 
 SRC_URI = "\
