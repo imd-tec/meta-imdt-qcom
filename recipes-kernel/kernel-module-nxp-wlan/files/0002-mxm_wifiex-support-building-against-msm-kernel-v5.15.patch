@@ -1,0 +1,32 @@
+From 52bdc2866ed0f7fa95f4d3f4431af3e9cb603304 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Tue, 7 Apr 2026 13:57:47 +0100
+Subject: [PATCH] mxm_wifiex: support building against msm-kernel v5.15
+
+The msm-kernel is the v5.15 android kernel with the inclusion
+of Qualcomm's peripheral drivers. However, this v5.15 kernel
+has some backported patches for some structs in the cfg80211 headers
+and this causes some build issues. So to make it compile against
+our kernel we need to manually set the CFG80211_VERSION_CODE
+via COMPAT_VERSION_CODE to v6.1.0 as this version has matching
+kernel headers.
+---
+ mlinux/moal_main.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mlinux/moal_main.h b/mlinux/moal_main.h
+index c77fdda..a8d94d7 100644
+--- a/mlinux/moal_main.h
++++ b/mlinux/moal_main.h
+@@ -190,7 +190,7 @@ Change log:
+ #define MAX(a, b) ((a) > (b) ? (a) : (b))
+ #endif
+ 
+-#define COMPAT_VERSION_CODE KERNEL_VERSION(0, 0, 0)
++#define COMPAT_VERSION_CODE KERNEL_VERSION(6, 1, 0)
+ #define CFG80211_VERSION_CODE MAX(LINUX_VERSION_CODE, COMPAT_VERSION_CODE)
+ 
+ #define IMX_ANDROID_13 0
+-- 
+2.41.0
+

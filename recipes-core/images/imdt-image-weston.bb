@@ -13,6 +13,7 @@ SDKIMAGE_FEATURES:append = " dev-pkgs staticdev-pkgs dbg-pkgs"
 CORE_IMAGE_EXTRA_INSTALL += "\
     glib-2.0 \
     kernel-modules \
+    kernel-module-nxp-wlan \
     gki-kernel-modules-second-stage \
     systemd-machine-units \
     packagegroup-android-utils \
@@ -64,10 +65,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     packagegroup-qti-audio \
     audio-init-service \
     linux-firmware-ath11k \
-    linux-firmware-iw416-sdio \
     wpa-supplicant \
     iw \
     iperf3 \    
+    imx-wifi-firmware \
     swupdate \
     swupdate-www \
     ntp \

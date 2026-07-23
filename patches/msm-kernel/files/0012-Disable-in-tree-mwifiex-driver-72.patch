@@ -1,0 +1,26 @@
+From 1d984a6a4671febaf5c497aaec6a59d18ac92d81 Mon Sep 17 00:00:00 2001
+From: jaimespencer-imdt <jaime.spencer@imd-tec.com>
+Date: Tue, 21 Jul 2026 13:49:02 +0100
+Subject: [PATCH] Disable in-tree mwifiex driver (#72)
+
+This commit disables the in-tree Marvell Wi-Fi driver to facilitate the
+platform's migration to NXP's out-of-tree Wi-Fi driver, which
+provides support for both IW416 and the newer IW610/IW612.
+---
+ arch/arm64/configs/vendor/kalama_le_consolidate.config | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_consolidate.config b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+index 3e7618b27..7b8589f91 100644
+--- a/arch/arm64/configs/vendor/kalama_le_consolidate.config
++++ b/arch/arm64/configs/vendor/kalama_le_consolidate.config
+@@ -46,6 +46,3 @@ CONFIG_ATH11K=m
+ CONFIG_ATH11K_PCI=m
+ CONFIG_TOUCHSCREEN_GOODIX=m
+ CONFIG_REGULATOR_GPIO=m
+-CONFIG_WLAN_VENDOR_MARVELL=y
+-CONFIG_MWIFIEX=m
+-CONFIG_MWIFIEX_SDIO=m
+-- 
+2.41.0
+

@@ -1,0 +1,272 @@
+From 6d2ed311f77f7a71a91fe6be3f6318120127a438 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Tue, 7 Apr 2026 13:57:23 +0100
+Subject: [PATCH] mxm_wifiex: support building using Qualcomm's build module
+ script
+
+The kernel module makefile needed some cleanup to
+build using Qualcomm's build module script. A few
+of the issues:
+- Makefile assumes GCC is the compiler.  In our
+case, clang is being used instead of GCC so we can
+remove this assumption.
+- Uses the KERNELRELEASE variable to decide whether
+to use Kbuild or manually compile something. This is not
+needed when used with the build_module.sh
+---
+ Makefile | 174 +++++--------------------------------------------------
+ 1 file changed, 15 insertions(+), 159 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 783b8c4..024d011 100644
+--- a/Makefile
++++ b/Makefile
+@@ -16,15 +16,12 @@
+ #  this warranty disclaimer.
+ #
+ 
+-CONFIG_COMPATDIR=n
+-ifeq ($(CONFIG_COMPATDIR), y)
+-COMPATDIR=/lib/modules/$(KERNELVERSION_X86)/build/compat-wireless-3.2-rc1-1/include
+-CC ?=		$(CROSS_COMPILE)gcc -I$(COMPATDIR)
+-endif
+-
+-LD ?=		$(CROSS_COMPILE)ld
+-BACKUP=		/root/backup
+-YMD=		`date +%Y%m%d%H%M`
++#############################################################################
++# Android Build Configuration options for msm kernel v5.15
++#############################################################################
++ANDROID_BUILD=1
++ANDROID_SDK_VERSION=33
++CONFIG_ANDROID_KERNEL=y
+ 
+ #############################################################################
+ # Configuration Options
+@@ -39,7 +36,7 @@ CONFIG_SD8978=y
+ CONFIG_USB8978=n
+ CONFIG_SD8997=y
+ CONFIG_USB8997=n
+-CONFIG_PCIE8997=y
++CONFIG_PCIE8997=n
+ CONFIG_SD8987=y
+ CONFIG_SD9097=n
+ CONFIG_SD9177=y
+@@ -49,14 +46,14 @@ CONFIG_USB9097=n
+ CONFIG_PCIE9097=n
+ CONFIG_SD9098=y
+ CONFIG_USB9098=n
+-CONFIG_PCIE9098=y
++CONFIG_PCIE9098=n
+ CONFIG_SDIW610=y
+-CONFIG_USBIW610=y
++CONFIG_USBIW610=n
+ CONFIG_SDIW624=n
+ CONFIG_SDAW693=n
+ CONFIG_PCIEIW624=n
+ CONFIG_USBIW624=n
+-CONFIG_PCIEAW693=y
++CONFIG_PCIEAW693=n
+ 
+ 
+ # Debug Option
+@@ -112,28 +109,6 @@ CONFIG_TASKLET_SUPPORT=n
+ #32bit app over 64bit kernel support
+ CONFIG_USERSPACE_32BIT_OVER_KERNEL_64BIT=n
+ 
+-GCC_VERSION := $(shell echo `gcc -dumpversion | cut -f1-2 -d.` \>= 4.4 | sed -e 's/\./*100+/g' | bc )
+-ifeq ($(GCC_VERSION),1)
+-        ccflags-y += -Wno-packed-bitfield-compat
+-endif
+-WimpGCC_VERSION := $(shell echo `gcc -dumpversion | cut -f1 -d.`| bc )
+-ifeq ($(shell test $(WimpGCC_VERSION) -ge 7; echo $$?),0)
+-ccflags-y += -Wimplicit-fallthrough=3
+-endif
+-#ccflags-y += -Wunused-but-set-variable
+-#ccflags-y += -Wmissing-prototypes
+-#ccflags-y += -Wold-style-definition
+-#ccflags-y += -Wtype-limits
+-#ccflags-y += -Wsuggest-attribute=format
+-#ccflags-y += -Wmissing-include-dirs
+-#ccflags-y += -Wshadow
+-#ccflags-y += -Wsign-compare
+-#ccflags-y += -Wunused-macros
+-#ccflags-y += -Wmissing-field-initializers
+-#ccflags-y += -Wstringop-truncation
+-#ccflags-y += -Wmisleading-indentation
+-#ccflags-y += -Wunused-const-variable
+-
+ #############################################################################
+ # Select Platform Tools
+ #############################################################################
+@@ -150,26 +125,6 @@ ccflags-y += -I$(PWD)/mlan
+ ccflags-y += -DLINUX
+ 
+ 
+-
+-
+-
+-
+-ARCH ?= arm64
+-CONFIG_IMX_SUPPORT=y
+-ifeq ($(CONFIG_IMX_SUPPORT),y)
+-ccflags-y += -DIMX_SUPPORT
+-ifneq ($(ANDROID_PRODUCT_OUT),)
+-ccflags-y += -DIMX_ANDROID
+-ccflags-y += -Wno-implicit-fallthrough
+-CONFIG_ANDROID_KERNEL=y
+-endif
+-endif
+-
+-LD += -S
+-
+-BINDIR = bin_wlan
+-APPDIR= $(shell if test -d "mapp"; then echo mapp; fi)
+-
+ #############################################################################
+ # Compiler Flags
+ #############################################################################
+@@ -397,8 +352,6 @@ endif
+ # Make Targets
+ #############################################################################
+ 
+-ifneq ($(KERNELRELEASE),)
+-
+ ifeq ($(CONFIG_WIRELESS_EXT),y)
+ ifeq ($(CONFIG_WEXT_PRIV),y)
+ 	# Enable WEXT for STA
+@@ -490,27 +443,6 @@ ifeq ($(CONFIG_UAP_CFG80211),y)
+ endif
+ endif
+ 
+-print:
+-ifeq ($(CONFIG_STA_SUPPORT),y)
+-ifeq ($(CONFIG_STA_WEXT),n)
+-ifeq ($(CONFIG_STA_CFG80211),n)
+-	@echo "Can not build STA without WEXT or CFG80211"
+-	exit 2
+-endif
+-endif
+-endif
+-ifeq ($(CONFIG_UAP_SUPPORT),y)
+-ifeq ($(CONFIG_UAP_WEXT),n)
+-ifeq ($(CONFIG_UAP_CFG80211),n)
+-	@echo "Can not build UAP without WEXT or CFG80211"
+-	exit 2
+-endif
+-endif
+-endif
+-
+-
+-
+-
+ # Default for out-of-tree builds
+ CONFIG_NXP_WLAN_DRIVER ?= m
+ 
+@@ -607,98 +539,22 @@ endif
+ obj-$(CONFIG_NXP_WLAN_DRIVER) += moal.o
+ moal-objs := $(MOALOBJS)
+ 
+-# Otherwise we were called directly from the command line; invoke the kernel build system.
+-else
+ 
+-default:
+-	$(MAKE) -C $(KERNELDIR) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules
+-
+-endif
+-
+-###############################################################
+-
+-export		CC LD ccflags-y KERNELDIR
+-
+-.PHONY: mapp/mlanutl clean distclean
+-	@echo "Finished Making NXP Wlan Linux Driver"
+-
+-mapp/mlanutl:
+-	$(MAKE) -C $@
+-
+-echo:
+-
+-appsbuild:
+-
+-	@if [ ! -d $(BINDIR) ]; then \
+-		mkdir $(BINDIR); \
+-	fi
+-
+-	cp -f README $(BINDIR)
+-
+-ifneq ($(APPDIR),)
+-	cp -rf mapp/mlanconfig/config $(BINDIR)
+-	$(MAKE) -C mapp/mlanutl $@ INSTALLDIR=$(BINDIR)
+-endif
+-
+-build:		echo default
+-
+-	@if [ ! -d $(BINDIR) ]; then \
+-		mkdir $(BINDIR); \
+-	fi
+-
+-	cp -f mlan.$(MODEXT) $(BINDIR)/mlan$(DBG).$(MODEXT)
+-
+-	cp -f moal.$(MODEXT) $(BINDIR)/moal$(DBG).$(MODEXT)
+-
+-	cp -f README $(BINDIR)
+-
+-ifneq ($(APPDIR),)
+-	cp -rf mapp/mlanconfig/config $(BINDIR)
+-	$(MAKE) -C mapp/mlanutl $@ INSTALLDIR=$(BINDIR)
+-endif
++all: modules
+ 
+ clean:
+ 	-find . -name "*.o" -exec rm {} \;
+ 	-find . -name "*.ko" -exec rm {} \;
+ 	-find . -name ".*.cmd" -exec rm {} \;
+ 	-find . -name "*.mod.c" -exec rm {} \;
++	-find . -name "*.mod.o" -exec rm {} \;
++	-find . -name "*.o.symversions" -exec rm {} \;
+ 	-find . -name "Module.symvers" -exec rm {} \;
+ 	-find . -name "Module.markers" -exec rm {} \;
+ 	-find . -name "modules.order" -exec rm {} \;
+ 	-find . -name ".*.dwo" -exec rm {} \;
+ 	-find . -name "*dwo" -exec rm {} \;
+ 	-rm -rf .tmp_versions
+-ifneq ($(APPDIR),)
+-	$(MAKE) -C mapp/mlanutl $@
+-endif
+-#ifdef SDIO
+-#endif // SDIO
+-
+-install: default
+-
+-	cp -f mlan.$(MODEXT) $(INSTALLDIR)/mlan$(DBG).$(MODEXT)
+-	cp -f moal.$(MODEXT) $(INSTALLDIR)/moal$(DBG).$(MODEXT)
+-	echo $(INSTALLDIR)
+-	echo "MX Driver Installed"
+-
+-distclean:
+-	-find . -name "*.o" -exec rm {} \;
+-	-find . -name "*.orig" -exec rm {} \;
+-	-find . -name "*.swp" -exec rm {} \;
+-	-find . -name "*.*~" -exec rm {} \;
+-	-find . -name "*~" -exec rm {} \;
+-	-find . -name "*.d" -exec rm {} \;
+-	-find . -name "*.a" -exec rm {} \;
+-	-find . -name "tags" -exec rm {} \;
+-	-find . -name ".*" -exec rm -rf 2> /dev/null \;
+-	-find . -name "*.ko" -exec rm {} \;
+-	-find . -name ".*.cmd" -exec rm {} \;
+-	-find . -name "*.mod.c" -exec rm {} \;
+-	-find . -name ".*.dwo" -exec rm {} \;
+-	-find . -name "*dwo" -exec rm {} \;
+-	-rm -rf .tmp_versions
+-ifneq ($(APPDIR),)
+-	$(MAKE) -C mapp/mlanutl $@
+-endif
+ 
+-# End of file
++%:
++	$(MAKE) -C $(KERNEL_SRC) M=$(M) $@ $(KBUILD_OPTIONS)
+-- 
+2.41.0
+
