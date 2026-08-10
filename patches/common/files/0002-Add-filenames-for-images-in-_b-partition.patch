@@ -1,0 +1,104 @@
+From 4c0f4292fa7bdf98c01c581f3df332867ea886bb Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 19 Jun 2026 11:26:16 +0100
+Subject: [PATCH] Add filenames for images in _b partition
+
+This has be done so that the generated flatbuild XML's
+will flash both partitions. Previously, PCAT and QDL
+were only flashing the _a partition.
+---
+ config/ufs/partition_ext.xml | 54 ++++++++++++++++++------------------
+ 1 file changed, 27 insertions(+), 27 deletions(-)
+
+diff --git a/config/ufs/partition_ext.xml b/config/ufs/partition_ext.xml
+index 80dc757..40f81db 100755
+--- a/config/ufs/partition_ext.xml
++++ b/config/ufs/partition_ext.xml
+@@ -20,7 +20,7 @@
+         <partition label="frp" size_in_kb="512" type="91B72D4D-71E0-4CBF-9B8E-236381CFF17A" bootable="false" readonly="false" filename=""/>
+         <!--partition label="super" size_in_kb="6291456" type="89A12DE1-5E41-4CB3-8B4C-B1441EB5DA38" bootable="false" readonly="false" filename="super.img" sparse="true"/-->
+         <partition label="system_a" size_in_kb="2621440" type="1344859D-3A6A-4C14-A316-9E696B3A5400" bootable="false" readonly="true" filename="system.img" sparse="true"/>
+-        <partition label="system_b" size_in_kb="2621440" type="FE3AB853-5B66-4D4A-BF85-8D90AF1C2C4A" bootable="false" readonly="true" filename="" sparse="true"/>
++        <partition label="system_b" size_in_kb="2621440" type="FE3AB853-5B66-4D4A-BF85-8D90AF1C2C4A" bootable="false" readonly="true" filename="system.img" sparse="true"/>
+         <!--partition label="metadata" size_in_kb="65536" type="988A98C9-2910-4123-AAEC-1CF6B1BC28F9" bootable="false" readonly="false" filename="metadata.img" sparse="true"/-->
+         <partition label="rawdump" size_in_kb="12787712" type="66C9B323-F7FC-48B6-BF96-6F32E335A428" bootable="false" readonly="false" filename=""/>
+         <partition label="hibernation" size_in_kb="6194304" type="5c66ee45-53cd-41ad-a233-767f9f7ccf42" bootable="false" readonly="false" filename=""/>
+@@ -40,10 +40,10 @@
+ 
+     <!-- This is LUN 2 - Boot LUN B" -->
+     <physical_partition>        
+-        <partition label="xbl_b" size_in_kb="3584" type="DEA0BA2C-CBDD-4805-B4F9-F428251C3E98" bootable="false" readonly="true" filename=""/>
+-        <partition label="xbl_config_b" size_in_kb="300" type="5A325AE4-4276-B66D-0ADD-3494DF27706A" bootable="false" readonly="false" filename=""/>
+-        <partition label="multiimgqti_b" size_in_kb="32" type="846C6F05-EB46-4C0A-A1A3-3648EF3F9D0E" bootable="false" readonly="true" filename=""/>
+-        <partition label="multiimgoem_b" size_in_kb="32" type="E126A436-757E-42D0-8D19-0F362F7A62B8" bootable="false" readonly="true" filename=""/>
++        <partition label="xbl_b" size_in_kb="3584" type="DEA0BA2C-CBDD-4805-B4F9-F428251C3E98" bootable="false" readonly="true" filename="xbl_s.melf"/>
++        <partition label="xbl_config_b" size_in_kb="300" type="5A325AE4-4276-B66D-0ADD-3494DF27706A" bootable="false" readonly="false" filename="xbl_config.elf"/>
++        <partition label="multiimgqti_b" size_in_kb="32" type="846C6F05-EB46-4C0A-A1A3-3648EF3F9D0E" bootable="false" readonly="true" filename="multi_image_qti.mbn"/>
++        <partition label="multiimgoem_b" size_in_kb="32" type="E126A436-757E-42D0-8D19-0F362F7A62B8" bootable="false" readonly="true" filename="multi_image.mbn"/>
+         <partition label="apdpb" size_in_kb="256" type="E6E98DA2-E22A-4D12-AB33-169E7DEAA507" bootable="false" readonly=" false" filename=""/>
+         <partition label="last_parti" size_in_kb="0" type="00000000-0000-0000-0000-000000000000" bootable="false" readonly="true" filename="" />
+      </physical_partition>
+@@ -93,32 +93,32 @@
+         <partition label="rticmpdata_a" size_in_kb="50" type="5EF416CA-4198-4FF9-82A5-793972673406" bootable="false" readonly="true" filename=""/>
+         <!-- These are the 'B' partition's needed for the A/B boot/ota update feature. A and B partitions must have differrent GUID's. For convinience sake
+          we keep all the B partitions with the same GUID" -->
+-        <partition label="uefi_b" size_in_kb="5120" type="9F234B5B-0EFB-4313-8E4C-0AF1F605536B" bootable="false" readonly="true" filename=""/>
+-        <partition label="aop_b" size_in_kb="512" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="aop_config_b" size_in_kb="512" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="tz_b" size_in_kb="4096" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="hyp_b" size_in_kb="8192" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="modem_b" size_in_kb="327680" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="bluetooth_b" size_in_kb="6144" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
++        <partition label="uefi_b" size_in_kb="5120" type="9F234B5B-0EFB-4313-8E4C-0AF1F605536B" bootable="false" readonly="true" filename="uefi.elf"/>
++        <partition label="aop_b" size_in_kb="512" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="aop.mbn"/>
++        <partition label="aop_config_b" size_in_kb="512" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="aop_devcfg.mbn"/>
++        <partition label="tz_b" size_in_kb="4096" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="tz.mbn"/>
++        <partition label="hyp_b" size_in_kb="8192" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="hypvm.mbn"/>
++        <partition label="modem_b" size_in_kb="327680" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="NON-HLOS.bin"/>
++        <partition label="bluetooth_b" size_in_kb="6144" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="BTFM.bin"/>
+         <partition label="mdtpsecapp_b" size_in_kb="4096" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+         <partition label="mdtp_b" size_in_kb="32768" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="abl_b" size_in_kb="1024" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="dsp_b" size_in_kb="65536" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="keymaster_b" size_in_kb="512" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="boot_b" size_in_kb="98304" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="devcfg_b" size_in_kb="128" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="qupfw_b" size_in_kb="80" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
++        <partition label="abl_b" size_in_kb="1024" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="abl.elf"/>
++        <partition label="dsp_b" size_in_kb="65536" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="dspso.bin"/>
++        <partition label="keymaster_b" size_in_kb="512" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="km41.mbn"/>
++        <partition label="boot_b" size_in_kb="98304" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="boot.img"/>
++        <partition label="devcfg_b" size_in_kb="128" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="devcfg.mbn"/>
++        <partition label="qupfw_b" size_in_kb="80" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="qupv3fw.elf"/>
+         <!--partition label="vbmeta_b" size_in_kb="64" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/-->
+-        <partition label="dtbo_b" size_in_kb="24576" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="" />
+-        <partition label="uefisecapp_b" size_in_kb="2048" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="imagefv_b" size_in_kb="2048" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" system="true" filename=""/>
+-        <partition label="shrm_b" size_in_kb="128" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="vm-bootsys_b" size_in_kb="550000" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
+-        <partition label="cpucp_b" size_in_kb="1024" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+-        <partition label="featenabler_b" size_in_kb="128" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/>
++        <partition label="dtbo_b" size_in_kb="24576" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="dtbo.img" />
++        <partition label="uefisecapp_b" size_in_kb="2048" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="uefi_sec.mbn"/>
++        <partition label="imagefv_b" size_in_kb="2048" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" system="true" filename="imagefv.elf"/>
++        <partition label="shrm_b" size_in_kb="128" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="shrm.elf"/>
++        <partition label="vm-bootsys_b" size_in_kb="550000" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="" sparse="true"/>
++        <partition label="cpucp_b" size_in_kb="1024" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename="cpucp.elf"/>
++        <partition label="featenabler_b" size_in_kb="128" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename="featenabler.mbn"/>
+         <partition label="qweslicstore_b" size_in_kb="256" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+         <!--partition label="recovery_b" size_in_kb="102400" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="false" filename=""/-->
+-        <partition label="xbl_ramdump_b" size_in_kb="2048" type="C3E58B09-ABCB-42EA-9F0C-3FA453FA892E" readonly="false" bootable="false" filename=""/>
++        <partition label="xbl_ramdump_b" size_in_kb="2048" type="C3E58B09-ABCB-42EA-9F0C-3FA453FA892E" readonly="false" bootable="false" filename="XblRamdump.elf"/>
+         <partition label="rticmpdata_b" size_in_kb="50" type="77036CD4-03D5-42BB-8ED1-37E5A88BAA34" bootable="false" readonly="true" filename=""/>
+         <!-- These are non A/B partitions. In a A/B build these would not be updated via a OTA update -->
+         <partition label="devinfo" size_in_kb="4" type="65ADDCF4-0C5C-4D9A-AC2D-D90B5CBFCD03" bootable="false" readonly="true" filename=""/>
+@@ -154,4 +154,4 @@
+         <partition label="fsc" size_in_kb="128" type="57B90A16-22C9-E33B-8F5D-0E81686A68CB" bootable="false" readonly="false" filename=""/>
+         <partition label="last_parti" size_in_kb="0" type="00000000-0000-0000-0000-000000000000" bootable="false" readonly="true" filename="" />
+     </physical_partition>
+-</configuration>
+\ No newline at end of file
++</configuration>
+-- 
+2.41.0
+

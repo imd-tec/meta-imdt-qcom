@@ -40,6 +40,9 @@ patch -p1 -d ${QCOM_ROOT_DIR}/adsp_proc -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/ap
 patch -p1 -d ${QCOM_ROOT_DIR}/adsp_proc -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/adsp-proc/files/0003-Include-AK0991X-magnetometer-into-ADSP-build-for-kal.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/boot_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/boot-images/files/0001-Add-support-for-booting-the-IMDT-SOM8550-3.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/boot_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/boot-images/files/0002-Bugfix-for-crash-in-UEFI-bootloader-when-ForceSwRend.patch
+patch -p1 -d ${QCOM_ROOT_DIR}/boot_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/boot-images/files/0003-Add-support-for-TST070WSBE165C-DSI-Panel-in-UEFI-and.patch
+patch -p1 -d ${QCOM_ROOT_DIR}/common -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/common/files/0001-Removed-XML-comment-in-provisioning-XML.patch
+patch -p1 -d ${QCOM_ROOT_DIR}/common -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/common/files/0002-Add-filenames-for-images-in-_b-partition.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/trustzone_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/trustzone-images/files/0001-Enable-QUPV3-SE4-I2C-for-touchscreen-12.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/trustzone_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/trustzone-images/files/0002-Enable-QUPv3-SE12-as-I2C-in-HLOS-13.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/trustzone_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/trustzone-images/files/0003-Enable-SE9-as-UART-for-the-RS232-14.patch

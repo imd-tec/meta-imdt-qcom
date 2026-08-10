@@ -1,0 +1,37 @@
+From bad4b73036f2e753a6957dbab19d0bec2ea9e240 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 19 Jun 2026 11:23:31 +0100
+Subject: [PATCH] Removed XML comment in provisioning XML
+
+It seemed to be causing parsing failure so I have
+removed the comment from the XML.
+---
+ config/ufs/provision/provision_ufs31.xml | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/config/ufs/provision/provision_ufs31.xml b/config/ufs/provision/provision_ufs31.xml
+index 824676b..fbe22f4 100755
+--- a/config/ufs/provision/provision_ufs31.xml
++++ b/config/ufs/provision/provision_ufs31.xml
+@@ -1,12 +1,3 @@
+-<!-- --------------------------------------------------------------- -->
+-<!-- WARNING: PROVISIONING UFS IS A ONE TIME OPERATION IN FACTORY    -->
+-<!--          SO CARE MUST BE TAKEN TO ENSURE THE PARAMETERS         -->
+-<!--          IN THIS CONFIGURATION FILE MEETS THE END PRODUCT       -->
+-<!--          REQUIREMENTS. PLEASE REFER TO THE QUALCOMM FLASH IMAGE -->
+-<!--          LOADER (QFIL) USER GUIDE (80-NN120-1) FOR MORE DETAILS -->
+-<!--          ON THE PROVISIONING                                    -->
+-<!-- --------------------------------------------------------------- -->
+-
+ <?xml version="1.0" ?> 
+ <data>
+     <ufs bNumberLU="0" bBootEnable="1" bDescrAccessEn="1" bInitPowerMode="1" bHighPriorityLUN="0x5" bSecureRemovalType="0" bInitActiveICCLevel="0" wPeriodicRTCUpdate="0" bConfigDescrLock="0" bWriteBoosterBufferPreserveUserSpaceEn="1" bWriteBoosterBufferType="1" shared_wb_buffer_size_in_kb="16777216" />
+@@ -23,5 +14,3 @@
+     <ufs LUNtoGrow="0" commit="1"/>
+ 
+ </data>
+-
+-
+-- 
+2.41.0
+
