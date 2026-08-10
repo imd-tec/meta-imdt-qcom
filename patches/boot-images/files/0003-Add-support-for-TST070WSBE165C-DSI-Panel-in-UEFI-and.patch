@@ -1,0 +1,180 @@
+From 2d60a9159d78dde899ca256cd7d3806302446bfd Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Mon, 10 Aug 2026 16:04:27 +0100
+Subject: [PATCH] Add support for TST070WSBE165C DSI Panel in UEFI and IMDT
+ Splash Logo (#11)
+
+In this commit, we add support for the TST070WSBE165C panel and
+also enable the splash screen during boot which shows the IMDT logo.
+
+In the UEFI bootloader the DSI panel is described by an XML which
+is parsed at runtime. The panel XML is selected during boot
+and it is hardcoded as there is no way to detect which panel
+is connected to the system. We override the ForceSwRenderer
+flag to enable the splash screen in the UEFI bootloader. If
+this flag is enabled, the UEFI bootloader does not configure
+the display and it shows no splash screen.
+
+The logo is a bmp image with 8 bit depth created with a python script.
+It has been added to the MainFv.
+Note: The MainFv may have limited space so larger logos should move to the ImageFv.
+
+The description of how to add panel can be found in boot/QcomPkg/Docs/HowToAddPanel.txt.
+Qualcomm also has a few documents about Display Panel bringup in the UEFI bootloader.
+Additional info for the splash logo can be found in boot/QcomPkg/Docs/CustomSplashLogo.txt.
+---
+ .../Panel/Panel_imdt_tst070wsbe165c_video.xml | 66 +++++++++++++++++++
+ .../QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc |  2 +-
+ boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf    |  5 ++
+ .../MDPPlatformLibPanelConfig.c               |  3 +-
+ .../Core/SocInfra/TLMM/kailua-pinctrl.dtsi    |  4 +-
+ 5 files changed, 76 insertions(+), 4 deletions(-)
+ create mode 100644 boot/QcomPkg/Settings/Panel/Panel_imdt_tst070wsbe165c_video.xml
+
+diff --git a/boot/QcomPkg/Settings/Panel/Panel_imdt_tst070wsbe165c_video.xml b/boot/QcomPkg/Settings/Panel/Panel_imdt_tst070wsbe165c_video.xml
+new file mode 100644
+index 0000000..8cc8177
+--- /dev/null
++++ b/boot/QcomPkg/Settings/Panel/Panel_imdt_tst070wsbe165c_video.xml
+@@ -0,0 +1,66 @@
++<?xml version="1.0" encoding="utf-8"?>
++<PanelName>IMDT TST070WSBE165C</PanelName>
++<PanelDescription>TST070WSBE165C Video Mode DSI Panel</PanelDescription>
++<Group id="Active Timing">
++ <HorizontalActive>1024</HorizontalActive>
++ <HorizontalFrontPorch>160</HorizontalFrontPorch>
++ <HorizontalBackPorch>160</HorizontalBackPorch>
++ <HorizontalSyncPulse>12</HorizontalSyncPulse>
++ <HorizontalSyncSkew>0</HorizontalSyncSkew>
++ <HorizontalLeftBorder>0</HorizontalLeftBorder>
++ <HorizontalRightBorder>0</HorizontalRightBorder>
++ <VerticalActive>600</VerticalActive>
++ <VerticalFrontPorch>12</VerticalFrontPorch>
++ <VerticalBackPorch>23</VerticalBackPorch>
++ <VerticalSyncPulse>10</VerticalSyncPulse>
++ <VerticalSyncSkew>0</VerticalSyncSkew>
++ <VerticalTopBorder>0</VerticalTopBorder>
++ <VerticalBottomBorder>0</VerticalBottomBorder>
++ <InvertDataPolarity>False</InvertDataPolarity>
++ <InvertVsyncPolairty>False</InvertVsyncPolairty>
++ <InvertHsyncPolarity>False</InvertHsyncPolarity>
++ <BorderColor>0x0</BorderColor>
++</Group>
++<Group id="Display Interface">
++ <InterfaceType>8</InterfaceType>
++ <InterfaceColorFormat>3</InterfaceColorFormat>
++</Group>
++<Group id="DSI Interface">
++ <DSIChannelId>1</DSIChannelId>
++ <DSIVirtualId>0</DSIVirtualId>
++ <DSIColorFormat>36</DSIColorFormat>
++ <DSITrafficMode>1</DSITrafficMode>
++ <DSILP11AtInit>True</DSILP11AtInit>
++ <DSIHostLaneMapping>0</DSIHostLaneMapping>
++ <DSIPacketTransferHS>True</DSIPacketTransferHS>
++ <DSIDSCEnable>False</DSIDSCEnable>
++ <DSIDSCMajor>1</DSIDSCMajor>
++ <DSIDSCMinor>1</DSIDSCMinor>
++ <DSIDSCScr>0</DSIDSCScr>
++ <DSIDSCProfileID>4</DSIDSCProfileID>
++ <DSIDSCSliceWidth>540</DSIDSCSliceWidth>
++ <DSIDSCSliceHeight>20</DSIDSCSliceHeight>
++ <DSIDSCSlicePerPacket>2</DSIDSCSlicePerPacket>
++ <DSITECheckEnable>False</DSITECheckEnable>
++ <DSILanes>4</DSILanes>
++ <DSIHsaHseAfterVsVe>False</DSIHsaHseAfterVsVe>
++ <DSILowPowerModeInHFP>False</DSILowPowerModeInHFP>
++ <DSILowPowerModeInHBP>False</DSILowPowerModeInHBP>
++ <DSILowPowerModeInHSA>False</DSILowPowerModeInHSA>
++ <DSILowPowerModeInBLLPEOF>True</DSILowPowerModeInBLLPEOF>
++ <DSILowPowerModeInBLLP>True</DSILowPowerModeInBLLP>
++ <DSIRefreshRate>0x3C0000</DSIRefreshRate>
++ <DSIControllerMapping>
++  00
++ </DSIControllerMapping>
++</Group>
++<DSIInitSequence>
++</DSIInitSequence>
++<DSITermSequence>
++</DSITermSequence>
++<Group id='Backlight Configuration'>
++ <BacklightType>0</BacklightType>
++ <BacklightBitWidth>12</BacklightBitWidth>
++ <BacklightDefault>0</BacklightDefault>
++ <DisplayResetInfo>1 10000 200000 60000 0</DisplayResetInfo>
++</Group>
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc b/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc
+index 7af6bb0..a85b3c9 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc
++++ b/boot/QcomPkg/SocPkg/Kailua/Common/Core.dsc.inc
+@@ -559,7 +559,7 @@
+ # Display PCDs
+ # Read QcomPkg/Docs/DisplayConfiguration.txt for PCDs configuration details.
+ #
+-  gQcomTokenSpaceGuid.PcdDisplayForceSwRenderer|TRUE
++  gQcomTokenSpaceGuid.PcdDisplayForceSwRenderer|FALSE
+   # gFBResLimit Table 0: 5k, 1: 4k, 2: UHD, 3: WQHD, 4: WUXGA, 5: FHD, 6: HD
+   gQcomTokenSpaceGuid.PcdFrameBufMaxRes|0
+   # External display type:  0: No external display, 1: DisplayPort.
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf b/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf
+index 4795ab7..8ad5a81 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf
++++ b/boot/QcomPkg/SocPkg/Kailua/Common/Core.fdf
+@@ -262,6 +262,11 @@ FvNameGuid         = 433EBDDF-4B28-6730-A9ED-DB9FB98058F3
+   }
+ 
+ # Start- Display panel configuration xml
++  FILE FREEFORM = 1af563ee-6b30-498e-ba81-5781c03e8d15 {
++    SECTION UI = "Panel_imdt_tst070wsbe165c_video.xml"
++    SECTION RAW = QcomPkg/Settings/Panel/Panel_imdt_tst070wsbe165c_video.xml
++  }
++ 
+   FILE FREEFORM = 8cae2c55-fc5a-410b-812b-8ca22f572f36 {
+     SECTION UI = "Panel_truly_wqxga_dsc_cmd.xml"
+     SECTION RAW = QcomPkg/Settings/Panel/Panel_truly_wqxga_dsc_cmd.xml
+diff --git a/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c b/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c
+index d4b5c9e..83cb413 100755
+--- a/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c
++++ b/boot/QcomPkg/SocPkg/Kailua/Library/MDPPlatformLib/MDPPlatformLibPanelConfig.c
+@@ -189,6 +189,7 @@ static PhysicalPanelConfigType sPhysicalPanelConfigTable[] =
+   {"vtdr6130_sec_144hz_fhd_dsc_vid",    "Panel_secondary_vtdr6130_144hz_fhd_plus_dsc_vid.xml",    "qcom,mdss_dsi_vtdr6130_fhd_plus_vid:",                        &sModeConfig[MDP_MODE_SINGLEDSI1], &sHwConfig[HW_CONFIG_DEFAULT_BRIGHT_V2_SEC_GPIO]},
+   {"vtdr6130_144hz_fhd_dsc_cmd_demura", "Panel_vtdr6130_144hz_fhd_plus_dsc_cmd_demura.xml",       "qcom,mdss_dsi_vtdr6130_fhd_plus_cmd:config0:timing0:",        &sModeConfig[MDP_MODE_SINGLEDSI0], &sHwConfig[HW_CONFIG_DEFAULT_BRIGHT_V2]},
+   {"vtdr6130_144hz_fhd_dsc_cmd_rfi",    "Panel_vtdr6130_144hz_fhd_plus_dsc_cmd_rfi.xml",          "qcom,mdss_dsi_vtdr6130_fhd_plus_cmd:config0:timing0:",        &sModeConfig[MDP_MODE_SINGLEDSI0], &sHwConfig[HW_CONFIG_DEFAULT_BRIGHT_V2]},
++  {"imdt_tst070wsbe165c_video",         "Panel_imdt_tst070wsbe165c_video.xml",                    "qcom,mdss_dsi_tst070wsbe165c_video:config0:timing0:",         &sModeConfig[MDP_MODE_SINGLEDSI0], &sHwConfig[HW_CONFIG_DEFAULT_NOBRIGHT_DEFAULT_GPIO]},
+ };
+ 
+ 
+@@ -633,7 +634,7 @@ MDP_Status MDPPlatformSetupPanelConfig(MDP_Display_IDType                 eDispl
+         break;
+ 
+       case EFI_PLATFORMINFO_TYPE_HDK:
+-        MDPPlatformSetPanelName(pPlatformPanel->szName, "vtdr6130_144hz_fhd_dsc_cmd");
++        MDPPlatformSetPanelName(pPlatformPanel->szName, "imdt_tst070wsbe165c_video");
+         break;
+ 
+       case EFI_PLATFORMINFO_TYPE_RUMI:
+diff --git a/boot/Settings/Kailua/Core/SocInfra/TLMM/kailua-pinctrl.dtsi b/boot/Settings/Kailua/Core/SocInfra/TLMM/kailua-pinctrl.dtsi
+index 5f2a6dc..043683e 100755
+--- a/boot/Settings/Kailua/Core/SocInfra/TLMM/kailua-pinctrl.dtsi
++++ b/boot/Settings/Kailua/Core/SocInfra/TLMM/kailua-pinctrl.dtsi
+@@ -1423,7 +1423,7 @@
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 120 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 121 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 122 */
+-(GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 123 */
++(GPIO_OUTPUT | GPIO_NO_PULL  | GPIO_OUT_HIGH | GPIO_PRG_YES) /* PIN 123 - 10_1PWR_EN (Display Power Enable) */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 124 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 125 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 126 */
+@@ -1442,7 +1442,7 @@
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 138 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 139 */
+ 
+-(GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 140 */
++(GPIO_OUTPUT | GPIO_NO_PULL  | GPIO_OUT_HIGH | GPIO_PRG_YES) /* PIN 140 - DSI_ENABLE - Enables 5V for Backlight */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 141 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 142 */
+ (GPIO_INPUT | GPIO_PULL_DOWN | GPIO_OUT_LOW | GPIO_PRG_NO) /* PIN 143 */
+-- 
+2.41.0
+

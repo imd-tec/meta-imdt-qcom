@@ -42,6 +42,7 @@ patch -p1 -d ${QCOM_ROOT_DIR}/adsp_proc -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/ap
 patch -p1 -d ${QCOM_ROOT_DIR}/boot_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/boot-images/files/0001-Add-support-for-booting-the-IMDT-SOM8550-3.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/boot_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/boot-images/files/0002-Bugfix-for-crash-in-UEFI-bootloader-when-ForceSwRend.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/boot_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/boot-images/files/0003-Add-support-for-TST070WSBE165C-DSI-Panel-in-UEFI-and.patch
+cp ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/logo1.bmp ${QCOM_ROOT_DIR}/boot_images/boot/QcomPkg/Logo/Common/logo1.bmp
 patch -p1 -d ${QCOM_ROOT_DIR}/common -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/common/files/0001-Removed-XML-comment-in-provisioning-XML.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/common -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/common/files/0002-Add-filenames-for-images-in-_b-partition.patch
 patch -p1 -d ${QCOM_ROOT_DIR}/trustzone_images -i ${QCOM_ROOT_DIR}/LE.PRODUCT.2.1.r1/apps_proc/poky/meta-imdt-qcom/patches/trustzone-images/files/0001-Enable-QUPV3-SE4-I2C-for-touchscreen-12.patch
