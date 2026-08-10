@@ -1,0 +1,82 @@
+From f5d4adfa304507be4d4221b58a4f71449984cb25 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Fri, 29 May 2026 11:53:43 +0100
+Subject: [PATCH] Disable SSC sensor node for booting ADSP now that we have
+ audio (#76)
+
+The Audio devicetree enables it's own special kernel module for booting
+the ADSP.
+And now that we have the audio subystem enabled in our build,
+we no longer need this node enabled. It will also clean up dmesg
+as it produces an error when both kernel drivers try to create the
+boot_adsp file in sysfs:
+
+[ 2.469653][ T228] sysfs: cannot create duplicate filename
+'/kernel/boot_adsp'
+[ 2.469661][ T228] CPU: 4 PID: 228 Comm: kworker/u12:5 Tainted: G S W OE
+5.15.148-android13-8-r00087.1-dirty #1
+[ 2.469664][ T228] Hardware name: Qualcomm Technologies, Inc. KalamaP
+HDK (DT)
+[ 2.469667][ T228] Workqueue: events_unbound
+deferred_probe_work_func.d214b1abc1ce060dd8a195c1ad29ea11.cfi_jt
+[    2.469676][  T228] Call trace:
+[    2.469677][  T228]  dump_backtrace.cfi_jt+0x0/0x8
+[    2.469683][  T228]  show_stack+0x1c/0x2c
+[    2.469687][  T228]  dump_stack_lvl+0x68/0x98
+[    2.469690][  T228]  sysfs_create_dir_ns+0xf4/0x154
+[    2.469694][  T228]  kobject_add_internal+0x19c/0x494
+[    2.469697][  T228]  kobject_add+0x98/0x110
+[    2.469699][  T228]  kobject_create_and_add+0x8c/0xf4
+[    2.469702][  T228]  sensors_ssc_probe+0xc0/0x37c [sensors_ssc]
+[    2.469708][  T228]  platform_probe+0xc8/0x114
+[    2.469712][  T228]  really_probe+0x14c/0x4cc
+[    2.469714][  T228]  __driver_probe_device+0xa8/0x130
+[    2.469716][  T228]  driver_probe_device+0x4c/0x198
+[    2.469719][  T228]  __device_attach_driver+0x140/0x19c
+[    2.469721][  T228]  bus_for_each_drv+0xac/0x12c
+[ 2.469724][ T228] __device_attach.llvm.10657247195014965136+0xcc/0x1a4
+[    2.469727][  T228]  bus_probe_device+0x44/0x100
+[    2.469730][  T228]  deferred_probe_work_func+0x88/0xf8
+[    2.469732][  T228]  process_one_work+0x224/0x4a4
+[    2.469736][  T228]  worker_thread+0x29c/0x500
+[    2.469739][  T228]  kthread+0x170/0x1dc
+[    2.469741][  T228]  ret_from_fork+0x10/0x20
+[ 2.469745][ T228] kobject_add_internal failed for boot_adsp with
+-EEXIST, don't try to register things with the same name in the same
+directory.
+
+We will keep the node in the DT so that we can use it work
+on the ADSP without pulling in the audio drivers.
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 0936664..57ff4b3 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -1022,13 +1022,18 @@
+ 		regulator-boot-on;
+ 	};
+ 	
+-	/* Alternative firmware loader for the ADSP */
+-	/* Audio Device Tree uses the adsp-loader */
++	/* 
++	 * Alternative firmware loader for the ADSP.
++	 * The audio device tree uses the adsp-loader to boot the ADSP.
++	 * If you want to boot the ADSP without enabling the audio subsystem,
++	 * then you can just enable this node.
++	 */
+ 	ssc_sensors: qcom,msm-ssc-sensors {
+ 		compatible = "qcom,msm-ssc-sensors";
+-		status = "okay";
+ 		qcom,firmware-name = "adsp";
+ 		qcom,rproc-handle = <&adsp_pas>;
++
++		status = "disabled";
+ 	};
+ };
+ 
+-- 
+2.41.0
+

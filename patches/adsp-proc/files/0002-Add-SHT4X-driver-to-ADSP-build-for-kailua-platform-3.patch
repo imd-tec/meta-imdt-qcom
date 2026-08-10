@@ -1,0 +1,24 @@
+From 1ae598a681c9a3be3e7ec47fec4351a427f8fad8 Mon Sep 17 00:00:00 2001
+From: dimkaps <150019158+dimkaps@users.noreply.github.com>
+Date: Tue, 2 Dec 2025 09:00:45 +0000
+Subject: [PATCH] Add SHT4X driver to ADSP build for kailua platform (#3)
+
+---
+ ssc/chipset/kailua/por.py | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ssc/chipset/kailua/por.py b/ssc/chipset/kailua/por.py
+index 9049a018..3f31988d 100755
+--- a/ssc/chipset/kailua/por.py
++++ b/ssc/chipset/kailua/por.py
+@@ -233,6 +233,7 @@ def generate(env):
+     env.AddUsesFlags(['SNS_ISLAND_INCLUDE_AK0991X'])
+     env.AddUsesFlags(['SNS_ISLAND_INCLUDE_LPS22DF'])
+     env.AddUsesFlags(['SNS_ISLAND_INCLUDE_TMD2755'])
++    env.AddUsesFlags(['SNS_ISLAND_INCLUDE_SHT4X'])
+ 
+     # 2. Calibration
+     env.AddUsesFlags(['SNS_ISLAND_INCLUDE_GYRO_CAL'])
+-- 
+2.41.0
+
