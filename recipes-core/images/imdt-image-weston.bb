@@ -65,6 +65,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     packagegroup-qti-audio \
     audio-init-service \
     linux-firmware-ath11k \
+    linux-firmware-cypd6125 \
     wpa-supplicant \
     iw \
     iperf3 \    
