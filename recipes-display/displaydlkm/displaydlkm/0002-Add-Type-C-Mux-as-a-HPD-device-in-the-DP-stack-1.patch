@@ -1,0 +1,461 @@
+From 44793a0b45b19192388e33ff1003f704d997270f Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <121951760+tmakumire@users.noreply.github.com>
+Date: Fri, 31 Jul 2026 17:08:11 +0100
+Subject: [PATCH] Add Type-C Mux as a HPD device in the DP stack (#1)
+
+This commit adds support for using a Type-C Mux as a
+Hot-Plug-Detect (HPD) device in Qualcomm's downstream
+displayport kernel driver. The Type-C Mux is the standard
+way that Linux uses to communicate USB-PD altmode events (enter/exit)
+to other devices within the kernel. In this driver, Qualcomm
+currently only supports using their own PMIC or a single GPIO as
+a HPD device. This doesn't work for us since we don't
+have Qualcomm's specific PMIC (PM8550B) that handle USB-PD.
+And we can't use a GPIO as the HPD device as it doesn't provide enough
+information to the DP stack about how it should be configured (number of DP lanes and orientation).
+Instead we have a Type-C port manager (CYPD) which communicates
+through the Linux Type-C framework. So by adding support for the Type-C Mux
+it allows us to connect to use the Type-C framework to receive DP altmode
+events from any Type-C connector port manager.
+
+At the moment, this best works with USB to DP cables connected directly to the display.
+However, it does also work with USB to HDMI cables (branch devices) but it requires
+the display to be on when the cable is plugged into the board. It's also not stable
+when connected to a USB Hub with DP/HDMI due to the time it takes to do sink side enumeration.
+Currently, if it doesn't detect a sink within 1s, there is no retry mechanism after that
+so the user will need to retry the connection. This is just a general bug with DP branch
+devices that needs to be worked on in this driver. Basically, if the DP sink is off, the sink count
+will always return 0. And if the cable is not actually connected to the display, it will also read 0.
+In the latter case we can handle this by using the HPD GPIO as this will be asserted
+when the cable is plugged into a display. Handling the former will require some investigation
+---
+ Makefile.am           |  11 ++-
+ msm/Kbuild            |   1 +
+ msm/dp/dp_hpd.c       |  10 ++
+ msm/dp/dp_hpd.h       |   2 +
+ msm/dp/dp_panel.c     |  44 +++++++--
+ msm/dp/dp_typec_mux.c | 223 ++++++++++++++++++++++++++++++++++++++++++
+ msm/dp/dp_typec_mux.h |  23 +++++
+ 7 files changed, 303 insertions(+), 11 deletions(-)
+ create mode 100644 msm/dp/dp_typec_mux.c
+ create mode 100644 msm/dp/dp_typec_mux.h
+
+diff --git a/Makefile.am b/Makefile.am
+index 02a2492..6a92b36 100755
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -22,5 +22,14 @@ modules_install:
+ 	$(MAKE) -C $(KERNEL_SRC) M=$(M) $@ $(KBUILD_OPTIONS)
+ 
+ clean:
+-	rm -f *.o *.ko *.mod.c *.mod.o *~ .*.cmd Module.symvers
+ 	rm -rf .tmp_versions
++	find . -name "*.o" -type f -delete
++	find . -name "*.o.d" -type f -delete
++	find . -name "*.ko" -type f -delete
++	find . -name "*.mod.c" -type f -delete
++	find . -name "*.mod.o" -type f -delete
++	find . -name "*.mod" -type f -delete
++	find . -name "*Module.symvers" -type f -delete
++	find . -name ".*.cmd" -type f -delete
++	find . -name "*.o.symversions" -type f -delete
++	find . -name "modules.order" -type f -delete
+diff --git a/msm/Kbuild b/msm/Kbuild
+index be1dd28..3de46b8 100644
+--- a/msm/Kbuild
++++ b/msm/Kbuild
+@@ -131,6 +131,7 @@ msm_drm-$(CONFIG_DRM_MSM_DP) += dp/dp_altmode.o \
+ 				dp/dp_bridge_hpd.o \
+ 				dp/dp_mst_sim.o \
+ 				dp/dp_mst_sim_helper.o \
++				dp/dp_typec_mux.o \
+ 				dp/dp_gpio_hpd.o \
+ 				dp/dp_lphw_hpd.o \
+ 				dp/dp_display.o \
+diff --git a/msm/dp/dp_hpd.c b/msm/dp/dp_hpd.c
+index c24eac7..49d5cec 100644
+--- a/msm/dp/dp_hpd.c
++++ b/msm/dp/dp_hpd.c
+@@ -16,6 +16,7 @@
+ #include "dp_lphw_hpd.h"
+ #include "dp_debug.h"
+ #include "dp_bridge_hpd.h"
++#include "dp_typec_mux.h"
+ 
+ static void dp_hpd_host_init(struct dp_hpd *dp_hpd,
+ 		struct dp_catalog_hpd *catalog)
+@@ -56,6 +57,12 @@ struct dp_hpd *dp_hpd_get(struct device *dev, struct dp_parser *parser,
+ 		}
+ 	}
+ 
++	dp_hpd = dp_typec_mux_get(dev, cb);
++	if (!IS_ERR_OR_NULL(dp_hpd)) {
++		dp_hpd->type = DP_HPD_TYPEC_MUX;
++		goto config;
++	}
++	
+ 	dp_hpd = dp_lphw_hpd_get(dev, parser, catalog, cb);
+ 	if (!IS_ERR_OR_NULL(dp_hpd)) {
+ 		dp_hpd->type = DP_HPD_LPHW;
+@@ -116,6 +123,9 @@ void dp_hpd_put(struct dp_hpd *dp_hpd)
+ 	case DP_HPD_BRIDGE:
+ 		dp_bridge_hpd_put(dp_hpd);
+ 		break;
++	case DP_HPD_TYPEC_MUX:
++		dp_typec_mux_put(dp_hpd);
++		break;
+ 	default:
+ 		DP_ERR("unknown hpd type %d\n", dp_hpd->type);
+ 		break;
+diff --git a/msm/dp/dp_hpd.h b/msm/dp/dp_hpd.h
+index 2ea903b..6eab449 100644
+--- a/msm/dp/dp_hpd.h
++++ b/msm/dp/dp_hpd.h
+@@ -32,6 +32,7 @@ enum dp_hpd_plug_orientation {
+  * @DP_HPD_GPIO:    GPIO based HPD
+  * @DP_HPD_LPHW:    LPHW based HPD
+  * @DP_HPD_BRIDGE:  External bridge HPD
++ * @DP_HPD_TYPEC_MUX:  Type-C connector based HPD
+  */
+ 
+ enum dp_hpd_type {
+@@ -40,6 +41,7 @@ enum dp_hpd_type {
+ 	DP_HPD_GPIO,
+ 	DP_HPD_LPHW,
+ 	DP_HPD_BRIDGE,
++	DP_HPD_TYPEC_MUX,
+ };
+ 
+ /**
+diff --git a/msm/dp/dp_panel.c b/msm/dp/dp_panel.c
+index e742591..230f520 100644
+--- a/msm/dp/dp_panel.c
++++ b/msm/dp/dp_panel.c
+@@ -23,6 +23,15 @@
+ #define VSC_EXT_VESA_SDP_SUPPORTED BIT(4)
+ #define VSC_EXT_VESA_SDP_CHAINING_SUPPORTED BIT(5)
+ 
++/*
++ * Some DP branch devices like USB Hubs or DP to HDMI converters will report
++ * a sink count of 0 whilst they try to enumerate the downstream sink.
++ * So to give them time to do the sink side enumeration, we poll the sink
++ * count register in the DPCD for up to 1 second.
++ */
++#define DP_SINK_COUNT_MAX_RETRIES	11
++#define DP_SINK_COUNT_RETRY_DELAY_MS	100
++
+ enum dp_panel_hdr_pixel_encoding {
+ 	RGB,
+ 	YCbCr444,
+@@ -1837,7 +1846,7 @@ static void dp_panel_read_sink_fec_caps(struct dp_panel *dp_panel)
+ static int dp_panel_read_sink_caps(struct dp_panel *dp_panel,
+ 	struct drm_connector *connector, bool multi_func)
+ {
+-	int rc = 0, rlen, count, downstream_ports;
++	int rc = 0, rlen, count, downstream_ports, retry;
+ 	const int count_len = 1;
+ 	struct dp_panel_private *panel;
+ 
+@@ -1866,17 +1875,32 @@ static int dp_panel_read_sink_caps(struct dp_panel *dp_panel,
+ 	downstream_ports = dp_panel->dpcd[DP_DOWNSTREAMPORT_PRESENT] &
+ 				DP_DWN_STRM_PORT_PRESENT;
+ 
++
++	DP_DEBUG("downstream_ports=%d (dpcd[%d]=0x%02x)\n", downstream_ports,
++			DP_DOWNSTREAMPORT_PRESENT,
++			dp_panel->dpcd[DP_DOWNSTREAMPORT_PRESENT]);
++
+ 	if (downstream_ports) {
+-		rlen = drm_dp_dpcd_read(panel->aux->drm_aux, DP_SINK_COUNT,
+-				&count, count_len);
+-		if (rlen == count_len) {
++		for (retry = 0; retry < DP_SINK_COUNT_MAX_RETRIES; retry++) {
++			rlen = drm_dp_dpcd_read(panel->aux->drm_aux, DP_SINK_COUNT,
++					&count, count_len);
++			if (rlen != count_len)
++				break;
++
+ 			count = DP_GET_SINK_COUNT(count);
+-			if (!count) {
+-				DP_ERR("no downstream ports connected\n");
+-				panel->link->sink_count.count = 0;
+-				rc = -ENOTCONN;
+-				goto end;
+-			}
++			DP_DEBUG("DP Sink count=%d, retry=%d\n", count, retry);
++			if (count)
++				break;
++
++			if (retry < DP_SINK_COUNT_MAX_RETRIES - 1)
++				msleep(DP_SINK_COUNT_RETRY_DELAY_MS);
++		}
++
++		if (rlen == count_len && !count) {
++			DP_ERR("no downstream ports connected\n");
++			panel->link->sink_count.count = 0;
++			rc = -ENOTCONN;
++			goto end;
+ 		}
+ 	}
+ 
+diff --git a/msm/dp/dp_typec_mux.c b/msm/dp/dp_typec_mux.c
+new file mode 100644
+index 0000000..05663a8
+--- /dev/null
++++ b/msm/dp/dp_typec_mux.c
+@@ -0,0 +1,223 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
++ */
++
++#include <linux/slab.h>
++#include <linux/device.h>
++#include <linux/delay.h>
++#include <linux/module.h>
++
++#include <linux/usb/dwc3-msm.h>
++
++#include <linux/usb/typec_dp.h>
++#include <linux/usb/typec_mux.h>
++
++#include "dp_typec_mux.h"
++#include "dp_debug.h"
++
++/* DP only pin assignments */
++#define DP_PIN_ASSIGN_DP_ONLY_MASK	(BIT(DP_PIN_ASSIGN_A) | \
++					 BIT(DP_PIN_ASSIGN_C) | \
++					 BIT(DP_PIN_ASSIGN_E))
++
++
++struct dp_typec_mux {
++	struct device *dev;
++	struct dp_hpd base;
++	struct dp_hpd_cb *dp_cb;
++	struct typec_mux *mux;
++
++	bool enabled;
++};
++
++static struct platform_device *dp_typec_mux_get_usb_pdev(struct dp_typec_mux *dp_mux)
++{
++	struct device_node *np;
++	struct device_node *usb_node;
++	struct platform_device *usb_pdev;
++
++	if (!dp_mux || !dp_mux->dev) {
++		DP_ERR("invalid args\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	np = dp_mux->dev->of_node;
++
++	usb_node = of_parse_phandle(np, "usb-controller", 0);
++	if (!usb_node) {
++		DP_ERR("unable to get usb node\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	usb_pdev = of_find_device_by_node(usb_node);
++	if (!usb_pdev) {
++		of_node_put(usb_node);
++		DP_ERR("unable to get usb pdev\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	of_node_put(usb_node);
++
++	return usb_pdev;
++}
++
++static int dp_typec_mux_configure_dp(struct platform_device *usb_pdev, bool enable_dp, u8 dp_lane_count)
++{
++	int rc = 0;
++	int timeout = 250;
++
++	while (timeout) {
++		rc = dwc3_msm_set_dp_mode(&usb_pdev->dev, enable_dp, dp_lane_count);
++		if (rc != -EBUSY && rc != -EAGAIN)
++			break;
++
++		DP_WARN("USB busy, retry\n");
++
++		/* wait for hw recommended delay for usb */
++		msleep(20);
++		timeout--;
++	}
++
++	if (!timeout) {
++		DP_ERR("%s - Failed to configure DP mode\n", __FUNCTION__);
++	}
++
++	return rc;
++}
++
++static int dp_typec_mux_set(struct typec_mux *mux,
++			    struct typec_mux_state *state)
++{
++	struct dp_typec_mux *dp_mux = typec_mux_get_drvdata(mux);
++	struct typec_displayport_data *dp_data = state->data;
++
++	struct platform_device *usb_pdev;
++	u8 dp_lanes;
++	u32 pin_conf;
++	int rc;
++
++	if ((state->mode == TYPEC_STATE_SAFE || 
++	     state->mode == TYPEC_STATE_USB) && dp_mux->enabled) {
++		pin_conf = 0;
++		dp_lanes = 0;
++	} else if (state->mode >= TYPEC_STATE_MODAL && dp_data) {
++		pin_conf = DP_CONF_GET_PIN_ASSIGN(dp_data->conf);
++		dp_lanes = (pin_conf & DP_PIN_ASSIGN_DP_ONLY_MASK) ? 4 : 2;
++	} else {
++		return 0;
++	}
++
++	usb_pdev = dp_typec_mux_get_usb_pdev(dp_mux);
++	if (IS_ERR(usb_pdev)) {
++		DP_ERR("Failed to get USB pdev, err %d\n", PTR_ERR(usb_pdev));
++		return PTR_ERR(usb_pdev);
++	}
++
++	if (dp_lanes) {
++		rc = dp_typec_mux_configure_dp(usb_pdev, true, dp_lanes);
++		if (rc)
++			goto exit;
++
++		dp_mux->base.orientation = dwc3_msm_is_orientation_normal(&usb_pdev->dev) ? ORIENTATION_CC1 : ORIENTATION_CC2;
++		dp_mux->base.alt_mode_cfg_done = true;
++		dp_mux->base.hpd_high = true;
++		dp_mux->base.hpd_irq = false;
++		dp_mux->base.multi_func = (dp_lanes == 2);
++
++		if (dp_mux->dp_cb && dp_mux->dp_cb->configure)
++			dp_mux->dp_cb->configure(dp_mux->dev);
++
++		dp_mux->enabled = true;
++
++		DP_DEBUG("%s - DP Enabled, Number of DP lanes:%d, DP Pin Config mask:0x%X, Orientation:%d, rc: %d\n", 
++			__FUNCTION__, dp_lanes, pin_conf, dp_mux->base.orientation, rc);
++
++	} else {
++		rc = dp_typec_mux_configure_dp(usb_pdev, false, dp_lanes);
++
++		dp_mux->base.orientation = ORIENTATION_NONE;
++		dp_mux->base.alt_mode_cfg_done = false;
++		dp_mux->base.hpd_high = false;
++		dp_mux->base.hpd_irq = false;
++
++		if (dp_mux->dp_cb && dp_mux->dp_cb->disconnect)
++			dp_mux->dp_cb->disconnect(dp_mux->dev);
++
++		dp_mux->enabled = false;
++
++		DP_DEBUG("%s - DP Disabled, rc: %d\n", __FUNCTION__, rc);
++	}
++
++exit:
++	platform_device_put(usb_pdev);
++	return rc;
++}
++
++static int dp_typec_mux_register(struct dp_typec_mux *dp_mux)
++{
++	struct typec_mux_desc mux_desc;
++
++	mux_desc.drvdata = dp_mux;
++	mux_desc.fwnode = dev_fwnode(dp_mux->dev);
++	mux_desc.set = dp_typec_mux_set;
++
++	dp_mux->mux = typec_mux_register(dp_mux->dev, &mux_desc);
++
++	if (IS_ERR(dp_mux->mux))
++		return PTR_ERR(dp_mux->mux);
++
++	return 0;
++}
++
++struct dp_hpd *dp_typec_mux_get(struct device *dev, struct dp_hpd_cb *cb)
++{
++	int rc;
++	struct dp_typec_mux *dp_mux;
++
++	if (!of_property_read_bool(dev->of_node, "mode-switch"))
++		return NULL;
++
++	if (!cb) {
++		DP_ERR("invalid cb data\n");
++		return ERR_PTR(-EINVAL);
++	}
++
++	dp_mux = kzalloc(sizeof(*dp_mux), GFP_KERNEL);
++	if (!dp_mux)
++		return ERR_PTR(-ENOMEM);
++
++	dp_mux->dev = dev;
++	dp_mux->dp_cb = cb;
++
++	dp_mux->base.register_hpd = NULL;
++	dp_mux->base.simulate_connect = NULL;
++	dp_mux->base.simulate_attention = NULL;
++
++	dp_mux->enabled = false;
++
++	rc = dp_typec_mux_register(dp_mux);
++	if (rc) {
++		DP_ERR("dp typec mux registration failed: %d\n", rc);
++		goto error;
++	}
++
++	DP_DEBUG("dp typec mux registration success\n");
++
++	return &dp_mux->base;
++error:
++	kfree(dp_mux);
++	return ERR_PTR(rc);
++}
++
++void dp_typec_mux_put(struct dp_hpd *dp_hpd)
++{
++	struct dp_typec_mux *dp_mux;
++
++	dp_mux = container_of(dp_hpd, struct dp_typec_mux, base);
++	if (!dp_mux)
++		return;
++
++	typec_mux_unregister(dp_mux->mux);
++	kfree(dp_mux);
++}
+diff --git a/msm/dp/dp_typec_mux.h b/msm/dp/dp_typec_mux.h
+new file mode 100644
+index 0000000..c1b9a05
+--- /dev/null
++++ b/msm/dp/dp_typec_mux.h
+@@ -0,0 +1,23 @@
++/*
++ * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 and
++ * only version 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ */
++#ifndef _DP_TYPEC_MUX_H_
++#define _DP_TYPEC_MUX_H_
++
++#include <linux/types.h>
++#include "dp_hpd.h"
++
++struct dp_hpd *dp_typec_mux_get(struct device *dev, struct dp_hpd_cb *cb);
++
++void dp_typec_mux_put(struct dp_hpd *pd);
++#endif /* _DP_TYPEC_MUX_H_ */
+-- 
+2.41.0
+
