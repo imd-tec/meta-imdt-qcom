@@ -76,6 +76,11 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     rtc-time-control \
 "
 
-# OTA Recovery image is not created to speed up the build, when ENABLE_RECOVERY is not 1 
-do_recovery_ext4[noexec] = "${@'1' if d.getVar('ENABLE_RECOVERY') != '1' else ''}"
-do_gen_ota_full_zip_ext4[noexec] = "${@'1' if d.getVar('ENABLE_RECOVERY') != '1' else ''}"
+# We detach the generation of the OTA recovery image and zip file from the
+# main build dependency chain so that these tasks have to be explicitly executed
+# to generate them (like the populate_sdk task).
+deltask do_recovery_ext4
+deltask do_gen_ota_full_zip_ext4
+
+addtask do_recovery_ext4 after do_image_complete
+addtask do_gen_ota_full_zip_ext4 after do_recovery_ext4
