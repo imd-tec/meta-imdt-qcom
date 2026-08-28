@@ -1,0 +1,98 @@
+From f9811fb3744ff0309408414056651f85f6c49ea6 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Tue, 17 Mar 2026 11:26:31 +0000
+Subject: [PATCH] Add support for CYPD6125 as USB-C port manager
+
+Note that I have named the ports node in the UCSI DT node so
+that it can be referenced in the display devicetree. This will allow
+us to create another port for displayport events via the mode-switch
+property.
+---
+ qcom/kalamap-imdt-sbc8550.dtsi | 60 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 60 insertions(+)
+
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 57ff4b3..0257e73 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -514,6 +514,21 @@
+ 		 */
+ 		reset-gpio = <&pm8550vs_d_gpios 4 GPIO_ACTIVE_HIGH>;
+ 	};
++
++	ucsi_port_manager: ccgx@8 {
++		compatible = "cypress,ccgx";
++		reg = <0x08>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&ccgx_irq_gpio>;
++		
++		interrupt-parent = <&tlmm>;
++		interrupts = <10 IRQ_TYPE_LEVEL_LOW>;
++
++		ccgx,firmware-build = <0x01>;
++
++		status = "okay";
++	};
+ };
+ 
+ &usb_qmp_dp_phy {
+@@ -847,6 +862,21 @@
+ 			drive-strength = <16>;
+ 		};
+ 	};
++
++	ccgx_irq_gpio: ccgx-irq-gpio {
++		mux {
++			pins = "gpio10";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio10";
++			drive-strength = <2>;
++
++			bias-pull-up;
++			input-enable;
++		};
++	};
+ };
+ 
+ &soc {
+@@ -1213,3 +1243,33 @@
+ 
+ 	status = "okay";
+ };
++
++&dwc3 {
++	dr_mode = "otg";
++	usb-role-switch;
++};
++
++&usb0 {
++	usb-role-switch;
++	orientation-switch;
++
++	port {
++		usb0_port_ep: endpoint {
++			remote-endpoint = <&typec_connector_port0_ep>;
++		};
++	};
++};
++
++&ucsi_port_manager {
++	typec_connector_ports: ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		port@0 {
++			reg = <0>;
++			typec_connector_port0_ep: endpoint {
++				remote-endpoint = <&usb0_port_ep>;
++			};
++		};
++	};
++};
+-- 
+2.41.0
+
