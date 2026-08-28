@@ -1,0 +1,80 @@
+From 717c658d4bd53815b6be596d78b63ec4489379f0 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 21 Aug 2026 11:24:53 +0100
+Subject: [PATCH] Disable regulators on error path in dsi_display_init()
+
+When calling component_add() the DSI panel driver may return
+-EPROBE_DEFER if some HW devices are not yet ready at probe time.
+When this happens, dsi_display_init() exits without
+disabling the regulators. As the regulators are devres managed,
+they are automatically released on the exit path. But the regulators
+can only be released if they are disabled so we get a kernel warning
+like this:
+
+[    7.974230][  T452] WARNING: CPU: 3 PID: 452 at drivers/regulator/core.c:2359
+[    8.432755][  T452] Call trace:
+[    8.435981][  T452]  _regulator_put.llvm.453814213157386160+0x10c/0x11c
+[    8.442774][  T452]  devm_regulator_release+0x30/0x4c
+[    8.447965][  T452]  release_nodes+0x94/0x17c
+[    8.452444][  T452]  devres_release_all+0x88/0xd8
+[    8.457276][  T452]  really_probe+0x12c/0x4c4
+[    8.461756][  T452]  __driver_probe_device+0xac/0x170
+[    8.466947][  T452]  driver_probe_device+0x4c/0x1bc
+[    8.471958][  T452]  __driver_attach+0x120/0x298
+[    8.476700][  T452]  bus_for_each_dev+0xac/0x124
+[    8.481442][  T452]  driver_attach+0x28/0x38
+[    8.485825][  T452]  bus_add_driver+0x118/0x22c
+[    8.490477][  T452]  driver_register+0x7c/0x11c
+[    8.495128][  T452]  __platform_driver_register+0x28/0x38
+[    8.500666][  T452]  dsi_display_register+0x1d4/0x20c [msm_drm]
+[    8.506988][  T452]  init_module+0x98/0xb0 [msm_drm]
+[    8.512319][  T452]  do_one_initcall+0x7c/0x2d8
+[    8.516975][  T452]  do_init_module+0x50/0x3b8
+[    8.521546][  T452]  load_module+0xe6c/0x1030
+[    8.526018][  T452]  __se_sys_finit_module+0xc0/0x12c
+[    8.531209][  T452]  __arm64_sys_finit_module+0x20/0x30
+[    8.536579][  T452]  invoke_syscall+0x60/0x150
+[    8.541144][  T452]  el0_svc_common.llvm.18167937583620706919+0x98/0x114
+[    8.548016][  T452]  do_el0_svc+0x28/0x98
+[    8.552129][  T452]  el0_svc+0x28/0x90
+[    8.555985][  T452]  el0t_64_sync_handler+0x88/0xec
+[    8.560994][  T452]  el0t_64_sync+0x1b8/0x1bc
+
+To get rid of the warning, we fix the bug by disabling
+the regulators on the error path.
+---
+ msm/dsi/dsi_display.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/msm/dsi/dsi_display.c b/msm/dsi/dsi_display.c
+index 21ecc4f..8fad8d5 100644
+--- a/msm/dsi/dsi_display.c
++++ b/msm/dsi/dsi_display.c
+@@ -5906,15 +5906,22 @@ static int dsi_display_init(struct dsi_display *display)
+ 		if (rc) {
+ 			DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+ 					display->panel->name, rc);
+-			return rc;
++			goto end;
+ 		}
+ 	}
+ 
+ 	rc = component_add(&pdev->dev, &dsi_display_comp_ops);
+-	if (rc)
++	if (rc) {
+ 		DSI_ERR("component add failed, rc=%d\n", rc);
++		goto disable_regulators;
++	}
+ 
+ 	DSI_DEBUG("component add success: %s\n", display->name);
++	return rc;
++
++disable_regulators:
++	dsi_pwr_enable_regulator(&display->panel->power_info,
++				false);
+ end:
+ 	return rc;
+ }
+-- 
+2.41.0
+

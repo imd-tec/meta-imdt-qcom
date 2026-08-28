@@ -1,0 +1,110 @@
+From 13adca62d5ffbc257ea226c7f7cc949fb6bc69e8 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 21 Aug 2026 14:24:21 +0100
+Subject: [PATCH] Configure PWM backlight through DSI PWM pinctrl node
+
+We are currently using a dummy regulator node to initialise
+the pinctrl setting for the backlight PWM pin. Although this works,
+the cleaner way is to configure the backlight PWM pin as part of the
+the pinctrl settings for the DSI driver. The msm DSI driver has a
+specific pinctrl node for configuring the backlight PWM
+so we have switched to using this.
+
+This change also fixes a minor bug I spotted in the boot logs
+where the regulator driver tries to bring-up dsi_bl_en but
+it has to defer it because the PMIC GPIO driver is not yet
+up. So you see this in the logs:
+[    5.855735][  T228] reg-fixed-voltage soc:regulator-dsi-bl-en: deferred probe timeout, ignoring dependency
+[    5.875793][  T228] reg-fixed-voltage soc:regulator-dsi-bl-en: deferred probe timeout, ignoring dependency
+[    5.909094][  T228] reg-fixed-voltage soc:regulator-dsi-bl-en: deferred probe timeout, ignoring dependency
+[    5.938187][  T228] reg-fixed-voltage soc:regulator-dsi-bl-en: deferred probe timeout, ignoring dependency
+---
+ display/kalama-imdt-sde-display-hdk.dtsi |  4 ++++
+ display/kalama-imdt-sde-display.dtsi     | 29 ++++++------------------
+ 2 files changed, 11 insertions(+), 22 deletions(-)
+
+diff --git a/display/kalama-imdt-sde-display-hdk.dtsi b/display/kalama-imdt-sde-display-hdk.dtsi
+index d55a0bc..89d2f4a 100755
+--- a/display/kalama-imdt-sde-display-hdk.dtsi
++++ b/display/kalama-imdt-sde-display-hdk.dtsi
+@@ -6,6 +6,7 @@
+ 
+ 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_avdd>;
+ 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
++	qcom,bl-pmic-pwm-period-usecs = <100>;
+ 	qcom,mdss-dsi-bl-min-level = <1>;
+ 	qcom,mdss-dsi-bl-max-level = <4095>;
+ 	qcom,mdss-brightness-max-level = <255>;
+@@ -22,6 +23,9 @@
+ };
+ 
+ &sde_dsi {
++	pinctrl-names = "panel_active", "panel_suspend", "pwm_pin";
++	pinctrl-2 = <&display0_backlight_pwm_default>;
++
+ 	qcom,dsi-default-panel = <&dsi_tst070wsbe165c_video>;
+ };
+ 
+diff --git a/display/kalama-imdt-sde-display.dtsi b/display/kalama-imdt-sde-display.dtsi
+index 5f52e4e..01e34b0 100644
+--- a/display/kalama-imdt-sde-display.dtsi
++++ b/display/kalama-imdt-sde-display.dtsi
+@@ -3,15 +3,15 @@
+ #include <dt-bindings/clock/qcom,dispcc-kalama.h>
+ 
+ &pm8550_rgb {
+-        status = "disabled";
++	status = "disabled";
+ };
+ 
+ &pm8550_pwm_1 {
+-        status = "okay";
++	status = "okay";
+ };
+ 
+ &pm8550_gpios {
+-	display0_backlight_default: display0_backlight_default {
++	display0_backlight_pwm_default: display0_backlight_pwm_default {
+ 		pins = "gpio6";
+ 		function = "func1";
+ 		input-disable;
+@@ -61,8 +61,10 @@
+ 	};
+ 
+ 
+-	// This is used as the VIN to the Backlight LED
+-	// Driver.
++	/* 
++	 * This is used as the VIN to the Backlight LED
++	 * Driver
++	 */
+ 	dsi_5v_en: regulator-dsi-5v-en {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "dsi_5v_en";
+@@ -80,23 +82,6 @@
+ 		regulator-always-on;
+ 		regulator-boot-on;
+ 	};
+-
+-	dsi_bl_en: regulator-dsi-bl-en {
+-		compatible = "regulator-fixed";
+-		regulator-name = "dsi_bl_en";
+-		regulator-min-microvolt = <8000000>;
+-		regulator-max-microvolt = <8000000>;
+-
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&display0_backlight_default>;
+-		
+-		enable-active-high;
+-		
+-		vin-supply = <&display_panel_pwr_en>;
+-
+-		regulator-always-on;
+-		regulator-boot-on;
+-	};
+ };
+ 
+ &reserved_memory {
+-- 
+2.41.0
+
