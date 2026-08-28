@@ -1,0 +1,75 @@
+From 22ef43b4f253ec43fa430d68bcd443947fcc0146 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 28 Aug 2026 15:01:42 +0100
+Subject: [PATCH] Add support for IMDT SBC8550 rev5 board-id
+
+Since we denote the rev5 IMDT SBC8550 with a
+different board-id, we need to make sure the QUPv3
+configuration matches. Currently (and most likely in the future too),
+both board revisions have the same QUP configuration. So to keep
+maintenance simple, we use the same QUPv3 config array for both
+board revisions. When the board revisions start to differ, we will just
+create another QUPv3 config array.
+
+I also had to remove qupv3_perms_grd and qupv3_perms_size_grd from
+the C source file as it was causing a linker error after the XML change
+to use qupv3_perms_qrd.
+---
+ .../qupv3/config/kailua/QUPAC_Access.c        | 23 -------------------
+ .../qupv3/config/kailua/QUPAC_Access.xml      |  4 ++--
+ 2 files changed, 2 insertions(+), 25 deletions(-)
+
+diff --git a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+index 4bed1ec..0c00ad2 100755
+--- a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
++++ b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.c
+@@ -164,29 +164,6 @@ const QUPv3_se_security_permissions_type qupv3_perms_cdp[] =
+ };
+ const uint32 qupv3_perms_size_cdp = sizeof(qupv3_perms_cdp)/sizeof(qupv3_perms_cdp[0]);
+ 
+-const QUPv3_se_security_permissions_type qupv3_perms_grd[] =
+-{
+-  /*   PeriphID,         ProtocolID,               Mode,  NsOwner,       bAllowFifo, bLoad, bModExcl  */
+-  
+-  { QUPV3_1_SE0, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, // NFC I3C/I2C
+-  { QUPV3_1_SE1, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI,  AC_TZ,              FALSE, TRUE,  TRUE  }, // NFC eSE
+-  { QUPV3_1_SE2, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI,  AC_HLOS,            FALSE, TRUE,  FALSE }, // FP-SENSOR
+-  /*QUPV3_1_SE3*/                                                    
+-  { QUPV3_1_SE4, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI,  AC_HLOS,            FALSE, TRUE,  FALSE }, //touch Screen
+-  /*QUPV3_1_SE5*/
+-  { QUPV3_1_SE6, QUPV3_PROTOCOL_UFCS,     QUPV3_MODE_FIFO, AC_ADSP_Q6_ELF,    TRUE,  TRUE,  FALSE }, // UFCS
+-  { QUPV3_1_SE7, QUPV3_PROTOCOL_UART_2W, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  FALSE, FALSE }, //Debug UART  
+-  { QUPV3_2_SE0, QUPV3_PROTOCOL_SPI,     QUPV3_MODE_GSI, AC_HLOS,            FALSE,  TRUE,  FALSE }, //SECOND TOUCH
+-  { QUPV3_2_SE1, QUPV3_PROTOCOL_I3C_IBI, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Camera I3c
+-  { QUPV3_2_SE2, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Joystick
+-  { QUPV3_2_SE3, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, //Joystick
+-  { QUPV3_2_SE4, QUPV3_PROTOCOL_I2C,     QUPV3_MODE_FIFO, AC_NON_SECURE,      TRUE,  TRUE,  FALSE }, // RF EEPROM
+-  /*QUPV3_2_SE5*/
+-  { QUPV3_2_SE6, QUPV3_PROTOCOL_UART_4W, QUPV3_MODE_FIFO, AC_HLOS,            TRUE,  TRUE,  FALSE }, // Hamilton BT HCI UART
+-  /*QUPV3_2_SE7*/
+-};
+-const uint32 qupv3_perms_size_grd = sizeof(qupv3_perms_grd)/sizeof(qupv3_perms_grd[0]);
+-
+ const QUPv3_se_security_permissions_type qupv3_perms_rumi[] =
+ {
+   /*   PeriphID,         ProtocolID,               Mode,  NsOwner,       bAllowFifo, bLoad, bModExcl  */
+diff --git a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.xml b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.xml
+index 21a58aa..d0e4302 100755
+--- a/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.xml
++++ b/core/settings/buses/qup_accesscontrol/qupv3/config/kailua/QUPAC_Access.xml
+@@ -142,10 +142,10 @@
+   </device>  
+      <device id="/dev/buses/qupac/31/01"> // hdk subtype1 GRD8275
+     <props name="qupv3_perms" type=DALPROP_ATTR_TYPE_STRUCT_PTR>
+-       qupv3_perms_grd
++       qupv3_perms_qrd
+     </props>
+     <props name="qupv3_perms_size" type=DALPROP_ATTR_TYPE_STRUCT_PTR>
+-       qupv3_perms_size_grd
++       qupv3_perms_size_qrd
+     </props>
+     <props name="gpii_perms" type=DALPROP_ATTR_TYPE_STRUCT_PTR>
+        qupv3_gpii_perms
+-- 
+2.41.0
+

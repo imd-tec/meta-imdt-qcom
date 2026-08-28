@@ -12,3 +12,4 @@ SRC_URI:append:imdt-qcs8550-sbc = " file://0003-Enable-PWM-Display-Backlight-on-
 SRC_URI:append:imdt-qcs8550-sbc = " file://0004-Configure-PWM-backlight-through-DSI-PWM-pinctrl-node.patch"
 SRC_URI:append:imdt-qcs8550-sbc = " file://0005-Remove-unnecessary-display-power-supply-nodes-and-en.patch"
 SRC_URI:append:imdt-qcs8550-sbc = " file://0006-Enable-displayport-via-USB-C-altmode-driver.patch"
+SRC_URI:append:imdt-qcs8550-sbc = " file://0007-Seperate-SBC8550-rev3-and-rev5-into-individual-board.patch"

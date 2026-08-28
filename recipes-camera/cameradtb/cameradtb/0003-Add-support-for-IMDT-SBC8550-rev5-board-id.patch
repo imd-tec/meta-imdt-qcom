@@ -1,0 +1,25 @@
+From ecf55d3ace60e5302cf1c023026dd1aa7d0c2b1d Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 28 Aug 2026 11:58:49 +0100
+Subject: [PATCH] Add support for IMDT SBC8550 rev5 board-id
+
+---
+ kalama-camera-sensor-hdk.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/kalama-camera-sensor-hdk.dts b/kalama-camera-sensor-hdk.dts
+index 3cfe40f..ddb42d9 100755
+--- a/kalama-camera-sensor-hdk.dts
++++ b/kalama-camera-sensor-hdk.dts
+@@ -12,5 +12,5 @@
+ 	model = "Qualcomm Technologies, Inc. Kalama QRD";
+ 	compatible = "qcom,kalama-qrd", "qcom,kalama", "qcom,qrd";
+ 	qcom,msm-id = <519 0x10000>, <536 0x10000>, <519 0x20000>, <536 0x20000>, <603 0x20000>;
+-	qcom,board-id = <0x1001f 0>;
+-};
+\ No newline at end of file
++	qcom,board-id = <0x0001001f 0>, <0x0101001f 0>;
++};
+-- 
+2.41.0
+

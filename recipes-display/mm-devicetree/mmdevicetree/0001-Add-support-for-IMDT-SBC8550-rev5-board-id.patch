@@ -1,0 +1,23 @@
+From 76c48b89137da55ec88137000c977fee28276211 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 28 Aug 2026 15:12:19 +0100
+Subject: [PATCH] Add support for IMDT SBC8550 rev5 board-id
+
+---
+ kalama-mm-hdk-overlay.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kalama-mm-hdk-overlay.dts b/kalama-mm-hdk-overlay.dts
+index ba30cb3..29ac172 100755
+--- a/kalama-mm-hdk-overlay.dts
++++ b/kalama-mm-hdk-overlay.dts
+@@ -8,5 +8,5 @@
+ 	compatible = "qcom,kalama-hdk", "qcom,kalama", "qcom,hdk";
+ 	qcom,msm-id = <536 0x10000>, <536 0x20000>, <603 0x20000>,
+ 			<604 0x20000>;
+-	qcom,board-id = <0x1001f 0>;
++	qcom,board-id = <0x0001001f 0>, <0x0101001f 0>;
+ };
+-- 
+2.41.0
+

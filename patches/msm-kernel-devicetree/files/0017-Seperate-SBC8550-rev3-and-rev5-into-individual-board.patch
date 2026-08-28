@@ -1,0 +1,288 @@
+From 4263466e56a611b6277fe8f0a004cc10eabb5da2 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 28 Aug 2026 11:24:59 +0100
+Subject: [PATCH] Seperate SBC8550 rev3 and rev5 into individual board DTs
+
+As there is a major HW variant between rev5 and
+rev3 SBC's we now create a seperate devicetree
+for the different revisions. The devicetree
+which is selected at boot will depend on what
+is flashed in the CDT.
+
+For anything pre-CYPD ( < rev5), the board-id is:
+0x0001001f - Platform = 0x1f (HDK), Minor = 0, Major = 1, Subtype = 0
+
+And for boards with CYPD (>= rev5), the board-id is:
+0x0101001f - Platform = 0x1f (HDK), Minor = 0, Major = 1, Subtype = 1
+---
+ qcom/Makefile                                 |  3 +-
+ ...kalamap-hdk-imdt-sbc8550-rev3-overlay.dts} |  2 +-
+ .../kalamap-hdk-imdt-sbc8550-rev5-overlay.dts | 69 +++++++++++++++++++
+ qcom/kalamap-imdt-sbc8550-rev5.dtsi           | 65 +++++++++++++++++
+ qcom/kalamap-imdt-sbc8550.dtsi                | 60 ----------------
+ 5 files changed, 137 insertions(+), 62 deletions(-)
+ rename qcom/{kalamap-hdk-overlay.dts => kalamap-hdk-imdt-sbc8550-rev3-overlay.dts} (98%)
+ create mode 100755 qcom/kalamap-hdk-imdt-sbc8550-rev5-overlay.dts
+ create mode 100644 qcom/kalamap-imdt-sbc8550-rev5.dtsi
+
+diff --git a/qcom/Makefile b/qcom/Makefile
+index e89b883..5db376e 100755
+--- a/qcom/Makefile
++++ b/qcom/Makefile
+@@ -57,7 +57,8 @@ KALAMA_BOARDS += \
+ 		 kalama-rcm-overlay.dtbo \
+ 		 kalama-qrd-overlay.dtbo \
+ 		 kalama-sg-hhg-overlay.dtbo \
+-		 kalamap-hdk-overlay.dtbo \
++		 kalamap-hdk-imdt-sbc8550-rev5-overlay.dtbo \
++		 kalamap-hdk-imdt-sbc8550-rev3-overlay.dtbo \
+ 		 kalamap-sg-hhg-overlay.dtbo \
+ 		 kalamap-rb5-gen2-overlay.dtbo \
+ 		 kalamap-rb5-gen2-dvt-overlay.dtbo \
+diff --git a/qcom/kalamap-hdk-overlay.dts b/qcom/kalamap-hdk-imdt-sbc8550-rev3-overlay.dts
+similarity index 98%
+rename from qcom/kalamap-hdk-overlay.dts
+rename to qcom/kalamap-hdk-imdt-sbc8550-rev3-overlay.dts
+index 9d9dcec..c6f1d83 100755
+--- a/qcom/kalamap-hdk-overlay.dts
++++ b/qcom/kalamap-hdk-imdt-sbc8550-rev3-overlay.dts
+@@ -8,7 +8,7 @@
+ 	model = "Qualcomm Technologies, Inc. KalamaP HDK";
+ 	compatible = "qcom,kalamap-hdk", "qcom,kalamap", "qcom,hdk";
+ 	qcom,msm-id = <536 0x10000>, <536 0x20000>, <601 0x20000>, <603 0x20000>;
+-	qcom,board-id = <0x1001f 0>;
++	qcom,board-id = <0x0001001f 0>;
+ };
+ 
+ &pcie0 {
+diff --git a/qcom/kalamap-hdk-imdt-sbc8550-rev5-overlay.dts b/qcom/kalamap-hdk-imdt-sbc8550-rev5-overlay.dts
+new file mode 100755
+index 0000000..111ccd7
+--- /dev/null
++++ b/qcom/kalamap-hdk-imdt-sbc8550-rev5-overlay.dts
+@@ -0,0 +1,69 @@
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/interconnect/qcom,kalama.h>
++#include "kalamap-imdt-sbc8550-rev5.dtsi"
++
++/ {
++	model = "Qualcomm Technologies, Inc. KalamaP HDK";
++	compatible = "qcom,kalamap-hdk", "qcom,kalamap", "qcom,hdk";
++	qcom,msm-id = <536 0x10000>, <536 0x20000>, <601 0x20000>, <603 0x20000>;
++	qcom,board-id = <0x0101001f 0>;
++};
++
++&pcie0 {
++	qcom,config-recovery;
++	qcom,drv-name = "lpass";
++	msi-map = <0x0 &gic_its 0x1400 0x1>,
++		  <0x100 &gic_its 0x1401 0x1>; /* 32 event IDs */
++
++};
++
++&pcie1 {
++	qcom,drv-name = "lpass";
++	msi-map = <0x0 &gic_its 0x1480 0x1>,
++		  <0x100 &gic_its 0x1481 0x1>; /* 32 event IDs */
++};
++
++&pcie1_rp {
++	#address-cells = <5>;
++	#size-cells = <0>;
++
++	/*
++	 *This property is needed only for SoC-to-SoC communication
++	 *(EP mode support) on HDK platform.
++	 */
++	mhi_0: qcom,mhi@0 {
++		reg = <0 0 0 0 0 >;
++
++		status = "disabled";
++
++		pci-ids = "17cb:0111";
++
++		/* controller specific configuration */
++		qcom,iommu-group = <&mhi_0_iommu_group>;
++
++		/* mhi bus specific settings */
++		mhi,max-channels = <2>;
++		mhi,timeout = <2000>;
++		mhi,name = "sxr";
++
++		#address-cells = <1>;
++		#size-cells = <1>;
++
++		interconnects = <&pcie_noc MASTER_PCIE_1 &mc_virt SLAVE_EBI1>;
++		interconnect-names = "pcie_to_ddr";
++
++		qcom,mhi-bus-bw-cfg = <0 0>, /* no vote */
++				<250000 0>, /* avg bw / AB: 2 GBps, peak bw / IB: no vote */
++				<500000 0>, /* avg bw / AB: 4 GBps, peak bw / IB: no vote */
++				<1000000 0>, /* avg bw / AB: 8 GBps, peak bw / IB: no vote */
++				<2000000 0>; /* avg bw / AB: 16 GBps, peak bw / IB: no vote */
++
++		mhi_0_iommu_group: mhi_0_iommu_group {
++			qcom,iommu-dma-addr-pool = <0x20000000 0x1fffffff>;
++			qcom,iommu-dma = "atomic";
++			qcom,iommu-pagetable = "coherent";
++		};
++	};
++};
+diff --git a/qcom/kalamap-imdt-sbc8550-rev5.dtsi b/qcom/kalamap-imdt-sbc8550-rev5.dtsi
+new file mode 100644
+index 0000000..fd6b1ef
+--- /dev/null
++++ b/qcom/kalamap-imdt-sbc8550-rev5.dtsi
+@@ -0,0 +1,65 @@
++#include "kalamap-imdt-sbc8550.dtsi"
++
++&tlmm {
++	ccgx_irq_gpio: ccgx-irq-gpio {
++		mux {
++			pins = "gpio10";
++			function = "gpio";
++		};
++
++		config {
++			pins = "gpio10";
++			drive-strength = <2>;
++
++			bias-pull-up;
++			input-enable;
++		};
++	};
++};
++
++&qupv3_hub_i2c2 {
++	ucsi_port_manager: ccgx@8 {
++		compatible = "cypress,ccgx";
++		reg = <0x08>;
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&ccgx_irq_gpio>;
++		
++		interrupt-parent = <&tlmm>;
++		interrupts = <10 IRQ_TYPE_LEVEL_LOW>;
++
++		ccgx,firmware-build = <0x01>;
++
++		status = "okay";
++	};
++};
++
++&dwc3 {
++	dr_mode = "otg";
++	usb-role-switch;
++};
++
++&usb0 {
++	usb-role-switch;
++	orientation-switch;
++
++	port {
++		usb0_port_ep: endpoint {
++			remote-endpoint = <&typec_connector_port0_ep>;
++		};
++	};
++};
++
++&ucsi_port_manager {
++	typec_connector_ports: ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		port@0 {
++			reg = <0>;
++			typec_connector_port0_ep: endpoint {
++				remote-endpoint = <&usb0_port_ep>;
++			};
++		};
++	};
++};
+diff --git a/qcom/kalamap-imdt-sbc8550.dtsi b/qcom/kalamap-imdt-sbc8550.dtsi
+index 0257e73..57ff4b3 100644
+--- a/qcom/kalamap-imdt-sbc8550.dtsi
++++ b/qcom/kalamap-imdt-sbc8550.dtsi
+@@ -514,21 +514,6 @@
+ 		 */
+ 		reset-gpio = <&pm8550vs_d_gpios 4 GPIO_ACTIVE_HIGH>;
+ 	};
+-
+-	ucsi_port_manager: ccgx@8 {
+-		compatible = "cypress,ccgx";
+-		reg = <0x08>;
+-
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&ccgx_irq_gpio>;
+-		
+-		interrupt-parent = <&tlmm>;
+-		interrupts = <10 IRQ_TYPE_LEVEL_LOW>;
+-
+-		ccgx,firmware-build = <0x01>;
+-
+-		status = "okay";
+-	};
+ };
+ 
+ &usb_qmp_dp_phy {
+@@ -862,21 +847,6 @@
+ 			drive-strength = <16>;
+ 		};
+ 	};
+-
+-	ccgx_irq_gpio: ccgx-irq-gpio {
+-		mux {
+-			pins = "gpio10";
+-			function = "gpio";
+-		};
+-
+-		config {
+-			pins = "gpio10";
+-			drive-strength = <2>;
+-
+-			bias-pull-up;
+-			input-enable;
+-		};
+-	};
+ };
+ 
+ &soc {
+@@ -1243,33 +1213,3 @@
+ 
+ 	status = "okay";
+ };
+-
+-&dwc3 {
+-	dr_mode = "otg";
+-	usb-role-switch;
+-};
+-
+-&usb0 {
+-	usb-role-switch;
+-	orientation-switch;
+-
+-	port {
+-		usb0_port_ep: endpoint {
+-			remote-endpoint = <&typec_connector_port0_ep>;
+-		};
+-	};
+-};
+-
+-&ucsi_port_manager {
+-	typec_connector_ports: ports {
+-		#address-cells = <1>;
+-		#size-cells = <0>;
+-
+-		port@0 {
+-			reg = <0>;
+-			typec_connector_port0_ep: endpoint {
+-				remote-endpoint = <&usb0_port_ep>;
+-			};
+-		};
+-	};
+-};
+-- 
+2.41.0
+
