@@ -1,0 +1,45 @@
+From 4f5ee47cff27bd2181fbdd2b41abfed871b086ae Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 30 Jul 2026 14:19:22 +0100
+Subject: [PATCH] usb: typec: ucsi: Invert DisplayPort role assignment
+
+The existing implementation assigned these flags backwards, configuring
+the partner's DisplayPort role to match the port's role instead of
+complementing it.
+This prevents proper configuration during DP altmode activation, often
+causing `pin_assignment` to remain 0 in `dp_altmode_configure()` and
+resulting in VDM negotiation failures:
+
+    [  583.328246] typec port1.1: VDM 0xff01a150 failed
+
+Additionally, the fix ensures that the `pin_assignment` sysfs attribute
+displays the correct values.
+
+Backported patch taken from:
+https://patchew.org/linux/20260601142837.3240207-1-akuchynski@chromium.org/
+---
+ drivers/usb/typec/ucsi/displayport.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/displayport.c b/drivers/usb/typec/ucsi/displayport.c
+index 73cd5bf35..ca7358534 100644
+--- a/drivers/usb/typec/ucsi/displayport.c
++++ b/drivers/usb/typec/ucsi/displayport.c
+@@ -164,12 +164,12 @@ static int ucsi_displayport_status_update(struct ucsi_dp *dp)
+ 	 * that Multi-function is preferred.
+ 	 */
+ 	if (DP_CAP_CAPABILITY(cap) & DP_CAP_UFP_D) {
+-		dp->data.status |= DP_STATUS_CON_UFP_D;
++		dp->data.status |= DP_STATUS_CON_DFP_D;
+ 
+ 		if (DP_CAP_UFP_D_PIN_ASSIGN(cap) & BIT(DP_PIN_ASSIGN_D))
+ 			dp->data.status |= DP_STATUS_PREFER_MULTI_FUNC;
+ 	} else {
+-		dp->data.status |= DP_STATUS_CON_DFP_D;
++		dp->data.status |= DP_STATUS_CON_UFP_D;
+ 
+ 		if (DP_CAP_DFP_D_PIN_ASSIGN(cap) & BIT(DP_PIN_ASSIGN_D))
+ 			dp->data.status |= DP_STATUS_PREFER_MULTI_FUNC;
+-- 
+2.41.0
+

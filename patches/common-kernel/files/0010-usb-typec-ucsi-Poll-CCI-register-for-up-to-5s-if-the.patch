@@ -1,0 +1,80 @@
+From a41ee242a9aaeee07bde96626d379bc31c9d6ceb Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 22 May 2026 17:38:53 +0100
+Subject: [PATCH] usb: typec: ucsi: Poll CCI register for up to 5s if the BUSY
+ bit is set
+
+During UCSI initialisation if the PPM needs
+to send a VDM to a port partner, it will
+often set the busy bit in the CCI register whilst
+it waits for a response. Currently the UCSI driver
+just errors out which means the the UCSI initialisation
+function fails. Instead we now poll the CCI register up to
+5s to give time for the PPM to handle the command we
+sent.
+
+This is an example of where the ucsi init has failed
+due to the PPM CCI register saying it's busy:
+[    8.919124] ucsi_ccg 0-0008: ucsi_exec_command:, cmd=0x101000C
+[    8.949869] ucsi_ccg 0-0008: CCG IRQ: intr = 0x80
+[    8.957679] ucsi_ccg 0-0008: CCG IRQ: cci = 0x10000000
+[   14.117967] ucsi_ccg 0-0008: con1: failed to register alternate modes
+
+And now with this fix:
+[    9.545278] ucsi_ccg 0-0008: ucsi_exec_command:, cmd=0x101000C
+[    9.564351] ucsi_ccg 0-0008: CCG IRQ: intr = 0x80
+[    9.581386] ucsi_ccg 0-0008: CCG IRQ: cci = 0x10000000
+[    9.619682] ucsi_ccg 0-0008: CCG IRQ: intr = 0x80
+[    9.654105] ucsi_ccg 0-0008: CCG IRQ: cci = 0x80000600
+---
+ drivers/usb/typec/ucsi/ucsi.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index c050ad4e7..652b255fb 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -36,6 +36,14 @@
+  */
+ #define UCSI_SWAP_TIMEOUT_MS	5000
+ 
++/*
++ * When the CCI busy bit is set we poll the register for up to 5 seconds.
++ * This gives time for PPM to complete the command and set the CCI
++ * command complete bit.
++ */
++#define UCSI_CCI_BUSY_POLL_INTERVAL_MS 		50
++#define UCSI_CCI_BUSY_MAX_RETRY_COUNT  		100
++
+ static int ucsi_acknowledge_command(struct ucsi *ucsi)
+ {
+ 	u64 ctrl;
+@@ -123,14 +131,22 @@ static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
+ {
+ 	u32 cci;
+ 	int ret;
++	int retries;
+ 
+ 	ret = ucsi->ops->sync_write(ucsi, UCSI_CONTROL, &cmd, sizeof(cmd));
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = ucsi->ops->read(ucsi, UCSI_CCI, &cci, sizeof(cci));
+-	if (ret)
+-		return ret;
++	for (retries = 0; retries < UCSI_CCI_BUSY_MAX_RETRY_COUNT; retries++) {
++		ret = ucsi->ops->read(ucsi, UCSI_CCI, &cci, sizeof(cci));
++		if (ret)
++			return ret;
++
++		if (cci & UCSI_CCI_BUSY)
++			msleep(UCSI_CCI_BUSY_POLL_INTERVAL_MS);
++		else
++			break;
++	}
+ 
+ 	if (cci & UCSI_CCI_BUSY)
+ 		return -EBUSY;
+-- 
+2.41.0
+

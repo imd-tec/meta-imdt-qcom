@@ -1,0 +1,64 @@
+From 91c6e241e8b80a95f3ce7aef4cfde7084eaa6664 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 02:59:12 +0100
+Subject: [PATCH] usb: dwc3: Export function for getting current USB3
+ orientation
+
+The msm DP driver needs to know the current USB3 PHY
+orientation so it can configure the DP lanes. The DP driver
+already calls into the dwc3 driver to set the DP mode so
+it seems like the simplest change is to also just add support
+for getting the orientation directly from the dwc3 driver
+as well.
+---
+ drivers/usb/dwc3/dwc3-msm-core.c | 12 ++++++++++++
+ include/linux/usb/dwc3-msm.h     |  3 +++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/drivers/usb/dwc3/dwc3-msm-core.c b/drivers/usb/dwc3/dwc3-msm-core.c
+index 64d68dd03..f095c7f78 100644
+--- a/drivers/usb/dwc3/dwc3-msm-core.c
++++ b/drivers/usb/dwc3/dwc3-msm-core.c
+@@ -3632,6 +3632,18 @@ static void dwc3_set_ssphy_orientation_flag(struct dwc3_msm *mdwc)
+ 	dbg_event(0xFF, "ss_flag", mdwc->ss_phy->flags);
+ }
+ 
++bool dwc3_msm_is_orientation_normal(struct device *dev) {
++	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
++	bool orientation_normal;
++
++	mutex_lock(&mdwc->role_switch_mutex);
++	orientation_normal = !!(mdwc->ss_phy->flags & PHY_LANE_A);
++	mutex_unlock(&mdwc->role_switch_mutex);
++
++	return orientation_normal;
++}
++EXPORT_SYMBOL(dwc3_msm_is_orientation_normal);
++
+ static void msm_dwc3_perf_vote_enable(struct dwc3_msm *mdwc, bool enable);
+ 
+ static void configure_usb_wakeup_interrupt(struct dwc3_msm *mdwc,
+diff --git a/include/linux/usb/dwc3-msm.h b/include/linux/usb/dwc3-msm.h
+index 5106ac255..6cf244983 100644
+--- a/include/linux/usb/dwc3-msm.h
++++ b/include/linux/usb/dwc3-msm.h
+@@ -282,6 +282,7 @@ int msm_data_fifo_config(struct usb_ep *ep, unsigned long addr, u32 size,
+ 	u8 dst_pipe_idx);
+ int msm_dwc3_reset_dbm_ep(struct usb_ep *ep);
+ int dwc3_msm_set_dp_mode(struct device *dev, bool connected, int lanes);
++bool dwc3_msm_is_orientation_normal(struct device *dev);
+ int msm_ep_update_ops(struct usb_ep *ep);
+ int msm_ep_clear_ops(struct usb_ep *ep);
+ int msm_ep_set_mode(struct usb_ep *ep, enum usb_hw_ep_mode mode);
+@@ -308,6 +309,8 @@ static inline bool msm_dwc3_reset_ep_after_lpm(struct usb_gadget *gadget)
+ { return false; }
+ static inline int dwc3_msm_set_dp_mode(struct device *dev, bool connected, int lanes)
+ { return -ENODEV; }
++static inline bool dwc3_msm_is_orientation_normal(struct device *dev)
++{ return true; }
+ int msm_ep_update_ops(struct usb_ep *ep)
+ { return -ENODEV; }
+ int msm_ep_clear_ops(struct usb_ep *ep)
+-- 
+2.41.0
+

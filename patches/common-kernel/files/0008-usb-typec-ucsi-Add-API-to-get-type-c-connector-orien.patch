@@ -1,0 +1,66 @@
+From 1d192916e08faeacd62624610a055bad088815bb Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Wed, 8 Apr 2026 15:38:32 +0100
+Subject: [PATCH] usb: typec: ucsi: Add API to get type-c connector orientation
+ from PPM
+
+UCSI v1.1.0 does not define a way to get the current
+connector orientation when a port partner
+is connected. However, this is a feature which
+may be supported through other registers
+in the PPM. So we provide an optional
+API for it so that the type-c orientation
+can be retrieved and used in the UCSI
+core.
+---
+ drivers/usb/typec/ucsi/ucsi.c | 6 ++++++
+ drivers/usb/typec/ucsi/ucsi.h | 2 ++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index 8b51b2de1..ea0cd081e 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -791,6 +791,9 @@ static void ucsi_handle_connector_change(struct work_struct *work)
+ 	if (con->status.change & UCSI_CONSTAT_CONNECT_CHANGE) {
+ 		typec_set_pwr_role(con->port, role);
+ 
++		if (ucsi->ops->get_conn_orientation)
++			typec_set_orientation(con->port, ucsi->ops->get_conn_orientation(ucsi, con->num));
++
+ 		switch (UCSI_CONSTAT_PARTNER_TYPE(con->status.flags)) {
+ 		case UCSI_CONSTAT_PARTNER_TYPE_UFP:
+ 		case UCSI_CONSTAT_PARTNER_TYPE_CABLE_AND_UFP:
+@@ -1139,6 +1142,9 @@ static int ucsi_register_port(struct ucsi *ucsi, int index)
+ 	}
+ 	ret = 0; /* ucsi_send_command() returns length on success */
+ 
++	if (ucsi->ops->get_conn_orientation)
++		typec_set_orientation(con->port, ucsi->ops->get_conn_orientation(ucsi, con->num));
++
+ 	switch (UCSI_CONSTAT_PARTNER_TYPE(con->status.flags)) {
+ 	case UCSI_CONSTAT_PARTNER_TYPE_UFP:
+ 	case UCSI_CONSTAT_PARTNER_TYPE_CABLE_AND_UFP:
+diff --git a/drivers/usb/typec/ucsi/ucsi.h b/drivers/usb/typec/ucsi/ucsi.h
+index 192728dc8..346f1e04b 100644
+--- a/drivers/usb/typec/ucsi/ucsi.h
++++ b/drivers/usb/typec/ucsi/ucsi.h
+@@ -40,6 +40,7 @@ struct ucsi_altmode;
+  * @sync_write: Blocking write operation
+  * @async_write: Non-blocking write operation
+  * @update_altmodes: Squashes duplicate DP altmodes
++ * @get_conn_orientation: Get type-c connector orientation
+  *
+  * Read and write routines for UCSI interface. @sync_write must wait for the
+  * Command Completion Event from the PPM before returning, and @async_write must
+@@ -54,6 +55,7 @@ struct ucsi_operations {
+ 			   const void *val, size_t val_len);
+ 	bool (*update_altmodes)(struct ucsi *ucsi, struct ucsi_altmode *orig,
+ 				struct ucsi_altmode *updated);
++	enum typec_orientation (*get_conn_orientation)(struct ucsi *ucsi, u8 num);
+ };
+ 
+ struct ucsi *ucsi_create(struct device *dev, const struct ucsi_operations *ops);
+-- 
+2.41.0
+

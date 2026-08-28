@@ -1,0 +1,76 @@
+From 96632aff7204a7bdb5813bb6c73f4b309a627810 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 04:43:42 +0100
+Subject: [PATCH] usb: typec: ucsi: ccg: Implement get_conn_orientation
+
+CCG has a type-c status register which
+contains some useful information like
+the connection status and connector
+orientation. This allows us to implement
+get_conn_orientation() quite simply.
+---
+ drivers/usb/typec/ucsi/ucsi_ccg.c | 34 ++++++++++++++++++++++++++++++-
+ 1 file changed, 33 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi_ccg.c b/drivers/usb/typec/ucsi/ucsi_ccg.c
+index efa3522b5..196b5da1e 100644
+--- a/drivers/usb/typec/ucsi/ucsi_ccg.c
++++ b/drivers/usb/typec/ucsi/ucsi_ccg.c
+@@ -65,6 +65,13 @@ enum enum_fw_mode {
+ #define CCGX_RAB_RESPONSE			0x007E
+ #define  ASYNC_EVENT				BIT(7)
+ 
++#define CCGX_RAB_TYPEC_STATUS_REG 		0x000C
++#define  PORT_PARTNER_CONNECTED 		BIT(0)
++#define  CC_POLARITY_CC2 			BIT(1)
++
++#define PDPORT_1_OFFSET 			0x1000
++#define PDPORT_2_OFFSET 			0x2000
++
+ /* CCGx events & async msg codes */
+ #define RESET_COMPLETE		0x80
+ #define EVENT_INDEX		RESET_COMPLETE
+@@ -345,6 +352,30 @@ static int ucsi_ccg_init(struct ucsi_ccg *uc)
+ 	return -ETIMEDOUT;
+ }
+ 
++static enum typec_orientation ucsi_ccg_get_conn_orientation(struct ucsi *ucsi, u8 num)
++{
++	struct ucsi_ccg *uc = ucsi_get_drvdata(ucsi);
++	u16 reg;
++	u8 typec_status;
++	int ret;
++
++	if (num <= 1)
++		reg = PDPORT_1_OFFSET | CCGX_RAB_TYPEC_STATUS_REG;
++	else
++		reg = PDPORT_2_OFFSET | CCGX_RAB_TYPEC_STATUS_REG;
++
++	ret = ccg_read(uc, reg, &typec_status, sizeof(typec_status));
++	if (ret)
++		return TYPEC_ORIENTATION_NONE;
++
++	if (!(typec_status & PORT_PARTNER_CONNECTED))
++		return TYPEC_ORIENTATION_NONE;
++	else if (typec_status & CC_POLARITY_CC2)
++		return TYPEC_ORIENTATION_REVERSE;
++	else
++		return TYPEC_ORIENTATION_NORMAL;
++}
++
+ static void ucsi_ccg_update_get_current_cam_cmd(struct ucsi_ccg *uc, u8 *data)
+ {
+ 	u8 cam, new_cam;
+@@ -602,7 +633,8 @@ static const struct ucsi_operations ucsi_ccg_ops = {
+ 	.read = ucsi_ccg_read,
+ 	.sync_write = ucsi_ccg_sync_write,
+ 	.async_write = ucsi_ccg_async_write,
+-	.update_altmodes = ucsi_ccg_update_altmodes
++	.update_altmodes = ucsi_ccg_update_altmodes,
++	.get_conn_orientation = ucsi_ccg_get_conn_orientation
+ };
+ 
+ static irqreturn_t ccg_irq_handler(int irq, void *data)
+-- 
+2.41.0
+

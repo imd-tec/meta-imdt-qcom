@@ -1,0 +1,583 @@
+From f94556ff1cbb86c99cbb154160a8add2b33439ea Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 04:34:31 +0100
+Subject: [PATCH] usb: typec: ucsi: ccg: Add support for flashing factory CCGx
+ devices
+
+When the CCGx devices leave the factory they have no
+valid FW except the bootloader. The current probe()
+function in the driver assumes that there is already
+valid FW running on the device which is not the case
+for boards coming from production. To support
+flashing in production, as well as FW upgrades,
+a significant rewrite of the driver probe()
+and FW update process were needed.
+
+The first change was to move all the initialisation
+out of the probe() and into the FW update
+worker thread. In this worker thread,
+we then check if the CCGx has valid FW
+before we try to initialise the UCSI interface.
+In the case, where there is no valid FW
+in the CCGx, we flash both the primary
+and secondary FW. Note that it is important
+that we flash the primary FW before
+we flash the secondary FW as it doesn't seem
+to work if we do it the other way round.
+If you flash the secondary FW first and then
+the primary FW, the driver goes into reflashing
+loop where it keeps reflashing the primary FW.
+And this seems to be related to the fact that if we
+flash the secondary first then it will boot into the
+secondary FW first. The secondary FW only
+supports a subset of the HPI commands. And
+one of the commands it doesn't seem to support is
+the reboot/jump back to bootloader command.
+The reboot is needed after flashing to force the
+the bootloader to read the updated FW version
+and run the primary FW.
+
+The 2nd change is to support FW upgrades
+for non signed FW. This is possible because
+the FW version is stored at a known offset
+within the .cyacd file.
+---
+ drivers/usb/typec/ucsi/ucsi_ccg.c | 365 ++++++++++++++++++------------
+ 1 file changed, 216 insertions(+), 149 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi_ccg.c b/drivers/usb/typec/ucsi/ucsi_ccg.c
+index 331fb4539..efa3522b5 100644
+--- a/drivers/usb/typec/ucsi/ucsi_ccg.c
++++ b/drivers/usb/typec/ucsi/ucsi_ccg.c
+@@ -79,8 +79,6 @@ enum enum_fw_mode {
+ #define FW2_METADATA_ROW        0x1FE
+ #define FW_CFG_TABLE_SIG_SIZE	256
+ 
+-static int secondary_fw_min_ver = 41;
+-
+ enum enum_flash_mode {
+ 	SECONDARY_BL,	/* update secondary using bootloader */
+ 	PRIMARY,	/* update primary using secondary */
+@@ -95,6 +93,12 @@ static const char * const ccg_fw_names[] = {
+ 	"ccg_secondary.cyacd"
+ };
+ 
++static const char * const ccg_mode_names[] = {
++	"BOOTLOADER",
++	"FW1 - Secondary Firmware",
++	"FW2 - Primary Firmware"
++};
++
+ struct ccg_dev_info {
+ #define CCG_DEVINFO_FWMODE_SHIFT (0)
+ #define CCG_DEVINFO_FWMODE_MASK (0x3 << CCG_DEVINFO_FWMODE_SHIFT)
+@@ -195,6 +199,7 @@ struct ucsi_ccg {
+ 	struct ccg_dev_info info;
+ 	/* version info for boot, primary and secondary */
+ 	struct version_info version[FW2 + 1];
++	struct version_info user_fw_version[FW2 + 1];
+ 	u32 fw_version;
+ 	/* CCG HPI communication flags */
+ 	unsigned long flags;
+@@ -217,6 +222,8 @@ struct ucsi_ccg {
+ 	bool has_multiple_dp;
+ 	struct ucsi_ccg_altmode orig[UCSI_MAX_ALTMODES];
+ 	struct ucsi_ccg_altmode updated[UCSI_MAX_ALTMODES];
++
++	bool device_registered;
+ };
+ 
+ static int ccg_read(struct ucsi_ccg *uc, u16 rab, u8 *data, u32 len)
+@@ -942,72 +949,159 @@ static int ccg_cmd_validate_fw(struct ucsi_ccg *uc, unsigned int fwid)
+ 	return 0;
+ }
+ 
+-static bool ccg_check_vendor_version(struct ucsi_ccg *uc,
+-				     struct version_format *app,
+-				     struct fw_config_table *fw_cfg)
++static int ccg_reboot(struct ucsi_ccg *uc) {
++	int status;
++
++	status = ccg_read(uc, CCGX_RAB_DEVICE_MODE, (u8 *)(&uc->info),
++		       sizeof(uc->info));
++	if (status < 0)
++		return status;
++	
++	/* Port control only supported by primary FW */
++	if (FIELD_GET(CCG_DEVINFO_FWMODE_MASK, uc->info.mode) == FW2) {
++		status = ccg_cmd_port_control(uc, false);
++		if (status < 0)
++			return status;		
++	}
++
++	status = ccg_cmd_reset(uc);
++	if (status < 0)
++		return status;
++
++	/* Must re-read device mode so we know what the new boot mode is */
++	status = ccg_read(uc, CCGX_RAB_DEVICE_MODE, (u8 *)(&uc->info),
++		       sizeof(uc->info));
++	if (status < 0)
++		return status;
++
++	return status;
++}
++
++static int ccg_start(struct ucsi_ccg *uc)
+ {
+ 	struct device *dev = uc->dev;
++	int status;
+ 
+-	/* Check if the fw build is for supported vendors */
+-	if (le16_to_cpu(app->build) != uc->fw_build) {
+-		dev_info(dev, "current fw is not from supported vendor\n");
+-		return false;
++	status = ucsi_ccg_init(uc);
++	if (status < 0) {
++		dev_err(uc->dev, "ucsi_ccg_init failed - %d\n", status);
++		return status;
++	}
++
++	status = request_threaded_irq(uc->client->irq, NULL, ccg_irq_handler,
++				      IRQF_ONESHOT,
++				      dev_name(dev), uc);
++	if (status < 0) {
++		dev_err(uc->dev, "request_threaded_irq failed - %d\n", status);
++		return status;
+ 	}
+ 
+-	/* Check if the new fw build is for supported vendors */
+-	if (le16_to_cpu(fw_cfg->app.build) != uc->fw_build) {
+-		dev_info(dev, "new fw is not from supported vendor\n");
+-		return false;
++	uc->irq = uc->client->irq;
++
++	uc->ucsi = ucsi_create(uc->dev, &ucsi_ccg_ops);
++	if (IS_ERR(uc->ucsi))
++		return PTR_ERR(uc->ucsi);
++
++	ucsi_set_drvdata(uc->ucsi, uc);
++
++	status = ucsi_register(uc->ucsi);
++	if (status) {
++		dev_err(uc->dev, "failed to register the interface\n");
++		ucsi_destroy(uc->ucsi);
++		free_irq(uc->irq, uc);
++		return status;
+ 	}
+-	return true;
++
++	pm_runtime_enable(uc->dev);
++	return 0;
+ }
+ 
+-static bool ccg_check_fw_version(struct ucsi_ccg *uc, const char *fw_name,
+-				 struct version_format *app)
++static bool compare_fw_version(struct version_info *user, struct version_info *device)
++{
++	u64 cur_version, new_version;
++
++	new_version = le16_to_cpu(user->base.build) | CCG_VERSION_PATCH(user->base.patch) |
++			CCG_VERSION(user->base.ver);
++	new_version = new_version << 32u;
++
++	new_version |= le16_to_cpu(user->app.build) | CCG_VERSION_PATCH(user->app.patch) |
++			CCG_VERSION(user->app.ver);
++	
++	cur_version = le16_to_cpu(device->base.build) | CCG_VERSION_PATCH(device->base.patch) |
++			CCG_VERSION(device->base.ver);
++	cur_version = cur_version << 32u;
++
++	cur_version |= le16_to_cpu(device->app.build) | CCG_VERSION_PATCH(device->app.patch) |
++			CCG_VERSION(device->app.ver);
++
++	return (new_version > cur_version);
++}
++
++static int get_user_fw_version_info(struct ucsi_ccg *uc, enum enum_flash_mode mode)
+ {
+-	const struct firmware *fw = NULL;
+ 	struct device *dev = uc->dev;
+-	struct fw_config_table fw_cfg;
+-	u32 cur_version, new_version;
+-	bool is_later = false;
++	const struct firmware *fw = NULL;
++	struct version_info *user_fw_version = &uc->user_fw_version[mode];
++	int err;
++	const char *str, *fw_version_ascii;
++	
++	const int CYACD_HEADER_SIZE = 11;
++	const int ASCII_CHARS_PER_BYTE = 2;
++	const int CCG_CYACD_FW_VERSION_OFFSET = 0xE0;
+ 
+-	if (request_firmware(&fw, fw_name, dev) != 0) {
+-		dev_err(dev, "error: Failed to open cyacd file %s\n", fw_name);
+-		return false;
+-	}
++	const int CYACD_BASE_FW_VERSION_ROW_OFFSET = CYACD_HEADER_SIZE + (CCG_CYACD_FW_VERSION_OFFSET * ASCII_CHARS_PER_BYTE);
++	const int CYACD_APP_FW_VERSION_ROW_OFFSET = CYACD_BASE_FW_VERSION_ROW_OFFSET + (sizeof(user_fw_version->base) * ASCII_CHARS_PER_BYTE);
+ 
+-	/*
+-	 * check if signed fw
+-	 * last part of fw image is fw cfg table and signature
+-	 */
+-	if (fw->size < sizeof(fw_cfg) + FW_CFG_TABLE_SIG_SIZE)
+-		goto out_release_firmware;
++	err = request_firmware(&fw, ccg_fw_names[mode], dev);
++	if (err) {
++		dev_err(dev, "request %s failed err=%d\n",
++			ccg_fw_names[mode], err);
++		goto release_fw;
++	}
+ 
+-	memcpy((uint8_t *)&fw_cfg, fw->data + fw->size -
+-	       sizeof(fw_cfg) - FW_CFG_TABLE_SIG_SIZE, sizeof(fw_cfg));
++	// ToDo: We should calculate this using ROW size rather than searching for specific
++	str = strnstr((const char *)fw->data, ":0000A00100", fw->size);
++	if (!str) {
++		/* This is for the backup binary */
++		str = strnstr((const char *)fw->data, ":0000140100", fw->size);
++		if (!str) {
++			err = -EINVAL;
++			goto release_fw;
++		}
++	}
+ 
+-	if (fw_cfg.identity != ('F' | 'W' << 8 | 'C' << 16 | 'T' << 24)) {
+-		dev_info(dev, "not a signed image\n");
+-		goto out_release_firmware;
++	// Will read something like 'FF 09 00 34' and we can directly read this into version struct
++	fw_version_ascii = &str[CYACD_BASE_FW_VERSION_ROW_OFFSET];
++	if (hex2bin((u8 *)&user_fw_version->base, fw_version_ascii, sizeof(user_fw_version->base))) {
++		err = -EINVAL;
++		goto release_fw;
+ 	}
+ 
+-	/* compare input version with FWCT version */
+-	cur_version = le16_to_cpu(app->build) | CCG_VERSION_PATCH(app->patch) |
+-			CCG_VERSION(app->ver);
++	fw_version_ascii = &str[CYACD_APP_FW_VERSION_ROW_OFFSET];
++	if (hex2bin((u8 *)&user_fw_version->app, fw_version_ascii, sizeof(user_fw_version->app))) {
++		err = -EINVAL;
++		goto release_fw;
++	}
+ 
+-	new_version = le16_to_cpu(fw_cfg.app.build) |
+-			CCG_VERSION_PATCH(fw_cfg.app.patch) |
+-			CCG_VERSION(fw_cfg.app.ver);
++	dev_info(dev, "Base FW version info for %s: %u.%u.%u Build:%u",
++		ccg_fw_names[mode],
++		FIELD_GET(CCG_VERSION_MAJ_MASK, user_fw_version->base.ver),
++		FIELD_GET(CCG_VERSION_MIN_MASK, user_fw_version->base.ver), 
++		user_fw_version->base.patch, 
++		le16_to_cpu(user_fw_version->base.build));
+ 
+-	if (!ccg_check_vendor_version(uc, app, &fw_cfg))
+-		goto out_release_firmware;
++	dev_info(dev, "App FW version info for %s: %u.%u.%u Build:%u",
++		ccg_fw_names[mode], 
++		FIELD_GET(CCG_VERSION_MAJ_MASK, user_fw_version->app.ver),
++		FIELD_GET(CCG_VERSION_MIN_MASK, user_fw_version->app.ver), 
++		user_fw_version->app.patch, 
++		le16_to_cpu(user_fw_version->app.build));
+ 
+-	if (new_version > cur_version)
+-		is_later = true;
++	err = 0;
+ 
+-out_release_firmware:
++release_fw:
+ 	release_firmware(fw);
+-	return is_later;
++	return err;
+ }
+ 
+ static int ccg_fw_update_needed(struct ucsi_ccg *uc,
+@@ -1016,6 +1110,7 @@ static int ccg_fw_update_needed(struct ucsi_ccg *uc,
+ 	struct device *dev = uc->dev;
+ 	int err;
+ 	struct version_info version[3];
++	int fw_mode;
+ 
+ 	err = ccg_read(uc, CCGX_RAB_DEVICE_MODE, (u8 *)(&uc->info),
+ 		       sizeof(uc->info));
+@@ -1031,25 +1126,25 @@ static int ccg_fw_update_needed(struct ucsi_ccg *uc,
+ 		return err;
+ 	}
+ 
+-	if (memcmp(&version[FW1], "\0\0\0\0\0\0\0\0",
+-		   sizeof(struct version_info)) == 0) {
+-		dev_info(dev, "secondary fw is not flashed\n");
+-		*mode = SECONDARY_BL;
+-	} else if (le16_to_cpu(version[FW1].base.build) <
+-		secondary_fw_min_ver) {
+-		dev_info(dev, "secondary fw version is too low (< %d)\n",
+-			 secondary_fw_min_ver);
+-		*mode = SECONDARY;
+-	} else if (memcmp(&version[FW2], "\0\0\0\0\0\0\0\0",
++	fw_mode = FIELD_GET(CCG_DEVINFO_FWMODE_MASK, uc->info.mode);
++	dev_info(dev, "CCGx in FW mode: %s", ccg_mode_names[fw_mode]);
++
++ 	if (memcmp(&version[FW2], "\0\0\0\0\0\0\0\0",
+ 		   sizeof(struct version_info)) == 0) {
+ 		dev_info(dev, "primary fw is not flashed\n");
+ 		*mode = PRIMARY;
+-	} else if (ccg_check_fw_version(uc, ccg_fw_names[PRIMARY],
+-		   &version[FW2].app)) {
+-		dev_info(dev, "found primary fw with later version\n");
++	} else if (compare_fw_version(&uc->user_fw_version[PRIMARY], &version[FW2])) {
++		dev_info(dev, "primary fw is old\n");
+ 		*mode = PRIMARY;
++	} else if (memcmp(&version[FW1], "\0\0\0\0\0\0\0\0",
++		   sizeof(struct version_info)) == 0) {
++		dev_info(dev, "secondary fw is not flashed\n");
++		*mode = SECONDARY;
++	} else if (compare_fw_version(&uc->user_fw_version[SECONDARY], &version[FW1])) {
++		dev_info(dev, "secondary fw is old\n");
++		*mode = SECONDARY;
+ 	} else {
+-		dev_info(dev, "secondary and primary fw are the latest\n");
++		dev_info(dev, "Secondary and Primary binaries exist and are up to date!\n");
+ 		*mode = FLASH_NOT_NEEDED;
+ 	}
+ 	return 0;
+@@ -1066,6 +1161,7 @@ static int do_flash(struct ucsi_ccg *uc, enum enum_flash_mode mode)
+ 	struct fw_config_table  fw_cfg;
+ 	u8 fw_cfg_sig[FW_CFG_TABLE_SIG_SIZE];
+ 	u8 *wr_buf;
++	u8 current_bootmode;
+ 
+ 	err = request_firmware(&fw, ccg_fw_names[mode], dev);
+ 	if (err) {
+@@ -1074,14 +1170,25 @@ static int do_flash(struct ucsi_ccg *uc, enum enum_flash_mode mode)
+ 		return err;
+ 	}
+ 
+-	if (((uc->info.mode & CCG_DEVINFO_FWMODE_MASK) >>
+-			CCG_DEVINFO_FWMODE_SHIFT) == FW2) {
++	current_bootmode = FIELD_GET(CCG_DEVINFO_FWMODE_MASK, uc->info.mode);
++
++	/* Port control only supported by primary FW */
++	if (current_bootmode == FW2) {
+ 		err = ccg_cmd_port_control(uc, false);
+ 		if (err < 0)
+-			goto release_fw;
+-		err = ccg_cmd_jump_boot_mode(uc, 0);
++			goto release_fw;	
++	}
++
++	/*
++	 * Only jump to the bootloader if the firmware
++	 * needs to update the same memory it is currently running in
++	 */
++	if ((current_bootmode != BOOT) && 
++		((current_bootmode == FW1 && mode == SECONDARY) || 
++		(current_bootmode == FW2 && mode == PRIMARY)))  {
++		err = ccg_cmd_jump_boot_mode(uc, 1);
+ 		if (err < 0)
+-			goto release_fw;
++			goto release_fw;				
+ 	}
+ 
+ 	eof = fw->data + fw->size;
+@@ -1196,18 +1303,6 @@ static int do_flash(struct ucsi_ccg *uc, enum enum_flash_mode mode)
+ 		dev_info(dev, "%s validated\n",
+ 			 (mode == PRIMARY) ? "FW2" :  "FW1");
+ 
+-	err = ccg_cmd_port_control(uc, false);
+-	if (err < 0)
+-		goto release_mem;
+-
+-	err = ccg_cmd_reset(uc);
+-	if (err < 0)
+-		goto release_mem;
+-
+-	err = ccg_cmd_port_control(uc, true);
+-	if (err < 0)
+-		goto release_mem;
+-
+ release_mem:
+ 	kfree(wr_buf);
+ 
+@@ -1228,6 +1323,11 @@ static int ccg_fw_update(struct ucsi_ccg *uc, enum enum_flash_mode flash_mode)
+ 
+ 	while (flash_mode != FLASH_NOT_NEEDED) {
+ 		err = do_flash(uc, flash_mode);
++		if (err < 0)
++			return err;
++
++		/* Need to reboot to ensure new FW version is picked up */
++		err = ccg_reboot(uc);
+ 		if (err < 0)
+ 			return err;
+ 		err = ccg_fw_update_needed(uc, &flash_mode);
+@@ -1239,53 +1339,43 @@ static int ccg_fw_update(struct ucsi_ccg *uc, enum enum_flash_mode flash_mode)
+ 	return err;
+ }
+ 
+-static int ccg_restart(struct ucsi_ccg *uc)
+-{
+-	struct device *dev = uc->dev;
+-	int status;
+-
+-	status = ucsi_ccg_init(uc);
+-	if (status < 0) {
+-		dev_err(dev, "ucsi_ccg_start fail, err=%d\n", status);
+-		return status;
+-	}
+-
+-	status = request_threaded_irq(uc->irq, NULL, ccg_irq_handler,
+-				      IRQF_ONESHOT | IRQF_TRIGGER_HIGH,
+-				      dev_name(dev), uc);
+-	if (status < 0) {
+-		dev_err(dev, "request_threaded_irq failed - %d\n", status);
+-		return status;
+-	}
+-
+-	status = ucsi_register(uc->ucsi);
+-	if (status) {
+-		dev_err(uc->dev, "failed to register the interface\n");
+-		return status;
+-	}
+-
+-	pm_runtime_enable(uc->dev);
+-	return 0;
+-}
+-
+ static void ccg_update_firmware(struct work_struct *work)
+ {
+ 	struct ucsi_ccg *uc = container_of(work, struct ucsi_ccg, work);
+ 	enum enum_flash_mode flash_mode;
+ 	int status;
+ 
++	dev_info(uc->dev, "Starting FW update check\n");	
++	status = get_user_fw_version_info(uc, PRIMARY);
++	if (status < 0)
++		return;
++
++	status = get_user_fw_version_info(uc, SECONDARY);
++	if (status < 0)
++		return;
++
+ 	status = ccg_fw_update_needed(uc, &flash_mode);
+ 	if (status < 0)
+ 		return;
+ 
+ 	if (flash_mode != FLASH_NOT_NEEDED) {
+-		ucsi_unregister(uc->ucsi);
+-		pm_runtime_disable(uc->dev);
+-		free_irq(uc->irq, uc);
++		dev_info(uc->dev, "Flashing needed, starting FW update!\n");
++		if (uc->device_registered) {
++			pm_runtime_disable(uc->dev);
++			ucsi_unregister(uc->ucsi);
++			ucsi_destroy(uc->ucsi);
++			free_irq(uc->irq, uc);
++
++			uc->device_registered = false;
++		}
+ 
+ 		ccg_fw_update(uc, flash_mode);
+-		ccg_restart(uc);
+ 	}
++
++	if (!ccg_start(uc))
++		uc->device_registered = true;
++
++	dev_info(uc->dev, "FW update check complete, device registration %s\n", uc->device_registered ? "success" : "failed");
+ }
+ 
+ static ssize_t do_flash_store(struct device *dev,
+@@ -1331,6 +1421,7 @@ static int ucsi_ccg_probe(struct i2c_client *client,
+ 
+ 	uc->dev = dev;
+ 	uc->client = client;
++	uc->device_registered = false;
+ 	mutex_init(&uc->lock);
+ 	init_completion(&uc->complete);
+ 	INIT_WORK(&uc->work, ccg_update_firmware);
+@@ -1342,13 +1433,6 @@ static int ucsi_ccg_probe(struct i2c_client *client,
+ 	if (status)
+ 		dev_err(uc->dev, "failed to get FW build information\n");
+ 
+-	/* reset ccg device and initialize ucsi */
+-	status = ucsi_ccg_init(uc);
+-	if (status < 0) {
+-		dev_err(uc->dev, "ucsi_ccg_init failed - %d\n", status);
+-		return status;
+-	}
+-
+ 	status = get_fw_info(uc);
+ 	if (status < 0) {
+ 		dev_err(uc->dev, "get_fw_info failed - %d\n", status);
+@@ -1360,26 +1444,6 @@ static int ucsi_ccg_probe(struct i2c_client *client,
+ 	if (uc->info.mode & CCG_DEVINFO_PDPORTS_MASK)
+ 		uc->port_num++;
+ 
+-	uc->ucsi = ucsi_create(dev, &ucsi_ccg_ops);
+-	if (IS_ERR(uc->ucsi))
+-		return PTR_ERR(uc->ucsi);
+-
+-	ucsi_set_drvdata(uc->ucsi, uc);
+-
+-	status = request_threaded_irq(client->irq, NULL, ccg_irq_handler,
+-				      IRQF_ONESHOT | IRQF_TRIGGER_HIGH,
+-				      dev_name(dev), uc);
+-	if (status < 0) {
+-		dev_err(uc->dev, "request_threaded_irq failed - %d\n", status);
+-		goto out_ucsi_destroy;
+-	}
+-
+-	uc->irq = client->irq;
+-
+-	status = ucsi_register(uc->ucsi);
+-	if (status)
+-		goto out_free_irq;
+-
+ 	i2c_set_clientdata(client, uc);
+ 
+ 	pm_runtime_set_active(uc->dev);
+@@ -1387,15 +1451,15 @@ static int ucsi_ccg_probe(struct i2c_client *client,
+ 	pm_runtime_use_autosuspend(uc->dev);
+ 	pm_runtime_set_autosuspend_delay(uc->dev, 5000);
+ 	pm_runtime_idle(uc->dev);
++	pm_runtime_disable(uc->dev);
+ 
+-	return 0;
+-
+-out_free_irq:
+-	free_irq(uc->irq, uc);
+-out_ucsi_destroy:
+-	ucsi_destroy(uc->ucsi);
++	/*
++	 * Kick off potential firmware update which will register
++	 * with ucsi core once the device is ready
++	 */
++	schedule_work(&uc->work);
+ 
+-	return status;
++	return 0;
+ }
+ 
+ static int ucsi_ccg_remove(struct i2c_client *client)
+@@ -1404,10 +1468,13 @@ static int ucsi_ccg_remove(struct i2c_client *client)
+ 
+ 	cancel_work_sync(&uc->pm_work);
+ 	cancel_work_sync(&uc->work);
+-	pm_runtime_disable(uc->dev);
+-	ucsi_unregister(uc->ucsi);
+-	ucsi_destroy(uc->ucsi);
+-	free_irq(uc->irq, uc);
++
++	if (uc->device_registered) {
++		pm_runtime_disable(uc->dev);
++		ucsi_unregister(uc->ucsi);
++		ucsi_destroy(uc->ucsi);
++		free_irq(uc->irq, uc);
++	}
+ 
+ 	return 0;
+ }
+-- 
+2.41.0
+

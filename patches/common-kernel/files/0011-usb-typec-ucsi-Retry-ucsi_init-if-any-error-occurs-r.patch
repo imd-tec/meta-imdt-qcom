@@ -1,0 +1,35 @@
+From 08861929aa9ff551b22735bd9e2491151982634b Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 22 May 2026 17:47:13 +0100
+Subject: [PATCH] usb: typec: ucsi:  Retry ucsi_init if any error occurs rather
+ than just -EPROBE_DEFER
+
+Sometimes the ucsi_init() will fail and often times a PPM
+reset will fix the problem. So we should retry ucsi_init()
+for all errors as well as probe deferral.
+---
+ drivers/usb/typec/ucsi/ucsi.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index 652b255fb..7dc218484 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -1304,12 +1304,9 @@ static void ucsi_init_work(struct work_struct *work)
+ 	int ret;
+ 
+ 	ret = ucsi_init(&aucsi->ucsi);
+-	if (ret && ret != -EPROBE_DEFER)
+-		dev_err(aucsi->ucsi.dev, "PPM init failed (%d)\n", ret);
+-
+-	if (ret == -EPROBE_DEFER) {
++	if (ret) {
+ 		if (aucsi->work_count++ > UCSI_ROLE_SWITCH_WAIT_COUNT) {
+-			dev_err(aucsi->ucsi.dev, "UCSI init failed, USB role switch device not ready (%d)\n", ret);
++			dev_err(aucsi->ucsi.dev, "UCSI init failed (%d)\n", ret);
+ 			return;
+ 		}
+ 
+-- 
+2.41.0
+

@@ -1,0 +1,96 @@
+From 9d084ce7a9f0463655be31ffa7cd2c837d03a6a9 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 02:55:33 +0100
+Subject: [PATCH] usb: dwc3: Add orientation switch support
+
+When a type-c cable is connected to the
+USB port we need to know the cable
+orientation so that the USB3 PHY can
+configure which SS lanes it uses to communicate
+with the connected device. The type-c switch API
+allows us to receive these events from another
+source like a TCPM (Type-C Port Manager).
+---
+ drivers/usb/dwc3/dwc3-msm-core.c | 38 ++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/drivers/usb/dwc3/dwc3-msm-core.c b/drivers/usb/dwc3/dwc3-msm-core.c
+index 4e9b41853..64d68dd03 100644
+--- a/drivers/usb/dwc3/dwc3-msm-core.c
++++ b/drivers/usb/dwc3/dwc3-msm-core.c
+@@ -46,6 +46,7 @@
+ #include <linux/reset.h>
+ #include <linux/usb/dwc3-msm.h>
+ #include <linux/usb/role.h>
++#include <linux/usb/typec_mux.h>
+ #include <linux/usb/redriver.h>
+ #include <linux/soc/qcom/wcd939x-i2c.h>
+ 
+@@ -593,6 +594,8 @@ struct dwc3_msm {
+ 	u64			dummy_gsi_db;
+ 	dma_addr_t		dummy_gsi_db_dma;
+ 
++	struct typec_switch    *orientation_switch;
++
+ 	struct usb_role_switch *role_switch;
+ 	struct usb_role_switch *dwc3_drd_sw;
+ 	bool			ss_release_called;
+@@ -5020,6 +5023,25 @@ static int dwc3_msm_usb_role_switch_set_role(struct usb_role_switch *sw, enum us
+ 	return dwc3_msm_set_role(mdwc, role);
+ }
+ 
++static int dwc3_msm_usb_switch_set_orientation(struct typec_switch *sw,
++				     enum typec_orientation orientation)
++{
++	struct dwc3_msm *mdwc = typec_switch_get_drvdata(sw);
++
++	if (orientation == TYPEC_ORIENTATION_NONE)
++		return 0;
++
++	mutex_lock(&mdwc->role_switch_mutex);
++
++	if (orientation == TYPEC_ORIENTATION_NORMAL)
++		mdwc->orientation_override = PHY_LANE_A;
++	else
++		mdwc->orientation_override = PHY_LANE_B;
++
++	mutex_unlock(&mdwc->role_switch_mutex);
++	return 0;
++}
++
+ static ssize_t orientation_show(struct device *dev,
+ 		struct device_attribute *attr, char *buf)
+ {
+@@ -6222,6 +6244,21 @@ static int dwc3_msm_probe(struct platform_device *pdev)
+ 		}
+ 	}
+ 
++	if (of_property_read_bool(node, "orientation-switch")) {
++		struct typec_switch_desc switch_desc;
++
++		switch_desc.drvdata = mdwc;
++		switch_desc.fwnode = dev_fwnode(&pdev->dev);
++		switch_desc.set = dwc3_msm_usb_switch_set_orientation;
++
++		mdwc->orientation_switch = typec_switch_register(mdwc->dev,
++								&switch_desc);
++		if (IS_ERR(mdwc->orientation_switch)) {
++			ret = PTR_ERR(mdwc->orientation_switch);
++			goto put_dwc3;
++		}
++	}
++
+ 	dwc3_msm_get_apsd_source(mdwc);
+ 
+ 	if (of_property_read_bool(node, "extcon")) {
+@@ -6322,6 +6359,7 @@ static int dwc3_msm_remove(struct platform_device *pdev)
+ 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+ 	int i, ret_pm;
+ 
++	typec_switch_unregister(mdwc->orientation_switch);
+ 	usb_role_switch_unregister(mdwc->role_switch);
+ 
+ 	if (mdwc->dpdm_nb.notifier_call) {
+-- 
+2.41.0
+

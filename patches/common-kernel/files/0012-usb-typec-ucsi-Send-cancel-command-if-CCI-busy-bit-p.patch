@@ -1,0 +1,89 @@
+From b9b291c9c26483a8eb86e7accb6fc5574d8a2933 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 22 May 2026 19:37:41 +0100
+Subject: [PATCH] usb: typec: ucsi:  Send cancel command if CCI busy bit poll
+ times out
+
+If the CCI busy bit poll loop times out,
+we now send the cancel command
+to the PPM so that it moves back
+into PPM idle state. If we don't do
+this, the next command sent to the
+PPM will not be handled correctly
+because the PPM will be in a wait
+state.
+
+For example, here we exited early from CCI register being busy:
+[    8.919124] ucsi_ccg 0-0008: ucsi_exec_command:, cmd=0x101000C
+[    8.949869] ucsi_ccg 0-0008: CCG IRQ: intr = 0x80
+[    8.957679] ucsi_ccg 0-0008: CCG IRQ: cci = 0x10000000
+[   14.117967] ucsi_ccg 0-0008: con1: failed to register alternate modes
+
+And the the next command sent fails due to the PPM not being
+in the idle state (i.e it's not accepting new commands):
+[   14.143975] ucsi_ccg 0-0008: ucsi_exec_command:, cmd=0xDBE70005
+[   14.156632] ucsi_ccg 0-0008: CCG IRQ: intr = 0x80
+[   14.164813] ucsi_ccg 0-0008: CCG IRQ: cci = 0xC0000000, connector num = 0x0
+[   14.176644] ucsi_ccg 0-0008: ucsi_acknowledge_command ctrl=0x20004
+[   14.191594] ucsi_ccg 0-0008: CCG IRQ: intr = 0x80
+[   14.200494] ucsi_ccg 0-0008: CCG IRQ: cci = 0x20000000
+[   14.210368] ucsi_ccg 0-0008: ucsi_exec_command:, cmd=0x13
+---
+ drivers/usb/typec/ucsi/ucsi.c | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index 7dc218484..324e029b5 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -127,9 +127,8 @@ static int ucsi_read_error(struct ucsi *ucsi)
+ 	return -EIO;
+ }
+ 
+-static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
++static int ucsi_exec_command_common(struct ucsi *ucsi, u64 cmd, u32 *cci)
+ {
+-	u32 cci;
+ 	int ret;
+ 	int retries;
+ 
+@@ -138,18 +137,32 @@ static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
+ 		return ret;
+ 
+ 	for (retries = 0; retries < UCSI_CCI_BUSY_MAX_RETRY_COUNT; retries++) {
+-		ret = ucsi->ops->read(ucsi, UCSI_CCI, &cci, sizeof(cci));
++		ret = ucsi->ops->read(ucsi, UCSI_CCI, cci, sizeof(*cci));
+ 		if (ret)
+ 			return ret;
+ 
+-		if (cci & UCSI_CCI_BUSY)
++		if (*cci & UCSI_CCI_BUSY)
+ 			msleep(UCSI_CCI_BUSY_POLL_INTERVAL_MS);
+ 		else
+ 			break;
+ 	}
+ 
+-	if (cci & UCSI_CCI_BUSY)
+-		return -EBUSY;
++	return 0;
++}
++
++static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
++{
++	u32 cci;
++	int ret;
++
++	ret = ucsi_exec_command_common(ucsi, cmd, &cci);
++	if (ret)
++		return ret;
++
++	if (cci & UCSI_CCI_BUSY) {
++		ret = ucsi_exec_command_common(ucsi, UCSI_CANCEL, &cci);
++		return ret ? ret : -EBUSY;
++	}
+ 
+ 	if (!(cci & UCSI_CCI_COMMAND_COMPLETE))
+ 		return -EIO;
+-- 
+2.41.0
+

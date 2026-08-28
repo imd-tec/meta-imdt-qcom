@@ -1,0 +1,43 @@
+From 03643a366e359bc55c182c6fcbb7d474bebdaa12 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Wed, 8 Apr 2026 15:14:04 +0100
+Subject: [PATCH] usb: typec: ucsi: Add delay after PPM reset command
+
+We need a delay after sending the PPM reset
+command to give time to the PPM to actually
+do the reset. Otherwise, we just get into
+a continuous loop of sending the reset
+command and checking if the PPM has
+completed the request. And in some cases,
+we end up timing out and in the logs you see:
+[    8.799910] ucsi_ccg 0-0008: failed to reset PPM!
+[    8.800498] ucsi_ccg 0-0008: PPM init failed -110
+---
+ drivers/usb/typec/ucsi/ucsi.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index 78263a3d9..cf60f7281 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -896,6 +896,8 @@ static int ucsi_reset_ppm(struct ucsi *ucsi)
+ 			goto out;
+ 		}
+ 
++		/* Give the PPM time to process a reset before reading CCI */
++		msleep(50);
+ 		ret = ucsi->ops->read(ucsi, UCSI_CCI, &cci, sizeof(cci));
+ 		if (ret)
+ 			goto out;
+@@ -908,8 +910,6 @@ static int ucsi_reset_ppm(struct ucsi *ucsi)
+ 			if (ret < 0)
+ 				goto out;
+ 		}
+-
+-		msleep(20);
+ 	} while (!(cci & UCSI_CCI_RESET_COMPLETE));
+ 
+ out:
+-- 
+2.41.0
+

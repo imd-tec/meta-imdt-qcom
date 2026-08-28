@@ -1,0 +1,52 @@
+From b11d93f2707b7017ce88a9cacf5321f0bb5e1188 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 04:47:24 +0100
+Subject: [PATCH] usb: typec: ucsi: ccg: Clean up irq handler
+
+IRQ handler now returns correct return
+value and also checks the interrupt status
+to see if the UCSI interface actually
+triggered the interrupt.
+---
+ drivers/usb/typec/ucsi/ucsi_ccg.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi_ccg.c b/drivers/usb/typec/ucsi/ucsi_ccg.c
+index 196b5da1e..5776a97c3 100644
+--- a/drivers/usb/typec/ucsi/ucsi_ccg.c
++++ b/drivers/usb/typec/ucsi/ucsi_ccg.c
+@@ -647,7 +647,12 @@ static irqreturn_t ccg_irq_handler(int irq, void *data)
+ 
+ 	ret = ccg_read(uc, CCGX_RAB_INTR_REG, &intr_reg, sizeof(intr_reg));
+ 	if (ret)
+-		return ret;
++		return IRQ_HANDLED;
++
++	if (!intr_reg)
++		return IRQ_HANDLED;
++	else if (!(intr_reg & UCSI_READ_INT))
++		goto err_clear_irq;
+ 
+ 	ret = ccg_read(uc, reg, (void *)&cci, sizeof(cci));
+ 	if (ret)
+@@ -656,13 +661,13 @@ static irqreturn_t ccg_irq_handler(int irq, void *data)
+ 	if (UCSI_CCI_CONNECTOR(cci))
+ 		ucsi_connector_change(uc->ucsi, UCSI_CCI_CONNECTOR(cci));
+ 
+-	if (test_bit(DEV_CMD_PENDING, &uc->flags) &&
+-	    cci & (UCSI_CCI_ACK_COMPLETE | UCSI_CCI_COMMAND_COMPLETE))
+-		complete(&uc->complete);
+-
+ err_clear_irq:
+ 	ccg_write(uc, CCGX_RAB_INTR_REG, &intr_reg, sizeof(intr_reg));
+ 
++	if (!ret && test_bit(DEV_CMD_PENDING, &uc->flags) &&
++	    cci & (UCSI_CCI_ACK_COMPLETE | UCSI_CCI_COMMAND_COMPLETE))
++		complete(&uc->complete);
++
+ 	return IRQ_HANDLED;
+ }
+ 
+-- 
+2.41.0
+

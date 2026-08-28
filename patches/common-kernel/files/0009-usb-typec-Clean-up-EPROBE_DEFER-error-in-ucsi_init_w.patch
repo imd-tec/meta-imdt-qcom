@@ -1,0 +1,38 @@
+From 299e89200af18deed93ed86b0c5ad36ae1d0b89f Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 13:42:38 +0100
+Subject: [PATCH] usb: typec: Clean up EPROBE_DEFER error in ucsi_init_work()
+
+If the USB role switch devices takes a while to come up you get
+a lot of noise in dmesg saying that the PPM init has failed
+which is not necessarily true as we are just defering
+the init. So we now only report that the PPM init has
+failed if the return code is not -EPROBE_DEFER.
+---
+ drivers/usb/typec/ucsi/ucsi.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index ea0cd081e..c050ad4e7 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -1288,12 +1288,14 @@ static void ucsi_init_work(struct work_struct *work)
+ 	int ret;
+ 
+ 	ret = ucsi_init(&aucsi->ucsi);
+-	if (ret)
++	if (ret && ret != -EPROBE_DEFER)
+ 		dev_err(aucsi->ucsi.dev, "PPM init failed (%d)\n", ret);
+ 
+ 	if (ret == -EPROBE_DEFER) {
+-		if (aucsi->work_count++ > UCSI_ROLE_SWITCH_WAIT_COUNT)
++		if (aucsi->work_count++ > UCSI_ROLE_SWITCH_WAIT_COUNT) {
++			dev_err(aucsi->ucsi.dev, "UCSI init failed, USB role switch device not ready (%d)\n", ret);
+ 			return;
++		}
+ 
+ 		queue_delayed_work(system_long_wq, &aucsi->work,
+ 				   UCSI_ROLE_SWITCH_INTERVAL);
+-- 
+2.41.0
+

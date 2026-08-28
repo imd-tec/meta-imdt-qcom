@@ -1,0 +1,21 @@
+From 341158c9961bbb740bc367f86017c337ae238980 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 04:49:58 +0100
+Subject: [PATCH] Enable UCSI CCG driver
+
+---
+ arch/arm64/configs/vendor/kalama_le_sbc.config | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/vendor/kalama_le_sbc.config b/arch/arm64/configs/vendor/kalama_le_sbc.config
+index 160037428..8735217b9 100644
+--- a/arch/arm64/configs/vendor/kalama_le_sbc.config
++++ b/arch/arm64/configs/vendor/kalama_le_sbc.config
+@@ -18,3 +18,4 @@ CONFIG_ATH11K=m
+ CONFIG_ATH11K_PCI=m
+ CONFIG_TOUCHSCREEN_GOODIX=m
+ CONFIG_REGULATOR_GPIO=m
++CONFIG_UCSI_CCG=m
+-- 
+2.41.0
+

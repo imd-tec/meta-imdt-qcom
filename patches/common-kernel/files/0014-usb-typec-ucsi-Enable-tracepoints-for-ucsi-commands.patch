@@ -1,0 +1,25 @@
+From f6134f73dd6bd5c4c3547058944ad351e5553428 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 30 Jul 2026 14:21:03 +0100
+Subject: [PATCH] usb: typec: ucsi: Enable tracepoints for ucsi commands
+
+---
+ drivers/usb/typec/ucsi/ucsi.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
+index 324e029b5..92e292374 100644
+--- a/drivers/usb/typec/ucsi/ucsi.c
++++ b/drivers/usb/typec/ucsi/ucsi.c
+@@ -147,6 +147,8 @@ static int ucsi_exec_command_common(struct ucsi *ucsi, u64 cmd, u32 *cci)
+ 			break;
+ 	}
+ 
++	trace_ucsi_run_command(cmd, ret);
++
+ 	return 0;
+ }
+ 
+-- 
+2.41.0
+

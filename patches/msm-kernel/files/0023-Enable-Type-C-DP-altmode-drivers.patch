@@ -1,0 +1,21 @@
+From aee2beadcd0cf1e2d87da153f1e14e9797edaa6c Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Fri, 10 Apr 2026 02:39:56 +0100
+Subject: [PATCH] Enable Type-C DP altmode drivers
+
+---
+ arch/arm64/configs/kalama_le_gki.fragment | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/configs/kalama_le_gki.fragment b/arch/arm64/configs/kalama_le_gki.fragment
+index 661eb8a84..173a24f54 100644
+--- a/arch/arm64/configs/kalama_le_gki.fragment
++++ b/arch/arm64/configs/kalama_le_gki.fragment
+@@ -13,3 +13,4 @@ CONFIG_POWER_SUPPLY_HWMON=y
+ CONFIG_THERMAL_HWMON=y
+ # CONFIG_USB_NET_AX88179_178A is not set
+ CONFIG_EXTCON=y
++CONFIG_TYPEC_DP_ALTMODE=y
+-- 
+2.41.0
+

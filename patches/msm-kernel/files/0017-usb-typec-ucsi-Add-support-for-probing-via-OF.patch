@@ -1,0 +1,39 @@
+From 8871d326d8052e23b73561bd495a1d34cc68d486 Mon Sep 17 00:00:00 2001
+From: Tendai Makumire <tendai.makumire@imd-tec.com>
+Date: Thu, 9 Apr 2026 03:31:53 +0100
+Subject: [PATCH] usb: typec: ucsi: Add support for probing via OF
+
+This is mainly to provide support for ARM64
+SoC's that use devicetree instead of ACPI.
+---
+ drivers/usb/typec/ucsi/ucsi_ccg.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi_ccg.c b/drivers/usb/typec/ucsi/ucsi_ccg.c
+index 6db7c8ddd..331fb4539 100644
+--- a/drivers/usb/typec/ucsi/ucsi_ccg.c
++++ b/drivers/usb/typec/ucsi/ucsi_ccg.c
+@@ -1418,6 +1418,12 @@ static const struct i2c_device_id ucsi_ccg_device_id[] = {
+ };
+ MODULE_DEVICE_TABLE(i2c, ucsi_ccg_device_id);
+ 
++static const struct of_device_id ucsi_ccg_of_match[] = {
++	{ .compatible = "cypress,ccgx", .data = NULL },
++	{ },
++};
++MODULE_DEVICE_TABLE(of, ucsi_ccg_of_match);
++
+ static int ucsi_ccg_resume(struct device *dev)
+ {
+ 	struct i2c_client *client = to_i2c_client(dev);
+@@ -1457,6 +1463,7 @@ static const struct dev_pm_ops ucsi_ccg_pm = {
+ static struct i2c_driver ucsi_ccg_driver = {
+ 	.driver = {
+ 		.name = "ucsi_ccg",
++		.of_match_table = ucsi_ccg_of_match,
+ 		.pm = &ucsi_ccg_pm,
+ 		.dev_groups = ucsi_ccg_groups,
+ 	},
+-- 
+2.41.0
+
