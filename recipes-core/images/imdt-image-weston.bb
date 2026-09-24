@@ -2,7 +2,7 @@
 # Copyright (c) 2024 IMD Technologies
 #
 
-inherit qimage populate_sdk_qti
+inherit qimage-extended populate_sdk_qti
 
 IMAGE_FEATURES:append    = " ssh-server-openssh"
 SDKIMAGE_FEATURES:append = " dev-pkgs staticdev-pkgs dbg-pkgs"
@@ -75,12 +75,3 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     ntp \
     rtc-time-control \
 "
-
-# We detach the generation of the OTA recovery image and zip file from the
-# main build dependency chain so that these tasks have to be explicitly executed
-# to generate them (like the populate_sdk task).
-deltask do_recovery_ext4
-deltask do_gen_ota_full_zip_ext4
-
-addtask do_recovery_ext4 after do_image_complete
-addtask do_gen_ota_full_zip_ext4 after do_recovery_ext4
