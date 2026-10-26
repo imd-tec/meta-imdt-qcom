@@ -1,3 +1,5 @@
+FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
+
 # Various mount related files assume selinux support by default.
 # Explicitly remove sepolicy entries when selinux is not present.
 # We override this function as it tries to find vm-bootsys.mount
